@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -14,8 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Zevlin Crack - Unrivaled Climbing Chalk",
-  description: "The ultimate climbing chalk for unparalleled grip and performance.",
+  title: "Zevlin Bike - Goods for your goods",
+  description:
+    "The ultimate cream to keep you riding better, harder, and longer.",
 };
 
 export default function RootLayout({
