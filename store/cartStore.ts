@@ -1,5 +1,5 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 export interface Product {
   id: string;
@@ -7,6 +7,9 @@ export interface Product {
   price: number;
   image: string;
   description: string;
+  featured: boolean;
+  qtyInStock: number;
+  categories: string[];
 }
 
 export interface CartItem extends Product {
@@ -29,13 +32,15 @@ export const useCartStore = create<CartState>()(
       items: [],
       addToCart: (product) =>
         set((state) => {
-          const existingItem = state.items.find((item) => item.id === product.id);
+          const existingItem = state.items.find(
+            (item) => item.id === product.id,
+          );
           if (existingItem) {
             return {
               items: state.items.map((item) =>
                 item.id === product.id
                   ? { ...item, quantity: item.quantity + 1 }
-                  : item
+                  : item,
               ),
             };
           }
@@ -47,9 +52,9 @@ export const useCartStore = create<CartState>()(
         })),
       updateQuantity: (id, quantity) =>
         set((state) => ({
-          items: state.items.map((item) =>
-            item.id === id ? { ...item, quantity } : item
-          ).filter(item => item.quantity > 0), // Remove item if quantity is 0
+          items: state.items
+            .map((item) => (item.id === id ? { ...item, quantity } : item))
+            .filter((item) => item.quantity > 0), // Remove item if quantity is 0
         })),
       clearCart: () => set({ items: [] }),
       getTotalItems: () => {
@@ -58,12 +63,12 @@ export const useCartStore = create<CartState>()(
       getTotalPrice: () => {
         return get().items.reduce(
           (total, item) => total + item.price * item.quantity,
-          0
+          0,
         );
       },
     }),
     {
-      name: 'cart-storage', // name of the item in the storage (must be unique)
-    }
-  )
-); 
+      name: "cart-storage", // name of the item in the storage (must be unique)
+    },
+  ),
+);

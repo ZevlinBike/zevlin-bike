@@ -1,5 +1,4 @@
 import Logo from "@/components/Logo";
-import { Bike } from "lucide-react";
 import Link from "next/link";
 
 export default function Footer() {
