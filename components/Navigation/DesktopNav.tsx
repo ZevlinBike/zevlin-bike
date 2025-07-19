@@ -29,10 +29,11 @@ interface DesktopNavProps {
 
 const DesktopNav: React.FC<DesktopNavProps> = ({ scrolled }) => (
   <nav
-    className={`hidden w-full md:block z-[100] transition-all duration-500 ${scrolled
+    className={`hidden w-full md:block z-[100] transition-all duration-500 ${
+      scrolled
         ? "bg-black/50 backdrop-blur-md border-black/20 rounded-lg"
         : "bg-black/100 border-transparent border rounded-none"
-      }`}
+    }`}
   >
     <Container
       className={`flex justify-between items-center transition-all ${scrolled ? "h-12" : "h-16"}`}
@@ -40,7 +41,7 @@ const DesktopNav: React.FC<DesktopNavProps> = ({ scrolled }) => (
       <Logo />
       <div className={`flex items-center space-x-6 text-white`}>
         <Link href="/">Home</Link>
-        <Link href="/product/sample">Products</Link>
+        <Link href="/products">Products</Link>
         <Link href="/about">About</Link>
         <Link href="/cart" aria-label="View Cart">
           <CartIcon />

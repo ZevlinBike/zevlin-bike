@@ -106,9 +106,8 @@ export default function Hero() {
             </div>
 
             {/* Floating price/info */}
-            <div className="flex absolute bottom-0 left-1/2 justify-between items-center p-4 w-1/2 bg-black rounded-lg -translate-x-1/2">
-              <div className="text-lg font-semibold text-white">$24.99</div>
-              <div className="text-sm text-gray-400">Free shipping</div>
+            <div className="flex absolute -left-2 top-1/2 gap-4 justify-between items-center px-4 bg-blue-600 rounded-lg -translate-y-1/2 w-fit">
+              <div className="text-lg font-semibold text-white">$23.99</div>
             </div>
 
             {/* Ambient glow */}

@@ -21,6 +21,7 @@ const LINKS = [
 const MobileNav: React.FC<MobileNavProps> = ({ scrolled, open, setOpen }) => {
   return (
     <>
+      <CartButton />
       {open && (
         <div className="fixed top-0 right-0 bottom-0 left-0 bg-gradient-to-b from-black via-black to-black/50 -z-10 backdrop-blur-md" />
       )}
@@ -43,7 +44,6 @@ const MobileNav: React.FC<MobileNavProps> = ({ scrolled, open, setOpen }) => {
             />
             Zevlin Bike
           </div>
-          <CartButton />
           <button onClick={() => setOpen((o) => !o)} aria-label="Toggle menu">
             {open ? (
               <>
