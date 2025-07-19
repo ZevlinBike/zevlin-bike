@@ -13,8 +13,10 @@ export default function NotificationBanner({
       <div className="container px-4 mx-auto sm:px-6 lg:px-8">
         <div className="flex justify-center items-center p-2">
           <p className="text-sm font-medium">
-            <span className="mr-3 font-black uppercase">Big News!</span> New
-            Products Coming Soon
+            <span className="hidden mr-3 font-black uppercase sm:inline-block">
+              Big News!
+            </span>{" "}
+            New Products Coming Soon
           </p>
           <Link
             href="/new-products"
