@@ -4,7 +4,7 @@ import Image from "next/image";
 
 export default function CTA() {
   return (
-    <section className="relative py-20 bg-gray-800/50">
+    <section className="relative py-20 bg-black/80">
       <Image
         className="opacity-10 grayscale"
         src="/images/hero-image.jpeg"

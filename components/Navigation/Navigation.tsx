@@ -23,7 +23,7 @@ const Navigation: React.FC = () => {
       >
         <NotificationBanner scrolled={scrolled} />
         <div
-          className={`${scrolled ? "p-4" : "p-0"} transition-all duration-500`}
+          className={`${scrolled ? "p-3" : "p-0"} transition-all duration-500`}
         >
           <DesktopNav scrolled={scrolled} />
           <MobileNav open={open} setOpen={setOpen} scrolled={scrolled} />

@@ -5,6 +5,7 @@ import Image from "next/image";
 import Container from "../shared/Container";
 import { MenuIcon, X } from "lucide-react";
 import CartButton from "../Cart/CartButton";
+import Logo from "../Logo";
 
 interface MobileNavProps {
   scrolled: boolean;
@@ -26,24 +27,14 @@ const MobileNav: React.FC<MobileNavProps> = ({ scrolled, open, setOpen }) => {
         <div className="fixed top-0 right-0 bottom-0 left-0 bg-gradient-to-b from-black via-black to-black/50 -z-10 backdrop-blur-md" />
       )}
       <nav
-        className={`md:hidden backdrop-blur-md border transition-all duration-300 ${
-          scrolled
-            ? "bg-black/100 border-transparent rounded-lg"
-            : "bg-black/50 border-black/20"
+        className={`md:hidden backdrop-blur-md border transition-all duration-300 bg-black ${
+          scrolled ? "border-transparent rounded-lg" : "border-black/20"
         }`}
       >
-        <Container className="flex justify-between items-center h-16">
-          <div
-            className={`flex items-center gap-2 font-bold text-lg text-white`}
-          >
-            <Image
-              src="/images/logo.png"
-              alt="Zevlin Bike Logo"
-              width={32}
-              height={32}
-            />
-            Zevlin Bike
-          </div>
+        <Container
+          className={`flex justify-between items-center transition-all ${scrolled ? "h-12" : "h-24"}`}
+        >
+          <Logo className={scrolled ? "scale-100" : "scale-150 ml-8"} />
           <button onClick={() => setOpen((o) => !o)} aria-label="Toggle menu">
             {open ? (
               <>

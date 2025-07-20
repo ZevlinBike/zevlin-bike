@@ -4,28 +4,21 @@ import { ArrowRight } from "lucide-react";
 import Image from "next/image";
 
 const TAGLINES = [
-  "Premium chamois cream for smooth miles—no tingle, no distractions.",
-  "Ride long. Stay calm. No tingle required.",
-  "Built for endurance, not intensity. Smooth, simple, and effective.",
-  "Comfort that lasts. No burn, no buzz—just friction-free riding.",
-  "Menthol-free relief for long rides and cooler days.",
+  "You're only a ride away from a good day",
+  "Zevlin. Anything else would be nuts",
+  "Goods for your goods",
 ];
 
 export default function Hero() {
   const randomTagline = TAGLINES[Math.floor(Math.random() * TAGLINES.length)];
-  return (
-    <section className="flex overflow-hidden relative justify-center items-center p-8 pt-16 min-h-screen">
-      <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-black" />
-      <Image
-        className="opacity-25 grayscale"
-        src="/images/hero-image.png"
-        alt="Zevlin Bike Hero"
-        fill
-        style={{ objectFit: "cover", zIndex: 0 }}
-        priority
-      />
 
-      {/* Subtle grid pattern overlay */}
+  return (
+    <section className="flex overflow-hidden relative justify-center items-center p-8 pt-20 min-h-screen">
+      {/* Background gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-gray-100 via-gray-200 to-white dark:from-gray-900 dark:via-gray-800 dark:to-black" />
+      <div className="absolute inset-0 z-10 bg-gradient-to-r from-white to-transparent dark:from-gray-900 dark:via-gray-800 dark:to-black" />
+
+      {/* Optional textured grid */}
       <div className="absolute inset-0 opacity-5">
         <div
           className="absolute inset-0"
@@ -36,89 +29,85 @@ export default function Hero() {
         />
       </div>
 
+      {/* Faint hero background image */}
+      <Image
+        className="object-cover absolute inset-0 z-0 w-full h-full opacity-20 brightness-150 grayscale"
+        src="/images/hero-image.png"
+        alt="Zevlin Hero"
+        fill
+        priority
+      />
+
+      {/* Content */}
       <div className="container relative z-10 px-4 mx-auto lg:px-6">
-        <div className="flex flex-wrap gap-12 items-center py-20 min-h-screen text-center sm:text-left lg:flex-nowrap">
-          {/* Left side - Text */}
+        <div className="flex flex-wrap gap-12 justify-center items-center py-20 min-h-screen text-center sm:text-left lg:flex-nowrap">
+          {/* Text Section */}
           <div className="flex-1 space-y-8 lg:pr-12 min-w-[300px]">
             <div className="grid justify-center space-y-4 sm:justify-start">
-              <div className="inline-block">
-                <Badge className="py-2 px-4 text-sm font-medium text-blue-400 bg-blue-500/10 border-blue-500/30">
-                  Cycling Essentials
-                </Badge>
-              </div>
+              <Badge className="py-2 px-4 text-sm font-medium text-red-700 border-red-700 bg-red-700/10 w-fit">
+                Cycling Essentials
+              </Badge>
 
               <h1 className="text-7xl font-bold leading-none md:text-7xl lg:text-8xl">
-                <span className="block text-white">Zevlin</span>
-                <span className="block text-blue-400">Crack</span>
+                <span className="block text-black dark:text-white">Zevlin</span>
+                <span className="block text-red-700 dark:text-red-500">
+                  Bike
+                </span>
               </h1>
 
-              <p className="max-w-md text-xl font-light text-center text-gray-300 sm:text-left md:text-2xl">
+              <p className="max-w-md text-xl font-light text-black sm:text-left md:text-2xl dark:text-gray-300">
                 {randomTagline}
               </p>
-            </div>
 
-            <div className="space-y-3 text-gray-400">
-              <div className="flex justify-center items-center space-x-3 sm:justify-start">
-                <div className="w-1.5 h-1.5 bg-blue-400 rounded-full" />
-                <span className="text-sm font-medium">
-                  High Mileage Formula
-                </span>
-              </div>
-              <div className="flex justify-center items-center space-x-3 sm:justify-start">
-                <div className="w-1.5 h-1.5 bg-blue-400 rounded-full" />
-                <span className="text-sm font-medium">
-                  Long-lasting formula
-                </span>
-              </div>
-              <div className="flex justify-center items-center space-x-3 sm:justify-start">
-                <div className="w-1.5 h-1.5 bg-blue-400 rounded-full" />
-                <span className="text-sm font-medium">
-                  Minimizes sweat and moisture
-                </span>
-              </div>
+              <p className="text-gray-700 dark:text-gray-400 text-md">
+                Premium cycling gear engineered for performance and style.
+              </p>
             </div>
 
             <div className="pt-4">
               <Button
                 size="lg"
-                className="py-4 px-8 text-lg font-medium text-white bg-blue-600 rounded-none hover:bg-blue-700"
+                className="py-4 px-8 text-lg font-medium text-white bg-blue-600 rounded-full hover:bg-blue-700"
               >
-                Purchase Now
+                Shop Zevlin Gear
               </Button>
             </div>
           </div>
 
-          {/* Right side - Product Image */}
-          <div className="relative flex-1 mx-auto min-w-[260px] max-w-[400px]">
-            {/* Glow effect behind product */}
-            <div className="absolute inset-0 bg-gradient-to-r transform scale-110 from-blue-600/20 to-purple-600/20 blur-3xl" />
+          {/* Product Image Section */}
+          <div className="relative flex-1 mx-auto min-w-[260px] group sm:max-w-[400px]">
+            {/* Glow background */}
+            <div className="absolute inset-0 bg-gradient-to-r transform scale-110 pointer-events-none from-blue-600/20 to-purple-600/20 blur-3xl" />
 
-            {/* Product showcase */}
-            <div className="flex overflow-hidden relative justify-center items-center rounded-full border shadow-2xl border-white/25 backdrop-blur-sm aspect-square group">
-              <div className="space-y-4 text-center">
-                <Image
-                  src="/images/zevlin-crack-00.webp"
-                  alt="Zevlin Crack"
-                  fill
-                  className="object-contain p-20 mx-auto transition-transform duration-700 hover:scale-105"
-                />
+            {/* Featured label */}
+            <div className="absolute top-4 left-4 z-20 py-1 px-3 text-xs font-semibold text-gray-800 rounded-full shadow dark:text-white bg-white/80 dark:bg-black/50">
+              Featured Product
+            </div>
+
+            {/* Product image in styled wrapper */}
+            <div className="flex relative justify-center items-center rounded-full border shadow-2xl border-white/25 backdrop-blur-sm aspect-square">
+              <Image
+                src="/images/zevlin-crack-00.webp"
+                alt="Zevlin Crack"
+                fill
+                className="object-contain p-20 mx-auto transition-transform duration-700 group-hover:scale-105"
+              />
+
+              {/* Hover price bubble */}
+              <div className="absolute right-4 bottom-4 py-1 px-4 text-sm font-semibold text-white bg-blue-600 rounded-full shadow">
+                $23.99
               </div>
             </div>
 
-            {/* Floating price/info */}
-            <div className="flex absolute -left-2 top-1/2 gap-4 justify-between items-center px-4 bg-blue-600 rounded-lg -translate-y-1/2 w-fit">
-              <div className="text-lg font-semibold text-white">$23.99</div>
-            </div>
-
-            {/* Ambient glow */}
+            {/* Subtle glow elements */}
             <div className="absolute -left-12 top-1/4 w-24 h-24 rounded-full bg-blue-500/10 blur-xl" />
             <div className="absolute -right-12 bottom-1/4 w-32 h-32 rounded-full bg-purple-500/10 blur-xl" />
           </div>
         </div>
       </div>
 
-      {/* Scroll indicator */}
-      <div className="absolute bottom-8 left-1/2 text-gray-400 animate-bounce transform -translate-x-1/2">
+      {/* Scroll cue */}
+      <div className="absolute bottom-8 left-1/2 text-black animate-bounce transform -translate-x-1/2 dark:text-gray-200">
         <div className="flex flex-col items-center space-y-2">
           <div className="text-xs font-medium">Scroll to explore</div>
           <ArrowRight className="w-4 h-4 rotate-90" />

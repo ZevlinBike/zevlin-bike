@@ -3,14 +3,14 @@ import Link from "next/link";
 
 export default function Footer() {
   return (
-    <footer className="py-12 bg-gray-900 border-t border-gray-800">
+    <footer className="py-12 text-black bg-white border-t border-gray-800">
       <div className="container px-4 mx-auto lg:px-6">
         <div className="grid gap-8 md:grid-cols-4">
           <div>
             <div className="flex items-center mb-4 space-x-2">
-              <Logo />
+              <Logo className="invert" />
             </div>
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-gray-700">
               Premium cycling products designed for real riders — from chamois
               cream to bar tape and more. Built for comfort, made to last.
             </p>
@@ -18,7 +18,7 @@ export default function Footer() {
 
           <div>
             <h4 className="mb-4 font-semibold">Products</h4>
-            <ul className="space-y-2 text-sm text-gray-400">
+            <ul className="space-y-2 text-sm text-gray-700">
               <li>
                 <Link href="#" className="transition-colors hover:text-white">
                   Chamois Cream
@@ -44,7 +44,7 @@ export default function Footer() {
 
           <div>
             <h4 className="mb-4 font-semibold">Support</h4>
-            <ul className="space-y-2 text-sm text-gray-400">
+            <ul className="space-y-2 text-sm text-gray-700">
               <li>
                 <Link href="#" className="transition-colors hover:text-white">
                   Contact Us
@@ -70,7 +70,7 @@ export default function Footer() {
 
           <div>
             <h4 className="mb-4 font-semibold">Company</h4>
-            <ul className="space-y-2 text-sm text-gray-400">
+            <ul className="space-y-2 text-sm text-gray-700">
               <li>
                 <Link href="#" className="transition-colors hover:text-white">
                   About Zevlin
@@ -95,7 +95,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="pt-8 mt-8 text-sm text-center text-gray-400 border-t border-gray-800">
+        <div className="pt-8 mt-8 text-sm text-center text-gray-700 border-t border-gray-800">
           <p>
             &copy; {new Date().getFullYear()} Zevlin Bike. All rights reserved.
           </p>
