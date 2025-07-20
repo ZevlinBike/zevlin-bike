@@ -4,7 +4,7 @@ import { CardContent } from "@/components/ui/card";
 import { Star } from "lucide-react";
 import { testimonials } from "@/store/reviews"; // Assuming this is defined correctly
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion"; // Import motion for animations
+import { motion, Variants } from "framer-motion"; // Import motion for animations
 
 export default function Testimonials() {
   const [shuffledTestimonials, setShuffledTestimonials] = useState<
@@ -30,7 +30,7 @@ export default function Testimonials() {
         ease: "easeOut",
       },
     },
-  };
+  } satisfies Variants;
 
   const cardVariants = {
     hidden: { opacity: 0, y: 50 },
@@ -39,7 +39,7 @@ export default function Testimonials() {
       y: 0,
       transition: { duration: 0.6, ease: "easeOut" },
     },
-  };
+  } satisfies Variants;
 
   return (
     // Enhanced section background with gradient for separation

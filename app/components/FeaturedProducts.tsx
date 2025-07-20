@@ -19,10 +19,6 @@ export default function FeaturedProducts() {
           <h2 className="mb-4 text-3xl font-bold text-gray-900 md:text-4xl dark:text-white">
             Ride Essentials, Perfected
           </h2>
-          <p className="mx-auto max-w-2xl text-lg text-gray-600 dark:text-gray-400">
-            Engineered for cyclists who demand performance and style without
-            compromise.
-          </p>
         </div>
 
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">

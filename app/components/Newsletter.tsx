@@ -1,7 +1,7 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { motion } from "framer-motion"; // Import motion for animations
+import { motion, Variants } from "framer-motion"; // Import motion for animations
 
 export default function Newsletter() {
   // Framer Motion variants
@@ -12,7 +12,7 @@ export default function Newsletter() {
       y: 0,
       transition: { duration: 0.6, ease: "easeOut" },
     },
-  };
+  } satisfies Variants;
 
   const staggerContainer = {
     hidden: { opacity: 0 },
@@ -22,7 +22,7 @@ export default function Newsletter() {
         staggerChildren: 0.15,
       },
     },
-  };
+  } satisfies Variants;
 
   return (
     // Section background: Subtle light gray gradient for distinction, keeping it bright

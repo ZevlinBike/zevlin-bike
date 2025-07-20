@@ -1,6 +1,6 @@
 "use client";
 import { Bike, Shield, Leaf, Trophy } from "lucide-react";
-import { motion } from "framer-motion"; // Import motion
+import { motion, Variants } from "framer-motion"; // Import motion
 
 const features = [
   {
@@ -43,12 +43,12 @@ const containerVariants = {
       delayChildren: 0.1,
     },
   },
-};
+} satisfies Variants;
 
 const itemVariants = {
   hidden: { opacity: 0, y: 50 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } },
-};
+} satisfies Variants;
 
 export default function Features() {
   return (
@@ -62,10 +62,6 @@ export default function Features() {
           <h2 className="mb-4 text-3xl font-bold text-gray-900 md:text-4xl dark:text-white">
             Why Cyclists Choose Zevlin Crack
           </h2>
-          <p className="mx-auto max-w-2xl text-lg text-gray-600 dark:text-gray-400">
-            Engineered for cyclists who demand performance and style without
-            compromise.
-          </p>
         </div>
 
         {/* Feature Grid: Using Framer Motion container */}

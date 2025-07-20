@@ -2,7 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, CheckCircle } from "lucide-react";
 import Image from "next/image";
-import { motion } from "framer-motion"; // Import motion for animations
+import { motion, Variants } from "framer-motion"; // Import motion for animations
 
 export default function CTA() {
   // Framer Motion variants for subtle animation
@@ -18,7 +18,7 @@ export default function CTA() {
         ease: "easeOut",
       },
     },
-  };
+  } satisfies Variants;
 
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
@@ -27,7 +27,7 @@ export default function CTA() {
       y: 0,
       transition: { duration: 0.5, ease: "easeOut" },
     },
-  };
+  } satisfies Variants;
 
   return (
     <section className="flex overflow-hidden relative justify-center items-center py-20 min-h-[500px]">

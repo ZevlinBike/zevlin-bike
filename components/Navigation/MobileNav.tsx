@@ -1,7 +1,6 @@
 "use client";
 import React from "react";
 import Link from "next/link";
-import Image from "next/image";
 import Container from "../shared/Container";
 import { MenuIcon, X } from "lucide-react";
 import CartButton from "../Cart/CartButton";
@@ -27,9 +26,8 @@ const MobileNav: React.FC<MobileNavProps> = ({ scrolled, open, setOpen }) => {
         <div className="fixed top-0 right-0 bottom-0 left-0 bg-gradient-to-b from-black via-black to-black/50 -z-10 backdrop-blur-md" />
       )}
       <nav
-        className={`md:hidden backdrop-blur-md border transition-all duration-300 bg-black ${
-          scrolled ? "border-transparent rounded-lg" : "border-black/20"
-        }`}
+        className={`md:hidden backdrop-blur-md border transition-all duration-300 bg-black ${scrolled ? "border-transparent rounded-lg" : "border-black/20"
+          }`}
       >
         <Container
           className={`flex justify-between items-center transition-all ${scrolled ? "h-12" : "h-24"}`}
