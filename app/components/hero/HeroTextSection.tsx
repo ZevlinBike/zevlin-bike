@@ -14,7 +14,7 @@ export default function HeroTextSection() {
       <div className="grid justify-center space-y-4 sm:justify-start">
         <h1
           style={{ ...headerFont.style }}
-          className="w-min text-7xl font-black tracking-wider leading-none uppercase md:text-7xl lg:text-9xl"
+          className="mx-auto w-min text-7xl font-black tracking-wider leading-none uppercase md:text-7xl lg:text-9xl"
         >
           Goods <span className="whitespace-nowrap">for your</span> Goods
         </h1>

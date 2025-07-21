@@ -4,27 +4,16 @@ import Link from "next/link";
 export default function Footer() {
   return (
     // Darker, more premium background for the footer
-    <footer className="py-16 text-gray-300 bg-gray-900 dark:text-gray-400 dark:bg-black">
+    <footer className="py-16 text-gray-900 bg-gray-100">
       <div className="container px-4 mx-auto lg:px-6">
         <div className="grid gap-12 pb-8 md:grid-cols-2 lg:grid-cols-4">
-          {" "}
-          {/* Increased gap and added bottom padding */}
-          {/* Company Info / Logo Column */}
           <div>
             <div className="mb-6">
-              {" "}
-              {/* Increased bottom margin for logo */}
-              {/* Assuming Logo component handles its own coloring based on context,
-                  if not, you might need to adjust it or pass a prop for dark mode.
-                  If it currently inverts for light background, it should look right on dark. */}
-              <Logo className="" />{" "}
-              {/* Removed invert here as it's now on a dark background */}
+              <Logo className="text-black" />
             </div>
             <p className="text-sm leading-relaxed text-gray-400 dark:text-gray-500">
-              {" "}
-              {/* Slightly softer text color, relaxed line height */}
-              Premium cycling products designed for real riders — from chamois
-              cream to bar tape and more. Built for comfort, made to last.
+              Premium cycling products designed for real riders - Built for
+              comfort, made to last.
             </p>
           </div>
           {/* Navigation Columns */}
@@ -32,33 +21,31 @@ export default function Footer() {
             {
               title: "Products",
               links: [
-                { name: "Chamois Cream", href: "#" },
-                { name: "Handlebar Tape", href: "#" },
-                { name: "Cycling Apparel", href: "#" },
-                { name: "Limited Drops", href: "#" },
+                { name: "Chamois Cream", href: "/products?category=cream" },
+                { name: "Cycling Apparel", href: "/products?category=apparel" },
+                { name: "Limited Drops", href: "/products?category=limited" },
               ],
             },
             {
               title: "Support",
               links: [
-                { name: "Contact Us", href: "#" },
-                { name: "FAQ", href: "#" },
-                { name: "Shipping Info", href: "#" },
-                { name: "Returns", href: "#" },
+                { name: "Contact Us", href: "/contact" },
+                { name: "FAQ", href: "/faq" },
+                { name: "Shipping Info", href: "/shipping" },
+                { name: "Returns", href: "/returns" },
               ],
             },
             {
               title: "Company",
               links: [
-                { name: "About Zevlin", href: "#" },
-                { name: "Our Mission", href: "#" },
-                { name: "Privacy Policy", href: "#" },
-                { name: "Terms of Service", href: "#" },
+                { name: "About Zevlin", href: "/about" },
+                { name: "Our Mission", href: "/mission" },
+                { name: "Privacy Policy", href: "/privacy" },
               ],
             },
           ].map((col, idx) => (
             <div key={idx}>
-              <h4 className="mb-5 text-lg font-semibold text-white dark:text-gray-200">
+              <h4 className="mb-5 text-lg font-semibold text-black">
                 {" "}
                 {/* Larger, more prominent headings */}
                 {col.title}

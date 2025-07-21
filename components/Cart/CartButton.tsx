@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import React from "react";
 
 const CartIcon = () => (
@@ -22,10 +23,12 @@ const CartIcon = () => (
 );
 
 const CartButton: React.FC = () => {
+  const currentLink = usePathname();
+  if (currentLink === "/cart" || currentLink === "/checkout") return null;
   return (
     <Link
       href="/cart"
-      className="md:hidden fixed bottom-4 right-4 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition-colors focus:outline-none z-50"
+      className="fixed right-4 bottom-4 z-50 p-4 text-white bg-blue-600 rounded-full shadow-lg transition-colors md:hidden hover:bg-blue-700 focus:outline-none"
       aria-label="View Cart"
     >
       <CartIcon />

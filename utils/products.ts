@@ -6,8 +6,8 @@ export const products: Product[] = [
     name: "Crack Chamois Cream",
     price: 23.99,
     image: "/images/zevlin-crack-00.webp",
-    description:
-      "Crack is our natural, non-tingle chamois cream formula designed for cooler riding days or riders who prefer smooth comfort without the tingle.",
+    description: ` Crack is our natural, non-tingle chamois cream formula designed for both the cooler riding days and for those who do not really need or want an extra kick in the chamois while they ride.
+      Our crack chamois cream creates a comfortable barrier using tea tree leaf oil, electric daisy extract and organic witch hazel extract. All of which keep you soothed and protected so all you have to do is ride.`,
     featured: true,
     qtyInStock: 999,
     categories: ["Cream"],
@@ -18,7 +18,7 @@ export const products: Product[] = [
     price: 23.99,
     image: "/images/zevlin-super-crack-01.webp",
     description:
-      "Super Crack adds a minty kick with peppermint oil and witch hazel—ideal for hot rides when you want a little tingle and lasting freshness.",
+      "SuperCrack has the slightly tingly, cooling properties of peppermint oil, electric daisy extract and organic witch hazel extract added to our Crack formula, giving riders and their bits some extra relief when the temps are rising outside and inside their shorts during a workout, leaving them feeling minty fresh when the ride is done. Help you enjoy your ride from start to finish day after day.",
     featured: true,
     qtyInStock: 999,
     categories: ["Cream"],

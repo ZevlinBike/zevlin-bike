@@ -26,7 +26,7 @@ export default function Newsletter() {
 
   return (
     // Section background: Subtle light gray gradient for distinction, keeping it bright
-    <section className="overflow-hidden relative py-20 text-gray-900 bg-gradient-to-br from-gray-50 to-white dark:text-white dark:from-gray-900 dark:to-black">
+    <section className="overflow-hidden relative py-20 text-gray-900 dark:text-white dark:from-gray-900 dark:to-black">
       {/* Optional: Very subtle background pattern for texture */}
       <div
         className="absolute inset-0 z-0 opacity-5"
@@ -38,7 +38,7 @@ export default function Newsletter() {
 
       <div className="container relative z-10 px-4 mx-auto lg:px-6">
         <motion.div
-          className="p-8 mx-auto max-w-2xl text-center bg-white rounded-2xl border border-gray-100 shadow-xl dark:bg-gray-800 dark:border-gray-700" // Elevated, clean card for content
+          className="p-8 mx-auto max-w-3xl text-center bg-white rounded-2xl border border-gray-100 shadow-xl dark:bg-gray-800 dark:border-gray-700" // Elevated, clean card for content
           variants={staggerContainer}
           initial="hidden"
           whileInView="visible"

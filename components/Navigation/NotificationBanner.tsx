@@ -17,7 +17,7 @@ export default function NotificationBanner({
     <>
       {/* Re-open Button: Now uses Framer Motion for smoother reveal/hide */}
       <AnimatePresence>
-        {closed && (
+        {closed && !scrolled && (
           <motion.button
             key="reopen-button" // Required for AnimatePresence
             initial={{ opacity: 0, y: -50 }} // Start slightly above and invisible
