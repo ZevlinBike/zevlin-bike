@@ -52,7 +52,7 @@ const itemVariants = {
 
 export default function Features() {
   return (
-    <section className="overflow-hidden relative py-20 bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-black">
+    <section className="overflow-hidden relative py-20 bg-gray-100 dark:bg-neutral-900">
       {/* Optional: Abstract background shapes/gradients for visual interest */}
       <div className="absolute left-0 top-1/4 w-48 h-48 rounded-full opacity-50 bg-blue-500/10 mix-blend-multiply filter blur-3xl animate-blob" />
       <div className="absolute right-0 bottom-1/4 w-64 h-64 rounded-full opacity-50 bg-purple-500/10 mix-blend-multiply filter blur-3xl animate-blob animation-delay-2000" />

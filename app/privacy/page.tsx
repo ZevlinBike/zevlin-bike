@@ -14,7 +14,7 @@ export default function PrivacyPage() {
   } satisfies Variants;
 
   return (
-    <div className="grid justify-center items-start px-4 pt-40 min-h-screen bg-gradient-to-br from-gray-50 to-white sm:px-6 lg:px-8 dark:from-gray-900 dark:to-black">
+    <div className="grid justify-center items-start px-4 pt-40 min-h-screen bg-gradient-to-b from-gray-50 to-white sm:px-6 lg:px-8 dark:from-neutral-950 dark:to-neutral-900">
       <motion.article
         className="p-8 mx-auto max-w-3xl bg-white rounded-2xl border border-gray-100 shadow-xl dark:bg-gray-800 dark:border-gray-700"
         variants={contentVariants}

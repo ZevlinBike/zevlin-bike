@@ -10,6 +10,7 @@ export interface Product {
   featured: boolean;
   qtyInStock: number;
   categories: string[];
+  rating: number
 }
 
 export interface CartItem extends Product {

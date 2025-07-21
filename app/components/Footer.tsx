@@ -3,15 +3,14 @@ import Link from "next/link";
 
 export default function Footer() {
   return (
-    // Darker, more premium background for the footer
-    <footer className="py-16 text-gray-900 bg-gray-100">
+    <footer className="py-16 text-gray-900 bg-gray-100 dark:text-gray-100 dark:bg-neutral-900">
       <div className="container px-4 mx-auto lg:px-6">
         <div className="grid gap-12 pb-8 md:grid-cols-2 lg:grid-cols-4">
           <div>
             <div className="mb-6">
-              <Logo className="text-black" />
+              <Logo className="text-black dark:text-white" />
             </div>
-            <p className="text-sm leading-relaxed text-gray-400 dark:text-gray-500">
+            <p className="text-sm leading-relaxed text-gray-600 dark:text-gray-300">
               Premium cycling products designed for real riders - Built for
               comfort, made to last.
             </p>
@@ -45,7 +44,7 @@ export default function Footer() {
             },
           ].map((col, idx) => (
             <div key={idx}>
-              <h4 className="mb-5 text-lg font-semibold text-black">
+              <h4 className="mb-5 text-lg font-semibold text-black dark:text-white">
                 {" "}
                 {/* Larger, more prominent headings */}
                 {col.title}

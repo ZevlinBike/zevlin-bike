@@ -7,7 +7,7 @@ import Testimonials from "./components/Testimonials";
 
 export default function ZevlinCrackLanding() {
   return (
-    <div className="min-h-screen text-black bg-gray-100">
+    <div className="min-h-screen text-black bg-gray-100 dark:bg-neutral-900 text-white">
       <Hero />
       <FeaturedProducts />
       <Features />

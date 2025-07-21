@@ -43,7 +43,7 @@ export default function Testimonials() {
 
   return (
     // Enhanced section background with gradient for separation
-    <section className="overflow-hidden relative py-20 bg-gradient-to-br from-white to-gray-50 dark:from-black dark:to-gray-900">
+    <section className="overflow-hidden relative py-20 bg-gray-100 dark:bg-neutral-900">
       {/* Optional: Subtle background pattern/texture overlay */}
       <div
         className="absolute inset-0 z-0 opacity-10"

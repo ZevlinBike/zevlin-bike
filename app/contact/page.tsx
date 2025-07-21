@@ -36,7 +36,7 @@ export default function ContactPage() {
   };
 
   return (
-    <div className="grid justify-center items-start px-4 pt-40 min-h-screen bg-gradient-to-br from-gray-200 to-gray-300 sm:px-6 lg:px-8 dark:from-gray-900 dark:to-black">
+    <div className="grid justify-center items-start px-4 pt-40 min-h-screen bg-gradient-to-b from-gray-200 to-gray-300 sm:px-6 lg:px-8 dark:from-neutral-950 dark:to-neutral-900">
       <motion.div
         className="p-8 mx-auto w-full max-w-3xl bg-white rounded-2xl border border-gray-100 shadow-xl dark:bg-gray-800 dark:border-gray-700"
         variants={variants}

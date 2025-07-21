@@ -2,8 +2,7 @@
 
 import Image from "next/image";
 import { motion, Variants } from "framer-motion"; // For animations
-import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
+import CTA from "../components/CTA";
 
 export default function MissionPage() {
   // Framer Motion variants for staggered content reveal
@@ -39,7 +38,7 @@ export default function MissionPage() {
 
   return (
     // Main container uses the subtle gradient for the overall page background
-    <div className="relative min-h-screen text-gray-900 bg-gradient-to-br from-gray-50 to-white dark:text-white dark:from-gray-900 dark:to-black">
+    <div className="relative min-h-screen text-gray-900 bg-gradient-to-b from-gray-50 to-white dark:text-white dark:from-neutral-900 dark:to-neutral-900">
       {/* Hero Section - Visually impactful, similar to About Page hero */}
       <div className="flex overflow-hidden relative justify-center items-center pt-32 h-[450px] md:h-[550px]">
         <Image
@@ -50,9 +49,7 @@ export default function MissionPage() {
           className="opacity-40 grayscale saturate-150 rotate-y-180" // Consistent image styling
           priority
         />
-        {/* Dark overlay for text readability */}
-        <div className="absolute inset-0 z-10 bg-black/60" />
-
+        <div className="absolute inset-0 z-10 bg-gradient-to-b to-gray-100 from-gray-50/50 via-gray-100/50 dark:from-neutral-950/50 via-neutral-900/50 to-neutral-900" />
         <motion.div
           className="relative z-20 px-4 text-center"
           initial="hidden"
@@ -152,39 +149,7 @@ export default function MissionPage() {
       </section>
 
       {/* Optional: Call to Action or Unique Selling Point Section */}
-      <section className="flex justify-center py-16 px-4 sm:px-6 lg:px-8">
-        <motion.div
-          className="p-8 mx-auto max-w-4xl text-center text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl shadow-xl md:p-12 dark:from-blue-800 dark:to-purple-800"
-          initial="hidden"
-          whileInView="visible"
-          variants={containerVariants}
-          viewport={{ once: true, amount: 0.2 }}
-        >
-          <motion.h3
-            className="mb-4 text-3xl font-extrabold leading-tight drop-shadow"
-            variants={itemVariants}
-          >
-            Experience the Zevlin Difference
-          </motion.h3>
-          <motion.p
-            className="mx-auto mb-8 max-w-xl text-lg opacity-90"
-            variants={itemVariants}
-          >
-            Join a community that values comfort, performance, and the pure joy
-            of the ride.
-          </motion.p>
-          {/* You can add a Button here leading to products or a key feature */}
-          <motion.div variants={itemVariants}>
-            <Button
-              size="lg"
-              className="py-3 px-8 text-lg font-semibold text-gray-900 bg-yellow-400 rounded-full shadow-lg transition-all duration-300 transform hover:bg-yellow-500 hover:scale-105 group"
-            >
-              Shop Our Products
-              <ArrowRight className="ml-2 w-5 h-5 transition-transform group-hover:translate-x-1" />
-            </Button>
-          </motion.div>
-        </motion.div>
-      </section>
+      <CTA />
     </div>
   );
 }

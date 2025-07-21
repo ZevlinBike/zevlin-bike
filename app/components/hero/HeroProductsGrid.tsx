@@ -13,7 +13,7 @@ export default function HeroProductGrid({ products }: { products: Product[] }) {
       {/* Global "Free Shipping" Banner for the Hero Section */}
       <h2 className="mb-6 text-3xl font-extrabold text-center text-gray-900 md:text-4xl dark:text-white">
         Our Top Picks
-        <span className="block mt-2 text-lg font-medium text-blue-600 md:text-xl dark:text-blue-400">
+        <span className="block mt-2 text-lg font-medium backdrop-blur-sm px-1 border border-blue-600 rounded-lg text-blue-600 md:text-xl dark:text-blue-400">
           Plus, get Free Shipping on all orders over $49!
         </span>
       </h2>

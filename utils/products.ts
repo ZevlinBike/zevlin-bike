@@ -11,6 +11,7 @@ export const products: Product[] = [
     featured: true,
     qtyInStock: 999,
     categories: ["Cream"],
+    rating: 5,
   },
   {
     id: "2",
@@ -22,6 +23,7 @@ export const products: Product[] = [
     featured: true,
     qtyInStock: 999,
     categories: ["Cream"],
+    rating: 4.7,
   },
   {
     id: "3",
@@ -33,6 +35,7 @@ export const products: Product[] = [
     featured: true,
     qtyInStock: 299,
     categories: ["Aftercare"],
+    rating: 4.2,
   },
   {
     id: "4",
@@ -44,6 +47,7 @@ export const products: Product[] = [
     featured: false,
     qtyInStock: 7,
     categories: ["Accessory"],
+    rating: 5,
   },
   {
     id: "5",
@@ -55,5 +59,6 @@ export const products: Product[] = [
     featured: false,
     qtyInStock: 8,
     categories: ["Accessory"],
+    rating: 5,
   },
 ];

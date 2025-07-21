@@ -42,7 +42,7 @@ const total = subtotal + shipping + tax;
 
 export default function CartPage() {
   return (
-    <div className="pt-40 min-h-screen text-gray-900 bg-white dark:text-white dark:bg-gray-900">
+    <div className="pt-40 min-h-screen text-gray-900 bg-white dark:text-white dark:bg-neutral-900">
       <div className="container px-4 mx-auto sm:px-6 lg:px-8">
         <h1 className="mb-8 text-3xl font-extrabold tracking-tight sm:text-4xl">
           Shopping Cart
@@ -54,7 +54,7 @@ export default function CartPage() {
               className="divide-y divide-gray-200 dark:divide-gray-700"
             >
               {cartItems.map((item) => (
-                <li key={item.id} className="flex py-6">
+                <li key={item.id} className="flex py-6 bg-neutral-800 p-4">
                   <div className="overflow-hidden flex-shrink-0 w-24 h-24 rounded-md border border-gray-200 dark:border-gray-700">
                     <Image
                       src={item.image}
@@ -112,7 +112,7 @@ export default function CartPage() {
             </ul>
           </div>
           <div className="lg:col-span-1">
-            <div className="p-6 bg-gray-50 rounded-lg shadow-md dark:bg-gray-800">
+            <div className="p-6 bg-gray-50 rounded-lg shadow-md dark:bg-neutral-800">
               <h2 className="mb-4 text-lg font-medium">Order summary</h2>
               <div className="space-y-4">
                 <div className="flex justify-between">

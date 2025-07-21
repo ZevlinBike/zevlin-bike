@@ -14,12 +14,12 @@ export default function HeroTextSection() {
       <div className="grid justify-center space-y-4 sm:justify-start">
         <h1
           style={{ ...headerFont.style }}
-          className="mx-auto w-min text-7xl font-black tracking-wider leading-none uppercase md:text-7xl lg:text-9xl"
+          className="mx-auto w-min text-7xl font-black text-black dark:text-white tracking-wider leading-none uppercase md:text-7xl lg:text-9xl"
         >
           Goods <span className="whitespace-nowrap">for your</span> Goods
         </h1>
 
-        <p className="text-xl font-light text-black sm:text-left md:text-2xl dark:text-gray-300 backdrop-blur-sm w-fit">
+        <p className="text-xl font-light text-black dark:text-white sm:text-left md:text-2xl dark:text-gray-300 backdrop-blur-sm w-fit">
           {randomTagline}
         </p>
       </div>

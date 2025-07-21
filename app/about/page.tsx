@@ -25,7 +25,7 @@ export default function AboutPage() {
   } satisfies Variants;
 
   return (
-    <div className="relative pt-24 min-h-screen text-gray-900 bg-gray-100">
+    <div className="relative pt-24 min-h-screen text-gray-900 bg-gray-100 dark:text-gray-100 dark:bg-neutral-900">
       {/* Hero Section */}
       <div className="flex overflow-hidden relative justify-center items-center pt-32 h-[400px] md:h-[500px]">
         <Image
@@ -37,7 +37,7 @@ export default function AboutPage() {
           priority
         />
         {/* Gradient Overlay for more depth */}
-        <div className="absolute inset-0 z-10 bg-gradient-to-b to-gray-100 from-gray-50/50 via-gray-100/50" />
+        <div className="absolute inset-0 z-10 bg-gradient-to-b to-gray-100 from-gray-50/50 via-gray-100/50 dark:from-neutral-950/50 via-neutral-900/50 to-neutral-900" />
         <motion.div
           className="relative z-10 px-4 text-center"
           initial="hidden"
@@ -45,13 +45,13 @@ export default function AboutPage() {
           variants={containerVariants}
         >
           <motion.h1
-            className="mb-4 text-4xl font-extrabold leading-tight text-black md:text-6xl drop-shadow-lg font-montserrat" // Added a new font class (assuming Montserrat is linked)
+            className="mb-4 text-4xl font-extrabold leading-tight text-black dark:text-white md:text-6xl drop-shadow-lg font-montserrat" // Added a new font class (assuming Montserrat is linked)
             variants={itemVariants}
           >
             Our Passion Fuels Your Ride
           </motion.h1>
           <motion.p
-            className="mx-auto max-w-2xl text-lg text-gray-800 md:text-xl drop-shadow-md" // Slightly more pronounced shadow
+            className="mx-auto max-w-2xl text-lg text-gray-800 dark:text-gray-200 md:text-xl drop-shadow-md" // Slightly more pronounced shadow
             variants={itemVariants}
           >
             Discover the dedication behind Zevlin Bike – crafting premium
