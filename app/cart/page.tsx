@@ -54,7 +54,7 @@ export default function CartPage() {
               className="divide-y divide-gray-200 dark:divide-gray-700"
             >
               {cartItems.map((item) => (
-                <li key={item.id} className="flex py-6 bg-neutral-800 p-4">
+                <li key={item.id} className="flex py-6 dark:bg-neutral-800 p-4">
                   <div className="overflow-hidden flex-shrink-0 w-24 h-24 rounded-md border border-gray-200 dark:border-gray-700">
                     <Image
                       src={item.image}

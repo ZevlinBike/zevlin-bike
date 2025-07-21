@@ -37,7 +37,7 @@ export default function AboutPage() {
           priority
         />
         {/* Gradient Overlay for more depth */}
-        <div className="absolute inset-0 z-10 bg-gradient-to-b to-gray-100 from-gray-50/50 via-gray-100/50 dark:from-neutral-950/50 via-neutral-900/50 to-neutral-900" />
+        <div className="absolute inset-0 z-10 bg-gradient-to-b to-gray-100 from-gray-50/50 via-gray-100/50 dark:from-neutral-950/50 dark:via-neutral-900/50 dark:to-neutral-900" />
         <motion.div
           className="relative z-10 px-4 text-center"
           initial="hidden"

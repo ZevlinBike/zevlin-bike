@@ -38,7 +38,7 @@ export default function MissionPage() {
 
   return (
     // Main container uses the subtle gradient for the overall page background
-    <div className="relative min-h-screen text-gray-900 bg-gradient-to-b from-gray-50 to-white dark:text-white dark:from-neutral-900 dark:to-neutral-900">
+    <div className="relative min-h-screen text-gray-900 bg-gradient-to-b from-gray-100 to-white dark:text-white dark:from-neutral-900 dark:to-neutral-900">
       {/* Hero Section - Visually impactful, similar to About Page hero */}
       <div className="flex overflow-hidden relative justify-center items-center pt-32 h-[450px] md:h-[550px]">
         <Image
@@ -49,7 +49,7 @@ export default function MissionPage() {
           className="opacity-40 grayscale saturate-150 rotate-y-180" // Consistent image styling
           priority
         />
-        <div className="absolute inset-0 z-10 bg-gradient-to-b to-gray-100 from-gray-50/50 via-gray-100/50 dark:from-neutral-950/50 via-neutral-900/50 to-neutral-900" />
+        <div className="absolute inset-0 z-10 bg-gradient-to-b to-gray-100 from-gray-50/50 via-gray-100/50 dark:from-neutral-950/50 dark:via-neutral-900/50 dark:to-neutral-900" />
         <motion.div
           className="relative z-20 px-4 text-center"
           initial="hidden"
@@ -57,13 +57,13 @@ export default function MissionPage() {
           variants={containerVariants}
         >
           <motion.h1
-            className="mb-4 text-4xl font-extrabold leading-tight text-white md:text-6xl drop-shadow-lg"
+            className="mb-4 text-4xl font-extrabold leading-tight dark:text-white md:text-6xl drop-shadow-lg"
             variants={itemVariants}
           >
             Our Mission: Define Your Ride.
           </motion.h1>
           <motion.p
-            className="mx-auto max-w-2xl text-lg text-gray-200 md:text-xl drop-shadow"
+            className="mx-auto max-w-2xl text-lg dark:text-gray-200 md:text-xl drop-shadow"
             variants={itemVariants}
           >
             Empowering every cyclist through quality, performance, and
