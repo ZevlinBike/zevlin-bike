@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { motion, Variants } from "framer-motion";
+import MainLayout from "@/components/layouts/MainLayout";
 
 export default function AboutPage() {
   const containerVariants = {
@@ -25,9 +26,10 @@ export default function AboutPage() {
   } satisfies Variants;
 
   return (
+    <MainLayout>
     <div className="relative pt-24 min-h-screen text-gray-900 bg-gray-100 dark:text-gray-100 dark:bg-neutral-900">
       {/* Hero Section */}
-      <div className="flex overflow-hidden relative justify-center items-center pt-32 h-[400px] md:h-[500px]">
+      <div className="flex overflow-hidden relative justify-center items-center pt-32 h-[400px] md:h-[500px] lg:h-[600px]">
         <Image
           src="/images/about-hero-image.png"
           alt="Cyclist riding on open road"
@@ -38,6 +40,7 @@ export default function AboutPage() {
         />
         {/* Gradient Overlay for more depth */}
         <div className="absolute inset-0 z-10 bg-gradient-to-b to-gray-100 from-gray-50/50 via-gray-100/50 dark:from-neutral-950/50 dark:via-neutral-900/50 dark:to-neutral-900" />
+        <div className="absolute inset-0 z-10 bg-gradient-to-r to-gray-100 from-gray-100 via-transparent dark:from-neutral-950/50 dark:via-neutral-900/50 dark:to-neutral-900" />
         <motion.div
           className="relative z-10 px-4 text-center"
           initial="hidden"
@@ -151,5 +154,6 @@ export default function AboutPage() {
         </motion.div>
       </section>
     </div>
+    </MainLayout>
   );
 }

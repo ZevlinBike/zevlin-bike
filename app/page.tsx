@@ -1,3 +1,4 @@
+import MainLayout from "@/components/layouts/MainLayout";
 import CTA from "./components/CTA";
 import FeaturedProducts from "./components/FeaturedProducts";
 import Features from "./components/Features";
@@ -7,13 +8,13 @@ import Testimonials from "./components/Testimonials";
 
 export default function ZevlinCrackLanding() {
   return (
-    <div className="min-h-screen text-black bg-gray-100 dark:bg-neutral-900 text-white">
+    <MainLayout>
       <Hero />
       <FeaturedProducts />
       <Features />
       <Testimonials />
       <CTA />
       <Newsletter />
-    </div>
+    </MainLayout>
   );
 }
