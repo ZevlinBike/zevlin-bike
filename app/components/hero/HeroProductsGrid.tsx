@@ -1,8 +1,8 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Product } from "@/store/cartStore";
 import HeroProduct from "./HeroProduct";
-import { Button } from "@/components/ui/button";
 
 export default function HeroProductGrid({ products }: { products: Product[] }) {
   const heroProducts = products.slice(0, 2);
@@ -10,9 +10,6 @@ export default function HeroProductGrid({ products }: { products: Product[] }) {
   const [paused, setPaused] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  if (heroProducts.length === 0) {
-    return null;
-  }
 
   const current = heroProducts[index];
 
@@ -26,6 +23,10 @@ export default function HeroProductGrid({ products }: { products: Product[] }) {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [paused, heroProducts.length]);
+
+  if (heroProducts.length === 0) {
+    return null;
+  }
 
   // Pause on hover/focus
   const handleMouseEnter = () => setPaused(true);
@@ -55,8 +56,19 @@ export default function HeroProductGrid({ products }: { products: Product[] }) {
       >
         {/* Product Image (no card, just image) */}
         <div className="flex flex-col w-full items-center lg:items-end">
-          <div className="relative w-48 h-48 sm:w-64 sm:h-64 md:w-80 md:h-80 lg:w-96 lg:h-96 xl:w-[28rem] xl:h-[28rem] mb-4 flex items-center justify-center">
-            <HeroProduct product={current} />
+          <div className="relative w-48 h-48 sm:w-64 sm:h-64 md:w-80 md:h-80 lg:w-96 lg:h-96 xl:w-[28rem] xl:h-[28rem] mb-4 flex items-center justify-center overflow-hidden">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={current.id}
+                initial={{ opacity: 0, x: 50 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -50 }}
+                transition={{ duration: 0.5, ease: "easeInOut" }}
+                className="w-full h-full flex items-center justify-center"
+              >
+                <HeroProduct product={current} />
+              </motion.div>
+            </AnimatePresence>
           </div>
         </div>
       </div>

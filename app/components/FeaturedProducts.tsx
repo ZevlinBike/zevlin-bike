@@ -1,17 +1,10 @@
-import { Rating } from "@/components/Rating";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import useFeaturedProducts from "@/hooks/useFeaturedProducts";
-import { Product } from "@/store/cartStore";
-import Image from "next/image";
 import ProductCard from "./ProductCard";
 
 // --- FeaturedProducts Component ---
 export default function FeaturedProducts() {
   const products = useFeaturedProducts();
   return (
-    // Added a subtle gradient background to separate from hero
     <section
       id="products"
       className="py-20 bg-gradient-to-b from-white to-gray-100 dark:from-black dark:to-neutral-900"

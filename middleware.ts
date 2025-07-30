@@ -7,7 +7,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/admin((?!login|auth).*)",
-    "/checkout((?!login|auth).*)"
+    "/admin((?!login|auth).*)"
   ],
 };

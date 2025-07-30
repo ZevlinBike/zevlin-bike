@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Trash2 } from "lucide-react";
+import { Trash2, Loader2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useCartStore } from "@/store/cartStore";
@@ -15,12 +15,38 @@ export default function CartPage() {
     updateQuantity,
     removeFromCart,
     getTotalPrice,
-    clearCart,
+    // clearCart,
+    hydrated,
   } = useCartStore();
+  
   const subtotal = getTotalPrice();
   const shipping = subtotal >= 49 ? 0 : cartItems.length > 0 ? 5.0 : 0;
   const tax = subtotal * 0.08;
   const total = subtotal + shipping + tax;
+
+  // Show loading spinner while cart is hydrating
+  if (!hydrated) {
+    return (
+      <MainLayout>
+        <div className="pt-40 min-h-screen text-gray-900 bg-white dark:text-white dark:bg-neutral-900">
+          <div className="container px-4 mx-auto sm:px-6 lg:px-8">
+            <h1 className="mb-8 text-3xl font-extrabold tracking-tight sm:text-4xl">
+              Shopping Cart
+            </h1>
+            <div className="flex items-center justify-center py-20">
+              <div className="flex flex-col items-center space-y-4">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                <p className="text-lg text-gray-600 dark:text-gray-400">
+                  Loading your cart...
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
+
   return (
     <MainLayout>
       <div className="pt-40 min-h-screen text-gray-900 bg-white dark:text-white dark:bg-neutral-900">
@@ -116,8 +142,10 @@ export default function CartPage() {
                       <p>${total.toFixed(2)}</p>
                     </div>
                   </div>
-                  <Button className="mt-6 w-full" size="lg">
-                    Checkout
+                  <Button className="mt-6 w-full" size="lg" asChild>
+                    <Link href="/checkout">
+                      Checkout
+                    </Link>
                   </Button>
                 </div>
               )}

@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Product } from "@/store/cartStore";
 import Image from "next/image";
 import { useCartStore } from "@/store/cartStore";
-import { Fragment, useRef, useState } from "react";
+import { Fragment, useState } from "react";
 import { motion, useAnimation, AnimatePresence } from "framer-motion";
 
 
