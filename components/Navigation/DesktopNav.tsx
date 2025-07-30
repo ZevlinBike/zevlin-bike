@@ -3,6 +3,7 @@ import React from "react";
 import Link from "next/link";
 import Container from "../shared/Container";
 import Logo from "../Logo";
+import { useCartStore } from "@/store/cartStore";
 
 const CartIcon = () => (
   <svg
@@ -27,7 +28,9 @@ interface DesktopNavProps {
   scrolled: boolean;
 }
 
-const DesktopNav: React.FC<DesktopNavProps> = ({ scrolled }) => (
+const DesktopNav: React.FC<DesktopNavProps> = ({ scrolled }) => {
+  const cartItems = useCartStore((state) => state.items);
+  return (
   <nav
     className={`hidden w-full md:block z-[100] transition-all duration-500 ${
       scrolled
@@ -47,12 +50,20 @@ const DesktopNav: React.FC<DesktopNavProps> = ({ scrolled }) => (
         <Link href="/about">About</Link>
         <Link href="/contact">Contact</Link>
         <Link href="/faq">FAQ</Link>
-        <Link href="/cart" aria-label="View Cart">
+        <Link href="/cart" className="relative" aria-label="View Cart">
+          {
+            cartItems.length > 0 && (
+              <span className="text-white absolute -translate-x-1/2 -translate-y-1/2 top-0 right-0 text-xs bg-red-500 rounded-full w-4 h-4 flex items-center justify-center">
+                {cartItems.reduce((acc, item) => acc + item.quantity, 0)} {/* total quantity of items in cart */}
+              </span>
+            )
+          }
           <CartIcon />
         </Link>
       </div>
     </Container>
   </nav>
-);
+  );
+};
 
 export default DesktopNav;

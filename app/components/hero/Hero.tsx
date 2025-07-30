@@ -9,12 +9,13 @@ export default function Hero() {
   return (
     <section className="flex overflow-hidden relative flex-col justify-center py-8 min-h-screen">
       <HeroBackground />
-      <div className="container flex relative z-10 flex-grow justify-center items-center px-4 mx-auto mt-32 lg:px-6">
-        <div className="flex flex-wrap gap-12 justify-center items-center py-10 w-full text-center sm:text-left lg:flex-nowrap">
+      <div className="container flex relative z-10 mb-12 flex-grow justify-center items-center px-4 mx-auto mt-32 lg:px-6">
+        <div className="flex flex-wrap gap-12 justify-center items-center py-10 w-full text-center sm:text-left md:flex-nowrap">
           <HeroTextSection />
           <HeroProductGrid products={heroProducts} />
-        </div>
+          </div>
       </div>
+
       <ScrollCue />
     </section>
   );

@@ -1,4 +1,5 @@
 "use client";
+import { useCartStore } from "@/store/cartStore";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React from "react";
@@ -24,6 +25,7 @@ const CartIcon = () => (
 
 const CartButton: React.FC = () => {
   const currentLink = usePathname();
+  const cartItems = useCartStore((state) => state.items);
   if (currentLink === "/cart" || currentLink === "/checkout") return null;
   return (
     <Link
@@ -31,6 +33,13 @@ const CartButton: React.FC = () => {
       className="fixed right-4 bottom-4 z-50 p-4 text-white bg-blue-600 rounded-full shadow-lg transition-colors md:hidden hover:bg-blue-700 focus:outline-none"
       aria-label="View Cart"
     >
+      {
+        cartItems.length > 0 && (
+          <span className="text-white absolute -translate-x-1/2 -translate-y-1/2 top-0 right-0 text-xs bg-red-500 rounded-full w-4 h-4 flex items-center justify-center">
+            {cartItems.reduce((acc, item) => acc + item.quantity, 0)}
+          </span>
+        )
+      }
       <CartIcon />
     </Link>
   );
