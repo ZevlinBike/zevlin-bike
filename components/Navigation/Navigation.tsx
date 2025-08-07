@@ -3,8 +3,10 @@ import React, { useState, useEffect } from "react";
 import DesktopNav from "./DesktopNav";
 import MobileNav from "./MobileNav";
 import NotificationBanner from "./NotificationBanner";
+import UserSubNav from "./UserSubNav";
+import { User } from "@supabase/supabase-js";
 
-const Navigation: React.FC = () => {
+const Navigation = ({ user } : { user:User | null }) => {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -27,6 +29,7 @@ const Navigation: React.FC = () => {
         >
           <DesktopNav scrolled={scrolled} />
           <MobileNav open={open} setOpen={setOpen} scrolled={scrolled} />
+        {user && <UserSubNav user={user} />}
         </div>
       </header>
     </>

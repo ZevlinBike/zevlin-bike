@@ -7,7 +7,7 @@ import useHeroProducts from "@/hooks/useHeroProducts";
 export default function Hero() {
   const heroProducts = useHeroProducts();
   return (
-    <section className="flex overflow-hidden relative flex-col justify-center py-8 min-h-screen">
+    <section className="flex overflow-hidden relative flex-col justify-center  min-h-screen">
       <HeroBackground />
       <div className="container flex relative z-10 mb-12 flex-grow justify-center items-center px-4 mx-auto mt-32 lg:px-6">
         <div className="flex flex-wrap gap-12 justify-center items-center py-10 w-full text-center sm:text-left md:flex-nowrap">
