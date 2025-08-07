@@ -12,7 +12,8 @@ import Link from "next/link";
 import { processCheckout } from "./actions";
 import { login } from "@/app/auth/login/actions";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { User as UserType } from "@supabase/supabase-js";
+import { Customer } from "@/lib/schema";
 
 interface CheckoutForm {
   email: string;
@@ -25,7 +26,7 @@ interface CheckoutForm {
   phone: string;
 }
 
-export default function CheckoutClientPage({ user, customer }) {
+export default function CheckoutClientPage({ user, customer }: { user: UserType | null, customer: Customer | null }) {
   const router = useRouter();
   const {
     items: cartItems,
@@ -35,17 +36,17 @@ export default function CheckoutClientPage({ user, customer }) {
   } = useCartStore();
 
   const [isPending, startTransition] = useTransition();
-  const [errors, setErrors] = useState<Record<string, any>>({});
+  const [errors, setErrors] = useState<Record<string, string[] | undefined>>({});
 
   const [formData, setFormData] = useState<CheckoutForm>({
-    email: "",
-    firstName: "",
-    lastName: "",
+    email: user?.email || (customer?.email || ""),
+    firstName: customer?.first_name || "",
+    lastName: customer?.last_name || "",
     address: "",
     city: "",
     state: "",
     zipCode: "",
-    phone: "",
+    phone: customer?.phone || "",
   });
 
   const [checkoutMode, setCheckoutMode] = useState<'guest' | 'login'>('guest');
@@ -64,7 +65,8 @@ export default function CheckoutClientPage({ user, customer }) {
           lastName: customer.last_name || '',
           phone: customer.phone || '',
         }));
-      } else {
+      } else if (user && !customer) {
+        // If the user is logged in but has no customer profile, redirect them.
         router.push('/auth/create-profile');
       }
     }
@@ -107,11 +109,11 @@ export default function CheckoutClientPage({ user, customer }) {
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
+    const loginFormData = new FormData(e.currentTarget);
     setErrors({});
 
     startTransition(async () => {
-      const result = await login(Object.fromEntries(formData.entries()));
+      const result = await login(Object.fromEntries(loginFormData.entries()));
 
       if (result?.errors) {
         setErrors(result.errors);
@@ -267,7 +269,7 @@ export default function CheckoutClientPage({ user, customer }) {
                     {errors._form && <p className="text-red-500 text-sm mt-1">{errors._form[0]}</p>}
                     <div className="text-center">
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Don't have an account?{" "}
+                        Don&apos;t have an account?
                         <Link href="/auth/register" className="text-blue-600 hover:underline">
                           Sign up
                         </Link>

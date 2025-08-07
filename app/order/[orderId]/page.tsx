@@ -3,8 +3,16 @@ import { notFound } from "next/navigation";
 import MainLayout from "@/components/layouts/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Customer, LineItem, Order, Product } from "@/lib/schema";
 
-async function getOrderDetails(orderId: string) {
+type OrderDetails = Order & {
+  customers: Customer[];
+  line_items: (LineItem & {
+    products: Product[];
+  })[];
+};
+
+async function getOrderDetails(orderId: string): Promise<OrderDetails> {
   const supabase = await createClient();
   const { data: order, error } = await supabase
     .from("orders")
@@ -13,6 +21,7 @@ async function getOrderDetails(orderId: string) {
       id,
       total_cents,
       created_at,
+      status,
       customers (id, first_name, last_name, email),
       line_items (
         id,
@@ -26,13 +35,15 @@ async function getOrderDetails(orderId: string) {
     .single();
 
   if (error || !order) {
+    console.error("Error fetching order:", error);
     notFound();
   }
 
-  return order;
+  return order as OrderDetails;
 }
 
-export default async function OrderConfirmationPage({ params }: { params: { orderId: string } }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export default async function Page({ params }: any) {
   const order = await getOrderDetails(params.orderId);
 
   return (
@@ -49,17 +60,19 @@ export default async function OrderConfirmationPage({ params }: { params: { orde
                 <div>
                   <h3 className="font-semibold">Order Details</h3>
                   <p>Order ID: {order.id}</p>
-                  <p>Order Date: {new Date(order.created_at).toLocaleDateString()}</p>
+                  <p>Order Date: {new Date(order.created_at!).toLocaleDateString()}</p>
                   <p>Total: ${(order.total_cents / 100).toFixed(2)}</p>
                 </div>
                 <Separator />
                 <div>
                   <h3 className="font-semibold">Customer Information</h3>
-                  {order.customers && (
+                  {order.customers.length > 0 ? (
                     <>
-                      <p>Name: {order.customers.first_name} {order.customers.last_name}</p>
-                      <p>Email: {order.customers.email}</p>
+                      <p>Name: {order.customers[0].first_name} {order.customers[0].last_name}</p>
+                      <p>Email: {order.customers[0].email}</p>
                     </>
+                  ) : (
+                    <p>No customer information available.</p>
                   )}
                 </div>
                 <Separator />
@@ -69,7 +82,7 @@ export default async function OrderConfirmationPage({ params }: { params: { orde
                     {order.line_items.map((item) => (
                       <li key={item.id} className="flex justify-between">
                         <div>
-                          <p className="font-medium">{item.products?.name}</p>
+                          <p className="font-medium">{item.products.length > 0 ? item.products[0].name : 'Product not found'}</p>
                           <p className="text-sm text-gray-500">Quantity: {item.quantity}</p>
                         </div>
                         <p>${((item.unit_price_cents / 100) * item.quantity).toFixed(2)}</p>
