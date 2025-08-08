@@ -14,7 +14,7 @@ import { login } from "@/app/auth/login/actions";
 import { useRouter } from "next/navigation";
 import { User as UserType } from "@supabase/supabase-js";
 import { Customer } from "@/lib/schema";
-import { loadStripe, Stripe } from '@stripe/stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { toast } from "sonner";
 
@@ -123,7 +123,7 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
       const result = await login(Object.fromEntries(loginFormData.entries()));
 
       if (result?.errors) {
-        if (result.errors._form) {
+        if ("_form" in result.errors && result.errors._form) {
           toast.error(result.errors._form[0]);
         }
         setErrors(result.errors);
@@ -169,7 +169,7 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
         );
 
         if (result.errors) {
-          if (result.errors._form) {
+          if ("_form" in result.errors && result.errors._form) {
             toast.error(result.errors._form[0]);
           }
           setErrors(result.errors);

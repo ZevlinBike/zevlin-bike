@@ -77,7 +77,7 @@ export default async function AdminDashboard() {
                 <TableRow key={order.id}>
                   <TableCell>
                     <div className="font-medium">
-                      {order.customers?.first_name || "Guest"} {order.customers?.last_name || ""}
+                      {order.customers?.[0]?.first_name || "Guest"} {order.customers?.[0]?.last_name || ""}
                     </div>
                   </TableCell>
                   <TableCell>

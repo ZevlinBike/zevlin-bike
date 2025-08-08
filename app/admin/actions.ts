@@ -36,7 +36,18 @@ export async function getDashboardStats() {
   };
 }
 
-export async function getRecentOrders() {
+export type RecentOrder = {
+  id: string;
+  total_cents: number;
+  status: string;
+  created_at: string;
+  customers: {
+    first_name: string;
+    last_name: string;
+  }[] | null;
+};
+
+export async function getRecentOrders(): Promise<RecentOrder[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("orders")
@@ -49,5 +60,5 @@ export async function getRecentOrders() {
     return [];
   }
 
-  return data as any[];
+  return data;
 }

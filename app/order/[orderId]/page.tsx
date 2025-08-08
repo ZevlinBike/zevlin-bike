@@ -38,8 +38,9 @@ async function getOrderDetails(orderId: string): Promise<OrderDetails> {
   return data as OrderDetails;
 }
 
-export default async function Page({ params }: { params: { orderId: string } }) {
-  const order = await getOrderDetails(params.orderId);
+export default async function Page({ params }: { params: Promise<{ orderId:string }> }) {
+  const resolvedParams = await params;
+  const order = await getOrderDetails(resolvedParams.orderId);
   const customer = order.customers;
   
   return (

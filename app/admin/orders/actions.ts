@@ -4,10 +4,18 @@ import { createClient } from "@/lib/supabase/server";
 import { Order } from "@/lib/schema";
 import { revalidatePath } from "next/cache";
 
+export type OrderWithCustomer = Order & {
+  customers: {
+    first_name: string;
+    last_name: string;
+    email: string;
+  } | null;
+};
+
 export async function getOrders(
   query: string,
   status: string
-): Promise<Order[]> {
+): Promise<OrderWithCustomer[]> {
   const supabase = await createClient();
   let queryBuilder = supabase
     .from("orders")
@@ -31,7 +39,7 @@ export async function getOrders(
     return [];
   }
 
-  return data as any[];
+  return data;
 }
 
 export async function updateOrderStatus(orderId: string, status: string) {
@@ -79,7 +87,7 @@ export async function getOrderById(orderId: string) {
   if (order.stripe_payment_intent_id) {
     try {
       const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-        apiVersion: "2024-06-20",
+        apiVersion: "2025-07-30.basil",
       });
 
       const paymentIntent = await stripe.paymentIntents.retrieve(

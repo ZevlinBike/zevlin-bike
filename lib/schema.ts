@@ -1,4 +1,3 @@
-
 export type OrderStatus = 'pending' | 'paid' | 'fulfilled' | 'cancelled' | 'refunded';
 export type RsvpStatus = 'going' | 'not_going' | 'interested';
 
@@ -60,6 +59,16 @@ export interface Order {
   created_at?: string;
   updated_at?: string;
 }
+
+export type OrderWithLineItems = Order & {
+  line_items: {
+    quantity: number;
+    products: {
+      name: string;
+      product_images: { url: string }[];
+    } | null;
+  }[];
+};
 
 export interface LineItem {
   id: string;

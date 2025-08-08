@@ -29,7 +29,7 @@ export async function checkAdminRole(): Promise<{ isAdmin: boolean }> {
     return { isAdmin: false };
   }
 
-  const isAdmin = userRoles?.some(userRole => (userRole.roles as any)?.name === 'admin');
+  const isAdmin = userRoles?.some(userRole => userRole.roles?.[0]?.name === 'admin');
 
   return { isAdmin: !!isAdmin };
 }

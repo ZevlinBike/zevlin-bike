@@ -1,13 +1,16 @@
 "use client";
 
+import { PostgrestError } from '@supabase/supabase-js';
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Product } from '@/lib/schema';
 
+export type ProductWithFeaturedImage = Product & { featured_image: string };
+
 export default function useHeroProducts() {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<ProductWithFeaturedImage[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<any>(null);
+  const [error, setError] = useState<PostgrestError | null>(null);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -31,7 +34,7 @@ export default function useHeroProducts() {
             : product.product_images ? [product.product_images] : [];
           
           const featuredImage =
-            images.find((img: any) => img.is_featured)?.url ||
+            images.find((img: { is_featured: boolean; url: string }) => img.is_featured)?.url ||
             images[0]?.url ||
             "/images/placeholder.png";
 
@@ -41,7 +44,7 @@ export default function useHeroProducts() {
             featured_image: featuredImage, // Keep for components that use it
           };
         });
-        setProducts(productsWithCorrectedImages as any);
+        setProducts(productsWithCorrectedImages);
       }
       setLoading(false);
     };

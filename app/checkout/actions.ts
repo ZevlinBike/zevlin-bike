@@ -181,21 +181,25 @@ export async function processCheckout(
     console.log("Checkout process complete. Order ID:", orderId);
     return { success: true, orderId: orderId };
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Checkout process failed:", error);
     
     let errorMessage = "An unexpected error occurred.";
-    if (error.code === '23505') { // Postgres unique violation
-      if (error.message.includes('customers_phone_key')) {
-        errorMessage = "This phone number is already in use. Please use a different one or log in.";
-        return { errors: { phone: [errorMessage] } };
-      }
-      if (error.message.includes('customers_email_key')) {
-        errorMessage = "This email is already in use. Please use a different one or log in.";
-        return { errors: { email: [errorMessage] } };
-      }
-    } else if (error instanceof Stripe.errors.StripeError) {
+    if (error instanceof Stripe.errors.StripeError) {
       errorMessage = error.message;
+    } else if (typeof error === 'object' && error !== null && 'code' in error && 'message' in error) {
+      const code = (error as { code: unknown }).code;
+      const message = (error as { message: unknown }).message;
+      if (code === '23505' && typeof message === 'string') { // Postgres unique violation
+        if (message.includes('customers_phone_key')) {
+          errorMessage = "This phone number is already in use. Please use a different one or log in.";
+          return { errors: { phone: [errorMessage] } };
+        }
+        if (message.includes('customers_email_key')) {
+          errorMessage = "This email is already in use. Please use a different one or log in.";
+          return { errors: { email: [errorMessage] } };
+        }
+      }
     }
     
     return { errors: { _form: [errorMessage] } };

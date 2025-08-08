@@ -1,8 +1,6 @@
 import ProductCard from "./ProductCard";
 import { Product } from "@/lib/schema";
 
-type ProductWithImages = Product & { product_images: { url: string }[] };
-
 // --- FeaturedProducts Component ---
 export default function FeaturedProducts({ products }: { products: Product[] }) {
   return (

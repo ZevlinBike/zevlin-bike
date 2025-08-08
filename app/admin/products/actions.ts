@@ -26,12 +26,12 @@ export async function getProducts(): Promise<Product[]> {
   }
 
   // Ensure product_images is always an array
-  return data.map((product) => ({
+  return data.map((product: Product) => ({
     ...product,
     product_images: Array.isArray(product.product_images)
       ? product.product_images
       : product.product_images ? [product.product_images] : [],
-  })) as any[];
+  }));
 }
 
 export async function getFeaturedProducts(): Promise<Product[]> {
@@ -47,12 +47,12 @@ export async function getFeaturedProducts(): Promise<Product[]> {
   }
 
   // Ensure product_images is always an array
-  return data.map((product) => ({
+  return data.map((product: Product) => ({
     ...product,
     product_images: Array.isArray(product.product_images)
       ? product.product_images
       : product.product_images ? [product.product_images] : [],
-  })) as any[];
+  }));
 }
 
 export async function addOrUpdateProduct(formData: FormData) {

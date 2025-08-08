@@ -4,13 +4,11 @@ import OrderClientPage from "./OrderClientPage";
 export default async function OrdersPage({
   searchParams,
 }: {
-  searchParams?: {
-    query?: string;
-    status?: string;
-  };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const query = searchParams?.query || "";
-  const status = searchParams?.status || "";
+  const resolvedSearchParams = await searchParams;
+  const query = Array.isArray(resolvedSearchParams.query) ? resolvedSearchParams.query[0] || '' : resolvedSearchParams.query || '';
+  const status = Array.isArray(resolvedSearchParams.status) ? resolvedSearchParams.status[0] || '' : resolvedSearchParams.status || '';
 
   const orders = await getOrders(query, status);
 

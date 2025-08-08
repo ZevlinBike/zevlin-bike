@@ -1,6 +1,6 @@
 import MainLayout from "@/components/layouts/MainLayout";
 import { createClient } from "@/lib/supabase/server";
-import { Order } from "@/lib/schema";
+import { OrderWithLineItems } from "@/lib/schema";
 import { redirect } from "next/navigation";
 import OrderHistoryClientPage from "./OrderHistoryClientPage";
 
@@ -57,7 +57,7 @@ export default async function OrderHistoryPage() {
   return (
     <MainLayout>
       <div className="pt-40 min-h-screen text-black">
-        <OrderHistoryClientPage orders={orders as any} />
+        <OrderHistoryClientPage orders={orders as OrderWithLineItems[]} />
       </div>
     </MainLayout>
   );

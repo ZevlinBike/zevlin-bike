@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Product } from "@/lib/schema";
-import { Loader2, XCircle } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { addOrUpdateProduct } from "../actions";
 
@@ -109,7 +109,7 @@ export default function ProductForm({ product, isOpen, onClose }: ProductFormPro
             <p className="text-xs text-gray-500 dark:text-gray-400">Select one or more images to upload.</p>
           </div>
 
-          {(previewUrls.length > 0 || product?.product_images?.length > 0) && (
+          {(previewUrls.length > 0 || (product?.product_images && product.product_images.length > 0)) && (
             <div>
               <Label>Image Previews</Label>
               <div className="mt-2 grid grid-cols-3 gap-4">

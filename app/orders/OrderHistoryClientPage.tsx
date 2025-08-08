@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Order } from "@/lib/schema";
+import { OrderWithLineItems } from "@/lib/schema";
 import {
   AlertCircle,
   CheckCircle2,
@@ -33,16 +33,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import { updateOrderStatus } from "./actions";
 import { toast } from "sonner";
-
-type OrderWithLineItems = Order & {
-  line_items: {
-    quantity: number;
-    products: {
-      name: string;
-      product_images: { url: string }[];
-    };
-  }[];
-};
 
 const OrderRow = ({ order }: { order: OrderWithLineItems }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -122,25 +112,27 @@ const OrderRow = ({ order }: { order: OrderWithLineItems }) => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="md:col-span-2 space-y-4">
                     <h4 className="font-semibold">Order Details</h4>
-                    {order.line_items.map((item) => (
-                      <div key={item.products.name} className="flex items-center gap-4">
-                        <Image
-                          src={
-                            item.products.product_images?.[0]?.url ||
-                            "/images/placeholder.png"
-                          }
-                          alt={item.products.name}
-                          width={64}
-                          height={64}
-                          className="rounded-md object-cover"
-                        />
-                        <div>
-                          <p className="font-medium">{item.products.name}</p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Quantity: {item.quantity}
-                          </p>
+                    {order.line_items.map((item, index) => (
+                      item.products && (
+                        <div key={index} className="flex items-center gap-4">
+                          <Image
+                            src={
+                              item.products.product_images?.[0]?.url ||
+                              "/images/placeholder.png"
+                            }
+                            alt={item.products.name}
+                            width={64}
+                            height={64}
+                            className="rounded-md object-cover"
+                          />
+                          <div>
+                            <p className="font-medium">{item.products.name}</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                              Quantity: {item.quantity}
+                            </p>
+                          </div>
                         </div>
-                      </div>
+                      )
                     ))}
                   </div>
                   <div className="space-y-4">
