@@ -1,7 +1,8 @@
-import { Product } from "@/store/cartStore";
+import { Product } from "@/lib/schema";
 import Image from "next/image";
 
 export default function HeroProduct({ product }: { product: Product }) {
+  console.log({product})
   return (
     <div className="flex relative flex-col items-center text-center group">
       {/* Outer container with glow and spacing */}
@@ -12,7 +13,7 @@ export default function HeroProduct({ product }: { product: Product }) {
         {/* Product image */}
         <div className="relative z-10 w-full h-full">
           <Image
-            src={product.image}
+            src={product?.product_images?.[0]?.url || ""}
             alt={product.name}
             fill
             className="object-contain p-10"
@@ -21,7 +22,7 @@ export default function HeroProduct({ product }: { product: Product }) {
 
         {/* Floating price bubble */}
         <div className="absolute right-3 bottom-3 z-20 py-1 px-3 text-sm font-semibold text-white bg-blue-600 rounded-full shadow-md">
-          ${product.price.toFixed(2)}
+          ${(product.price_cents / 100).toFixed(2)}
         </div>
       </div>
 

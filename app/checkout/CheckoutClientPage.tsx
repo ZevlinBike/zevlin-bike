@@ -14,6 +14,11 @@ import { login } from "@/app/auth/login/actions";
 import { useRouter } from "next/navigation";
 import { User as UserType } from "@supabase/supabase-js";
 import { Customer } from "@/lib/schema";
+import { loadStripe, Stripe } from '@stripe/stripe-js';
+import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { toast } from "sonner";
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 interface CheckoutForm {
   email: string;
@@ -26,7 +31,9 @@ interface CheckoutForm {
   phone: string;
 }
 
-export default function CheckoutClientPage({ user, customer }: { user: UserType | null, customer: Customer | null }) {
+const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Customer | null }) => {
+  const stripe = useStripe();
+  const elements = useElements();
   const router = useRouter();
   const {
     items: cartItems,
@@ -66,13 +73,12 @@ export default function CheckoutClientPage({ user, customer }: { user: UserType 
           phone: customer.phone || '',
         }));
       } else if (user && !customer) {
-        // If the user is logged in but has no customer profile, redirect them.
         router.push('/auth/create-profile');
       }
     }
   }, [user, customer, router]);
 
-  const subtotal = getTotalPrice();
+  const subtotal = getTotalPrice() / 100;
   const shipping = subtotal >= 49 ? 0 : cartItems.length > 0 ? 5.0 : 0;
   const tax = (subtotal - discount) * 0.08;
   const total = subtotal + shipping + tax - discount;
@@ -97,8 +103,9 @@ export default function CheckoutClientPage({ user, customer }: { user: UserType 
       setAppliedPromo(upperCode);
       setDiscount(codes[upperCode as keyof typeof codes]);
       setPromoCode("");
+      toast.success("Promo code applied!");
     } else {
-      alert("Invalid promo code. Try SAVE10, WELCOME20, or FREESHIP");
+      toast.error("Invalid promo code. Try SAVE10, WELCOME20, or FREESHIP");
     }
   };
 
@@ -116,6 +123,9 @@ export default function CheckoutClientPage({ user, customer }: { user: UserType 
       const result = await login(Object.fromEntries(loginFormData.entries()));
 
       if (result?.errors) {
+        if (result.errors._form) {
+          toast.error(result.errors._form[0]);
+        }
         setErrors(result.errors);
       }
     });
@@ -125,16 +135,51 @@ export default function CheckoutClientPage({ user, customer }: { user: UserType 
     e.preventDefault();
     setErrors({});
 
-    startTransition(async () => {
-      const result = await processCheckout(formData, cartItems, total);
+    if (!stripe || !elements) {
+      toast.error("Payment system is not ready yet. Please wait a moment.");
+      return;
+    }
 
-      if (result.errors) {
-        setErrors(result.errors);
-      } else if (result.success && result.orderId) {
-        clearCart();
-        router.push(`/order/${result.orderId}`);
-      }
+    const cardElement = elements.getElement(CardElement);
+    if (cardElement == null) {
+      toast.error("Could not find payment details form. Please refresh and try again.");
+      return;
+    }
+
+    const { error, paymentMethod } = await stripe.createPaymentMethod({
+      type: 'card',
+      card: cardElement,
     });
+
+    if (error) {
+      toast.error(error.message || "An unexpected error occurred with your card.");
+    } else {
+      startTransition(async () => {
+        const result = await processCheckout(
+          formData, 
+          cartItems, 
+          {
+            subtotal,
+            shipping,
+            tax,
+            discount,
+            total
+          },
+          paymentMethod.id
+        );
+
+        if (result.errors) {
+          if (result.errors._form) {
+            toast.error(result.errors._form[0]);
+          }
+          setErrors(result.errors);
+        } else if (result.success && result.orderId) {
+          toast.success("Order placed successfully!");
+          clearCart();
+          router.push(`/order/${result.orderId}`);
+        }
+      });
+    }
   };
 
   if (!hydrated) {
@@ -235,11 +280,11 @@ export default function CheckoutClientPage({ user, customer }: { user: UserType 
                 <CardContent>
                   <form onSubmit={handleLogin} className="space-y-4">
                     <div>
-                      <label htmlFor="email" className="block text-sm font-medium mb-2">
+                      <label htmlFor="email-login" className="block text-sm font-medium mb-2">
                         Email Address
                       </label>
                       <Input
-                        id="email"
+                        id="email-login"
                         name="email"
                         type="email"
                         placeholder="your@email.com"
@@ -249,13 +294,13 @@ export default function CheckoutClientPage({ user, customer }: { user: UserType 
                     </div>
                     <div>
                       <label
-                        htmlFor="password"
+                        htmlFor="password-login"
                         className="block text-sm font-medium mb-2"
                       >
                         Password
                       </label>
                       <Input
-                        id="password"
+                        id="password-login"
                         name="password"
                         type="password"
                         placeholder="Enter your password"
@@ -266,7 +311,6 @@ export default function CheckoutClientPage({ user, customer }: { user: UserType 
                     <Button type="submit" className="w-full" disabled={isPending}>
                       {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Sign In"}
                     </Button>
-                    {errors._form && <p className="text-red-500 text-sm mt-1">{errors._form[0]}</p>}
                     <div className="text-center">
                       <p className="text-sm text-gray-600 dark:text-gray-400">
                         Don&apos;t have an account?
@@ -434,45 +478,20 @@ export default function CheckoutClientPage({ user, customer }: { user: UserType 
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div>
-                        <label htmlFor="cardNumber" className="block text-sm font-medium mb-2">
-                          Card Number *
-                        </label>
-                        <Input
-                          id="cardNumber"
-                          type="text"
-                          required
-                          placeholder="1234 5678 9012 3456"
-                          maxLength={19}
-                        />
-                      </div>
-                      
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                        <div>
-                          <label htmlFor="expiry" className="block text-sm font-medium mb-2">
-                            Expiry Date *
-                          </label>
-                          <Input
-                            id="expiry"
-                            type="text"
-                            required
-                            placeholder="MM/YY"
-                            maxLength={5}
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor="cvv" className="block text-sm font-medium mb-2">
-                            CVV *
-                          </label>
-                          <Input
-                            id="cvv"
-                            type="text"
-                            required
-                            placeholder="123"
-                            maxLength={4}
-                          />
-                        </div>
-                      </div>
+                      <CardElement options={{
+                        style: {
+                          base: {
+                            fontSize: '16px',
+                            color: '#424770',
+                            '::placeholder': {
+                              color: '#aab7c4',
+                            },
+                          },
+                          invalid: {
+                            color: '#9e2146',
+                          },
+                        },
+                      }}/>
                     </CardContent>
                   </Card>
 
@@ -481,7 +500,7 @@ export default function CheckoutClientPage({ user, customer }: { user: UserType 
                       type="submit"
                       size="lg"
                       className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold"
-                      disabled={isPending}
+                      disabled={isPending || !stripe}
                     >
                       {isPending ? (
                         <>
@@ -489,7 +508,7 @@ export default function CheckoutClientPage({ user, customer }: { user: UserType 
                           Processing...
                         </>
                       ) : (
-                        `Complete Order - $${total.toFixed(2)}`
+                        `Complete Order - ${total.toFixed(2)}`
                       )}
                     </Button>
                   </div>
@@ -512,7 +531,7 @@ export default function CheckoutClientPage({ user, customer }: { user: UserType 
                             </p>
                           </div>
                           <p className="font-medium">
-                            ${(item.price * item.quantity).toFixed(2)}
+                            ${((item.price_cents / 100) * item.quantity).toFixed(2)}
                           </p>
                         </div>
                       ))}
@@ -581,7 +600,7 @@ export default function CheckoutClientPage({ user, customer }: { user: UserType 
                       )}
                       <div className="flex justify-between">
                         <p>Shipping</p>
-                        <p>{shipping === 0 ? "Free" : `$${shipping.toFixed(2)}`}</p>
+                        <p>{shipping === 0 ? "Free" : `${shipping.toFixed(2)}`}</p>
                       </div>
                       <div className="flex justify-between">
                         <p>Tax</p>
@@ -600,7 +619,7 @@ export default function CheckoutClientPage({ user, customer }: { user: UserType 
                         form="checkout-form"
                         size="lg"
                         className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold"
-                        disabled={isPending}
+                        disabled={isPending || !stripe}
                       >
                         {isPending ? (
                           <>
@@ -608,7 +627,7 @@ export default function CheckoutClientPage({ user, customer }: { user: UserType 
                             Processing...
                           </>
                         ) : (
-                          `Complete Order - $${total.toFixed(2)}`
+                          `Complete Order - ${total.toFixed(2)}`
                         )}
                       </Button>
                     </div>
@@ -620,5 +639,13 @@ export default function CheckoutClientPage({ user, customer }: { user: UserType 
         </div>
       </div>
     </MainLayout>
+  );
+}
+
+export default function CheckoutClientPage({ user, customer }: { user: UserType | null, customer: Customer | null }) {
+  return (
+    <Elements stripe={stripePromise}>
+      <CheckoutForm user={user} customer={customer} />
+    </Elements>
   );
 }

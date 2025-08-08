@@ -1,9 +1,10 @@
-import useFeaturedProducts from "@/hooks/useFeaturedProducts";
 import ProductCard from "./ProductCard";
+import { Product } from "@/lib/schema";
+
+type ProductWithImages = Product & { product_images: { url: string }[] };
 
 // --- FeaturedProducts Component ---
-export default function FeaturedProducts() {
-  const products = useFeaturedProducts();
+export default function FeaturedProducts({ products }: { products: Product[] }) {
   return (
     <section
       id="products"
@@ -17,10 +18,8 @@ export default function FeaturedProducts() {
         </div>
 
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {" "}
-          {/* Added sm:grid-cols-2 for better tablet layout */}
-          {products.map((p, i) => (
-            <ProductCard product={p} key={i} />
+          {products.map((p) => (
+            <ProductCard product={p} key={p.id} />
           ))}
         </div>
       </div>

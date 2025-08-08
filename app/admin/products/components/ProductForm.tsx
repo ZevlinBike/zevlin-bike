@@ -1,0 +1,141 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Product } from "@/lib/schema";
+import { Loader2, XCircle } from "lucide-react";
+import { toast } from "sonner";
+import { addOrUpdateProduct } from "../actions";
+
+interface ProductFormProps {
+  product?: Product & { product_images: { id: string, url: string }[] } | null;
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export default function ProductForm({ product, isOpen, onClose }: ProductFormProps) {
+  const [isPending, startTransition] = useTransition();
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      setImageFiles(files);
+      
+      const urls = files.map(file => URL.createObjectURL(file));
+      setPreviewUrls(urls);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+
+    if (imageFiles.length === 0 && !product) {
+      toast.error("Please select at least one image for the new product.");
+      return;
+    }
+    
+    imageFiles.forEach(file => {
+      formData.append('images', file);
+    });
+
+    startTransition(async () => {
+      const result = await addOrUpdateProduct(formData);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success(`Product ${product ? 'updated' : 'added'} successfully!`);
+        onClose();
+      }
+    });
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[600px] bg-white dark:bg-neutral-900 text-black dark:text-white max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{product ? "Edit Product" : "Add New Product"}</DialogTitle>
+          <DialogDescription>
+            {product ? "Update the details for this product." : "Fill out the form to add a new product."}
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-6 py-4">
+          <input type="hidden" name="id" defaultValue={product?.id} />
+          
+          <div className="space-y-2">
+            <Label htmlFor="name">Product Name</Label>
+            <Input id="name" name="name" defaultValue={product?.name} required />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea id="description" name="description" defaultValue={product?.description || ''} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="price">Price (Cents)</Label>
+              <Input id="price" name="price" type="number" defaultValue={product?.price_cents} required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="slug">URL Slug</Label>
+              <Input id="slug" name="slug" defaultValue={product?.slug} required />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="image-upload">Product Images</Label>
+            <Input 
+              id="image-upload" 
+              type="file" 
+              multiple
+              onChange={handleFileChange}
+              accept="image/png, image/jpeg, image/webp"
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400">Select one or more images to upload.</p>
+          </div>
+
+          {(previewUrls.length > 0 || product?.product_images?.length > 0) && (
+            <div>
+              <Label>Image Previews</Label>
+              <div className="mt-2 grid grid-cols-3 gap-4">
+                {product?.product_images.map(img => (
+                  <div key={img.id} className="relative">
+                    <Image src={img.url} alt="Existing product image" width={150} height={150} className="rounded-md object-cover" />
+                  </div>
+                ))}
+                {previewUrls.map((url, index) => (
+                  <div key={index} className="relative">
+                    <Image src={url} alt={`New image ${index + 1} preview`} width={150} height={150} className="rounded-md object-cover" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={isPending}>
+              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Product
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

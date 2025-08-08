@@ -1,10 +1,14 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Product } from "@/store/cartStore";
 import HeroProduct from "./HeroProduct";
+import { Product } from "@/lib/schema";
 
-export default function HeroProductGrid({ products }: { products: Product[] }) {
+export default function HeroProductGrid({
+  products,
+}: {
+  products: (Product & { featured_image: string })[];
+}) {
   const heroProducts = products.slice(0, 2);
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);

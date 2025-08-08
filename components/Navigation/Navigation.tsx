@@ -5,10 +5,12 @@ import MobileNav from "./MobileNav";
 import NotificationBanner from "./NotificationBanner";
 import UserSubNav from "./UserSubNav";
 import { User } from "@supabase/supabase-js";
+import { usePathname } from "next/navigation";
 
 const Navigation = ({ user } : { user:User | null }) => {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  const path = usePathname();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -17,6 +19,8 @@ const Navigation = ({ user } : { user:User | null }) => {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  if (path.startsWith("/admin")) return null
 
   return (
     <>

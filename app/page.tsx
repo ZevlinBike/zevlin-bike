@@ -5,12 +5,15 @@ import Features from "./components/Features";
 import Hero from "./components/hero";
 import Newsletter from "./components/Newsletter";
 import Testimonials from "./components/Testimonials";
+import { getFeaturedProducts } from "./admin/products/actions";
 
-export default function ZevlinCrackLanding() {
+export default async function ZevlinCrackLanding() {
+  const featuredProducts = await getFeaturedProducts();
+
   return (
     <MainLayout>
       <Hero />
-      <FeaturedProducts />
+      <FeaturedProducts products={featuredProducts} />
       <Features />
       <Testimonials />
       <CTA />

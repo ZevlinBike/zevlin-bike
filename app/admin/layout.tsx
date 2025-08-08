@@ -1,6 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { checkAdminRole } from "@/app/auth/actions";
+import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
@@ -16,6 +19,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
+import { motion, AnimatePresence } from "framer-motion";
+
 const navigation = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { name: "Products", href: "/admin/products", icon: Package },
@@ -24,58 +29,82 @@ const navigation = [
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+function AdminShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
 
+  const sidebarVariants = {
+    open: { x: 0 },
+    closed: { x: "-100%" },
+  };
+
+  const backdropVariants = {
+    open: { opacity: 1 },
+    closed: { opacity: 0 },
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-black dark:text-white">
       {/* Mobile sidebar */}
-      <div className={`fixed inset-0 z-50 lg:hidden ${sidebarOpen ? 'block' : 'hidden'}`}>
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
-        <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white dark:bg-gray-800">
-          <div className="flex h-16 items-center justify-between px-4">
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">Admin</h1>
-            <Button
-              variant="ghost"
-              size="sm"
+      <AnimatePresence>
+        {sidebarOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <motion.div
+              variants={backdropVariants}
+              initial="closed"
+              animate="open"
+              exit="closed"
+              className="fixed inset-0 bg-gray-600 bg-opacity-75"
               onClick={() => setSidebarOpen(false)}
+            />
+            <motion.div
+              variants={sidebarVariants}
+              initial="closed"
+              animate="open"
+              exit="closed"
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white dark:bg-gray-800"
             >
-              <X className="h-6 w-6" />
-            </Button>
-          </div>
-          <nav className="flex-1 space-y-1 px-2 py-4">
-            {navigation.map((item) => {
-              const isActive = pathname === item.href;
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md ${
-                    isActive
-                      ? 'bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-100'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'
-                  }`}
+              <div className="flex h-16 items-center justify-between px-4">
+                <h1 className="text-xl font-bold text-gray-900 dark:text-white">Admin</h1>
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setSidebarOpen(false)}
                 >
-                  <item.icon className="mr-3 h-5 w-5" />
-                  {item.name}
-                </Link>
-              );
-            })}
-          </nav>
-          <div className="border-t border-gray-200 dark:border-gray-700 p-4">
-            <Button variant="ghost" className="w-full justify-start text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
-              <LogOut className="mr-3 h-5 w-5" />
-              Sign Out
-            </Button>
+                  <X className="h-6 w-6" />
+                </Button>
+              </div>
+              <nav className="flex-1 space-y-1 px-2 py-4">
+                {navigation.map((item) => {
+                  const isActive = pathname === item.href;
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
+                        isActive
+                          ? 'bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-100'
+                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'
+                      }`}
+                      onClick={() => setSidebarOpen(false)}
+                    >
+                      <item.icon className="mr-3 h-5 w-5" />
+                      {item.name}
+                    </Link>
+                  );
+                })}
+              </nav>
+              <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+                <Button variant="ghost" className="w-full justify-start text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
+                  <LogOut className="mr-3 h-5 w-5" />
+                  Sign Out
+                </Button>
+              </div>
+            </motion.div>
           </div>
-        </div>
-      </div>
+        )}
+      </AnimatePresence>
 
       {/* Desktop sidebar */}
       <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
@@ -90,10 +119,10 @@ export default function AdminLayout({
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md ${
+                  className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
                     isActive
                       ? 'bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-100'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'
+                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'
                   }`}
                 >
                   <item.icon className="mr-3 h-5 w-5" />
@@ -135,12 +164,51 @@ export default function AdminLayout({
         </div>
 
         {/* Page content */}
-        <main className="py-6">
+        <motion.main
+          key={pathname}
+          initial={{ opacity: 0, y: 5 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2, ease: "easeInOut" }}
+          className="py-6"
+        >
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             {children}
           </div>
-        </main>
+        </motion.main>
       </div>
     </div>
   );
+}
+
+
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const [isVerified, setIsVerified] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    const verifyAdmin = async () => {
+      const { isAdmin } = await checkAdminRole();
+      if (!isAdmin) {
+        router.push("/");
+      } else {
+        setIsVerified(true);
+      }
+    };
+    verifyAdmin();
+  }, [router]);
+
+  if (!isVerified) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <p className="ml-4">Verifying admin access...</p>
+      </div>
+    );
+  }
+
+  return <AdminShell>{children}</AdminShell>;
 }

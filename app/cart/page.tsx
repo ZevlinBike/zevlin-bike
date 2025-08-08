@@ -19,7 +19,7 @@ export default function CartPage() {
     hydrated,
   } = useCartStore();
   
-  const subtotal = getTotalPrice();
+  const subtotal = getTotalPrice() / 100;
   const shipping = subtotal >= 49 ? 0 : cartItems.length > 0 ? 5.0 : 0;
   const tax = subtotal * 0.08;
   const total = subtotal + shipping + tax;
@@ -67,7 +67,7 @@ export default function CartPage() {
                     <li key={item.id} className="flex py-6 dark:bg-neutral-800 p-4">
                       <div className="overflow-hidden flex-shrink-0 w-24 h-24 rounded-md border border-gray-200 dark:border-gray-700">
                         <Image
-                          src={item.image}
+                          src={item.featured_image}
                           alt={item.name}
                           width={96}
                           height={96}
@@ -81,7 +81,7 @@ export default function CartPage() {
                               <Link href="#">{item.name}</Link>
                             </h3>
                             <p className="ml-4">
-                              ${(item.price * item.quantity).toFixed(2)}
+                              ${((item.price_cents / 100) * item.quantity).toFixed(2)}
                             </p>
                           </div>
                         </div>
@@ -130,7 +130,7 @@ export default function CartPage() {
                     </div>
                     <div className="flex justify-between">
                       <p>Shipping</p>
-                      <p>{shipping === 0 ? "Free" : `$${shipping.toFixed(2)}`}</p>
+                      <p>{shipping === 0 ? "Free" : `${shipping.toFixed(2)}`}</p>
                     </div>
                     <div className="flex justify-between">
                       <p>Tax</p>

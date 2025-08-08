@@ -9,6 +9,7 @@ export interface Product {
   price_cents: number;
   slug: string;
   created_at?: string;
+  product_images: ProductImage[];
 }
 
 export interface ProductImage {
@@ -41,10 +42,23 @@ export interface Customer {
 
 export interface Order {
   id: string;
-  customer_id?: string;
+  customer_id?: string | null;
   status: OrderStatus;
+  subtotal_cents: number;
+  shipping_cost_cents: number;
+  tax_cents: number;
+  discount_cents: number;
   total_cents: number;
+  stripe_payment_intent_id?: string | null;
+  billing_name?: string | null;
+  billing_address_line1?: string | null;
+  billing_address_line2?: string | null;
+  billing_city?: string | null;
+  billing_state?: string | null;
+  billing_postal_code?: string | null;
+  billing_country?: string | null;
   created_at?: string;
+  updated_at?: string;
 }
 
 export interface LineItem {

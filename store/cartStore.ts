@@ -1,20 +1,10 @@
+import { Product, ProductImage } from "@/lib/schema";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export interface Product {
-  id: string;
-  name: string;
-  price: number;
-  image: string;
-  description: string;
-  featured: boolean;
-  qtyInStock: number;
-  categories: string[];
-  rating: number
-}
-
 export interface CartItem extends Product {
   quantity: number;
+  featured_image: string;
 }
 
 interface CartState {
@@ -48,7 +38,23 @@ export const useCartStore = create<CartState>()(
               ),
             };
           }
-          return { items: [...state.items, { ...product, quantity: 1 }] };
+          const images = Array.isArray(product.product_images)
+            ? product.product_images
+            : [];
+          const featuredImage =
+            images.find((img: ProductImage) => img.is_featured)?.url ||
+            images[0]?.url ||
+            "/images/placeholder.png";
+
+          const newItem = {
+            ...product,
+            quantity: 1,
+            featured_image: featuredImage,
+          };
+
+          return {
+            items: [...state.items, newItem],
+          };
         }),
       removeFromCart: (id) =>
         set((state) => ({
@@ -58,7 +64,7 @@ export const useCartStore = create<CartState>()(
         set((state) => ({
           items: state.items
             .map((item) => (item.id === id ? { ...item, quantity } : item))
-            .filter((item) => item.quantity > 0), // Remove item if quantity is 0
+            .filter((item) => item.quantity > 0),
         })),
       clearCart: () => set({ items: [] }),
       getTotalItems: () => {
@@ -66,14 +72,14 @@ export const useCartStore = create<CartState>()(
       },
       getTotalPrice: () => {
         return get().items.reduce(
-          (total, item) => total + item.price * item.quantity,
+          (total, item) => total + item.price_cents * item.quantity,
           0,
         );
       },
       setHydrated: (hydrated) => set({ hydrated }),
     }),
     {
-      name: "cart-storage", // name of the item in the storage (must be unique)
+      name: "cart-storage",
       onRehydrateStorage: () => (state) => {
         state?.setHydrated(true);
       },

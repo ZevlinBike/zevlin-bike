@@ -1,10 +1,8 @@
-"use client";
-import useAllProducts from "@/hooks/useAllProducts";
+import { Product } from "@/lib/schema";
 import ProductCard from "./ProductCard";
 
 // --- AllProducts Component ---
-export default function AllProducts() {
-  const products = useAllProducts();
+export default function AllProducts({ products }: { products: Product[] }) {
   return (
     <section id="products" className="py-20">
       <div className="container px-4 mx-auto lg:px-6">
@@ -15,9 +13,8 @@ export default function AllProducts() {
         </div>
 
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {" "}
-          {products.map((p, i) => (
-            <ProductCard product={p} key={i} />
+          {products.map((p) => (
+            <ProductCard product={p} key={p.id} />
           ))}
         </div>
       </div>

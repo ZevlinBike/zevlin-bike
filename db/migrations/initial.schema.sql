@@ -1,8 +1,50 @@
 -- -------------------------------------
+-- DROP EXISTING TYPES IF THEY EXIST
+-- -------------------------------------
+DO $$ BEGIN
+  DROP TYPE IF EXISTS order_status CASCADE;
+  DROP TYPE IF EXISTS rsvp_status CASCADE;
+END $$;
+
+-- -------------------------------------
 -- ENUM TYPES
 -- -------------------------------------
 CREATE TYPE order_status AS ENUM ('pending', 'paid', 'fulfilled', 'cancelled', 'refunded');
 CREATE TYPE rsvp_status AS ENUM ('going', 'not_going', 'interested');
+
+-- -------------------------------------
+-- HELPER FUNCTIONS / TRIGGERS
+-- -------------------------------------
+DROP FUNCTION IF EXISTS trigger_set_timestamp CASCADE;
+
+CREATE OR REPLACE FUNCTION trigger_set_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- -------------------------------------
+-- DROP TABLES (REVERSE DEPENDENCY ORDER)
+-- -------------------------------------
+DROP TABLE IF EXISTS 
+  newsletter_signups,
+  blog_posts,
+  event_rsvps,
+  events,
+  reviews,
+  stripe_events,
+  shipping_details,
+  cart_items,
+  carts,
+  line_items,
+  orders,
+  customers,
+  product_variants,
+  product_images,
+  products
+CASCADE;
 
 -- -------------------------------------
 -- CORE TABLES
@@ -51,8 +93,21 @@ CREATE TABLE orders (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   customer_id UUID REFERENCES customers(id) ON DELETE SET NULL,
   status order_status NOT NULL DEFAULT 'pending',
+  subtotal_cents INTEGER NOT NULL,
+  shipping_cost_cents INTEGER NOT NULL DEFAULT 0,
+  tax_cents INTEGER NOT NULL DEFAULT 0,
+  discount_cents INTEGER NOT NULL DEFAULT 0,
   total_cents INTEGER NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT now()
+  stripe_payment_intent_id TEXT UNIQUE,
+  billing_name TEXT,
+  billing_address_line1 TEXT,
+  billing_address_line2 TEXT,
+  billing_city TEXT,
+  billing_state TEXT,
+  billing_postal_code TEXT,
+  billing_country TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
 );
 
 CREATE TABLE line_items (
@@ -107,7 +162,7 @@ CREATE TABLE shipping_details (
 -- STRIPE EVENTS (WEBHOOK LOGGING)
 -- -------------------------------------
 CREATE TABLE stripe_events (
-  id TEXT PRIMARY KEY, -- Stripe event ID
+  id TEXT PRIMARY KEY,
   type TEXT,
   payload JSONB,
   received_at TIMESTAMPTZ DEFAULT now()
@@ -172,4 +227,27 @@ CREATE TABLE newsletter_signups (
   email TEXT UNIQUE NOT NULL,
   subscribed_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- -------------------------------------
+-- TRIGGERS
+-- -------------------------------------
+CREATE TRIGGER set_orders_updated_at
+BEFORE UPDATE ON orders
+FOR EACH ROW
+EXECUTE PROCEDURE trigger_set_timestamp();
+
+CREATE TRIGGER set_carts_updated_at
+BEFORE UPDATE ON carts
+FOR EACH ROW
+EXECUTE PROCEDURE trigger_set_timestamp();
+
+CREATE TRIGGER set_events_updated_at
+BEFORE UPDATE ON events
+FOR EACH ROW
+EXECUTE PROCEDURE trigger_set_timestamp();
+
+CREATE TRIGGER set_blog_posts_updated_at
+BEFORE UPDATE ON blog_posts
+FOR EACH ROW
+EXECUTE PROCEDURE trigger_set_timestamp();
 
