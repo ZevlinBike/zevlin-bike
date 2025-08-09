@@ -42,7 +42,7 @@ export default function HeroProductGrid({
   return (
     <div className="flex flex-col items-center p-2 sm:p-4 mt-8 sm:mt-10 w-full">
       {/* Free Shipping pill */}
-      <div className="mx-auto mb-5 w-full max-w-2xl lg:max-w-4xl xl:max-w-5xl">
+      <div className="mx-auto mb-5 w-full max-w-2xl lg:max-w-4xl xl:max-w-5xl z-20">
         <span className="
           mx-auto block w-fit rounded-full border border-blue-600/60
           bg-white/70 px-3 py-1 text-center text-xs font-medium text-blue-700
