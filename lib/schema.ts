@@ -183,7 +183,7 @@ export interface Notification {
   rotation_interval_ms: number;
   ticker: boolean;
   ticker_speed_px_s: number;
-  style: Record<string, any>; // JSONB
+  style: Record<string, unknown>; // JSONB
   audience: string[];
   created_by?: string | null;
   created_at: string; // ISO datetime string

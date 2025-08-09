@@ -3,11 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { OrderWithLineItems } from "@/lib/schema";
 import { redirect } from "next/navigation";
 import OrderHistoryClientPage from "./OrderHistoryClientPage";
-import { useRouter } from "next/router";
 
 export default async function OrderHistoryPage() {
   const supabase = await createClient();
-  const router = useRouter()
 
   const {
     data: { user },
@@ -23,7 +21,7 @@ export default async function OrderHistoryPage() {
     .eq("auth_user_id", user.id)
     .single();
 
-  if (!customer) return router.push("/auth/create-profile")
+  if (!customer) redirect("/auth/create-profile")
 
   const { data: orders, error } = await supabase
     .from("orders")

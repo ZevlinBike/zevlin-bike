@@ -42,7 +42,6 @@ function StatusPill({ status }: { status: Status }) {
 
 export default function AdminAnnouncementsPage() {
   const [rows, setRows] = useState<Notification[]>([]);
-  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
 
@@ -60,9 +59,8 @@ export default function AdminAnnouncementsPage() {
   useEffect(() => {
     setLoading(true);
     const params = { query, status, variant, sort, page, pageSize };
-    getNotifications(params).then(({ notifications, total }) => {
+    getNotifications(params).then(({ notifications }) => {
       setRows(notifications);
-      setTotal(total);
       setLoading(false);
     });
   }, [query, status, variant, sort, page]);
@@ -91,8 +89,10 @@ export default function AdminAnnouncementsPage() {
   };
 
   const refresh = () => {
-    const params = { query, status, variant, sort, page, pageSize } as any;
-    getNotifications(params).then(({ notifications, total }) => { setRows(notifications); setTotal(total); });
+    const params = { query, status, variant, sort, page, pageSize };
+    getNotifications(params).then(({ notifications }) => {
+      setRows(notifications);
+    });
   };
 
   const onBulk = async (action: "publish" | "archive" | "unpublish" | "delete") => {

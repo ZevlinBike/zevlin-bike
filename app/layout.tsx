@@ -32,8 +32,9 @@ export default async function RootLayout({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data:notices } = await supabase.from("notifications_active")
-    .select("id, title, message, cta_label, cta_url, variant, priority, rotation_interval_ms, ticker, ticker_speed_px_s, dismissible")
+  const { data: notices } = await supabase
+    .from("notifications_active")
+    .select("*")
     .order("priority", { ascending: false })
     .order("created_at", { ascending: false });
 

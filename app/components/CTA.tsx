@@ -1,5 +1,4 @@
 "use client";
-import { Button } from "@/components/ui/button";
 import { ArrowRight, CheckCircle } from "lucide-react";
 import Image from "next/image";
 import { motion, Variants } from "framer-motion"; // Import motion for animations

@@ -48,9 +48,13 @@ export type State = {
 };
 
 function normalizePayload(values: z.infer<typeof FormSchema>) {
-  let style: Record<string, any> = {};
+  let style: Record<string, unknown> = {};
   if (values.style && values.style.trim().length > 0) {
-    try { style = JSON.parse(values.style); } catch (e) { throw new Error("Style must be valid JSON"); }
+    try {
+      style = JSON.parse(values.style);
+    } catch {
+      throw new Error("Style must be valid JSON");
+    }
   }
   const audience = values.audience && values.audience.trim().length > 0
     ? values.audience.split(",").map(s => s.trim()).filter(Boolean)
@@ -101,7 +105,21 @@ export async function getNotifications(params: {
   // Sorting
   if (params.sort) {
     const [col, dir] = params.sort.split("-");
-    q = q.order(col as any, { ascending: dir !== "desc" });
+    const validColumns: (keyof Notification)[] = [
+      "title",
+      "status",
+      "variant",
+      "priority",
+      "updated_at",
+      "created_at",
+      "starts_at",
+      "ends_at",
+    ];
+    if (validColumns.includes(col as keyof Notification)) {
+      q = q.order(col, { ascending: dir !== "desc" });
+    } else {
+      q = q.order("updated_at", { ascending: false });
+    }
   } else {
     q = q.order("updated_at", { ascending: false });
   }
@@ -151,8 +169,8 @@ export async function createAnnouncement(prev: State, formData: FormData): Promi
     if (error) throw error;
     revalidatePath("/admin/announcements");
     return { message: "Created announcement." };
-  } catch (e: any) {
-    return { message: e?.message || "Database error creating announcement." };
+  } catch (e: unknown) {
+    return { message: e instanceof Error ? e.message : "Database error creating announcement." };
   }
 }
 
@@ -175,8 +193,8 @@ export async function updateAnnouncement(prev: State, formData: FormData): Promi
     revalidatePath("/admin/announcements");
     revalidatePath(`/admin/announcements/edit/${parsed.data.id}`);
     return { message: "Updated announcement." };
-  } catch (e: any) {
-    return { message: e?.message || "Database error updating announcement." };
+  } catch (e: unknown) {
+    return { message: e instanceof Error ? e.message : "Database error updating announcement." };
   }
 }
 
