@@ -21,7 +21,7 @@ export default function Hero() {
   }, []);
 
   return (
-    <section className="relative flex min-h-[100svh] flex-col justify-center overflow-hidden">
+    <section className="relative flex min-h-[100svh] flex-col justify-center overflow-hidden pt-12 md:pt-0">
       <HeroBackground />
 
       <div className="container relative z-20 mx-auto flex w-full flex-grow items-center justify-center px-4 pt-28 sm:pt-32 lg:px-6">
