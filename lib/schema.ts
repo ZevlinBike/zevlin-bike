@@ -166,3 +166,27 @@ export interface NewsletterSignup {
   email: string;
   subscribed_at?: string;
 }
+
+export interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  cta_label?: string | null;
+  cta_url?: string | null;
+  variant: "promo" | "info" | "success" | "warning" | "danger";
+  priority: number;
+  status: "draft" | "scheduled" | "published" | "expired" | "archived";
+  starts_at: string; // ISO datetime string
+  ends_at?: string | null; // ISO datetime string
+  dismissible: boolean;
+  rotation_group?: string | null;
+  rotation_interval_ms: number;
+  ticker: boolean;
+  ticker_speed_px_s: number;
+  style: Record<string, any>; // JSONB
+  audience: string[];
+  created_by?: string | null;
+  created_at: string; // ISO datetime string
+  updated_at: string; // ISO datetime string
+  deleted_at?: string | null; // ISO datetime string
+};

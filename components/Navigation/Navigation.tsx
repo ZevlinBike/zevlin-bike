@@ -6,8 +6,9 @@ import NotificationBanner from "./NotificationBanner";
 import UserSubNav from "./UserSubNav";
 import { User } from "@supabase/supabase-js";
 import { usePathname } from "next/navigation";
+import { Notification } from "@/lib/schema";
 
-const Navigation = ({ user } : { user:User | null }) => {
+const Navigation = ({ user, notices } : { user:User | null, notices: Notification[] | null }) => {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const path = usePathname();
@@ -27,7 +28,7 @@ const Navigation = ({ user } : { user:User | null }) => {
       <header
         className={`fixed top-0 left-0 right-0 z-[100] duration-500 transition-all`}
       >
-        <NotificationBanner scrolled={scrolled} />
+        <NotificationBanner scrolled={scrolled} notices={notices || []}/>
         <div
           className={`${scrolled ? "p-3" : "p-0"} transition-all duration-500`}
         >
