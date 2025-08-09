@@ -10,7 +10,7 @@ import Link from "next/link";
 
 export default function VerifyEmailPage() {
   return (
-    <div className="w-full max-w-md">
+    <div className="w-full max-w-md mx-auto pt-8">
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl">Check your email</CardTitle>

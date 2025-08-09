@@ -33,6 +33,14 @@ export default function Footer() {
       title: "🤫",
       links: [{ name: "Admin", href: "/admin" }],
     },
+    {
+      title: "Account",
+      links: [
+        { name: "Login", href: "/auth/login" },
+        { name: "Register", href: "/auth/register" },
+        { name: "Forgot Password", href: "/auth/forgot-password" },
+      ],
+    },
   ];
 
   return (
