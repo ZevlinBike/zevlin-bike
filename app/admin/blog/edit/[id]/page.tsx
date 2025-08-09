@@ -19,12 +19,13 @@ async function getPostById(id: string): Promise<BlogPost | null> {
   return data;
 }
 
-export default async function EditPostPage({
-  params,
-}: {
-  params: { id: string };
-}) {
-  const post = await getPostById(params.id);
+type EditPostPageProps = {
+  params: Promise<{ id: string }>;
+};
+
+export default async function EditPostPage({ params }: EditPostPageProps) {
+  const { id } = await params;
+  const post = await getPostById(id);
 
   if (!post) {
     notFound();

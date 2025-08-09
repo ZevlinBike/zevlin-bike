@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import Image from "next/image";
 import { Loader2 } from "lucide-react";
 import { BlogPost } from "@/lib/schema";
 import { State } from "../actions";
@@ -83,8 +82,7 @@ export default function PostForm({
     return () => window.removeEventListener("keydown", onKeydown);
   }, [onKeydown]);
 
-  const wordCount = useMemo(() => (body ? body.trim().split(/\s+/).length : 0), [body]);
-  const charCount = body.length;
+  
 
   return (
     <form

@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { SupabaseClient } from "@supabase/supabase-js";
 import { BlogPost } from "@/lib/schema";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -27,7 +28,7 @@ export type State = {
 };
 
 async function handleImageUpload(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   imageFile: File | null,
   slug: string,
   currentImageUrl?: string | null
@@ -98,9 +99,9 @@ export async function createPost(prevState: State, formData: FormData): Promise<
         revalidatePath("/admin/blog");
         return { message: "Successfully created post." };
 
-    } catch (error: any) {
+    } catch (error) {
         console.error("Create Post Error:", error);
-        return { message: error.message || "Database Error: Failed to create post." };
+        return { message: (error as Error).message || "Database Error: Failed to create post." };
     }
 }
 
@@ -163,9 +164,9 @@ export async function updatePost(prevState: State, formData: FormData): Promise<
         revalidatePath(`/admin/blog/edit/${id}`);
         return { message: "Successfully updated post." };
 
-    } catch (error: any) {
+    } catch (error) {
         console.error("Update Post Error:", error);
-        return { message: error.message || "Database Error: Failed to update post." };
+        return { message: (error as Error).message || "Database Error: Failed to update post." };
     }
 }
 

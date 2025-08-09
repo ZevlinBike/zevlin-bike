@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { Product } from "@/lib/schema";
+import { Product, ProductImage, ProductVariant } from "@/lib/schema";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -13,11 +13,16 @@ const productSchema = z.object({
   slug: z.string(),
 });
 
+type ProductFromSupabase = Omit<Product, 'product_images' | 'product_variants'> & {
+  product_images: ProductImage | ProductImage[] | null;
+  product_variants: ProductVariant | ProductVariant[] | null;
+};
+
 export async function getProducts(): Promise<Product[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("products")
-    .select("*, product_images(*)")
+    .select("*, product_images(*), product_variants(*)")
     .order("name");
 
   if (error) {
@@ -25,12 +30,15 @@ export async function getProducts(): Promise<Product[]> {
     return [];
   }
 
-  // Ensure product_images is always an array
-  return data.map((product: Product) => ({
+  // Ensure product_images and product_variants are always arrays
+  return (data as ProductFromSupabase[]).map((product) => ({
     ...product,
     product_images: Array.isArray(product.product_images)
       ? product.product_images
       : product.product_images ? [product.product_images] : [],
+    product_variants: Array.isArray(product.product_variants)
+      ? product.product_variants
+      : product.product_variants ? [product.product_variants] : [],
   }));
 }
 

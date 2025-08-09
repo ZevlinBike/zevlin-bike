@@ -21,8 +21,13 @@ function formatDate(iso?: string | null) {
   return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
 }
 
-export default async function BlogPostPage({ params }: { params: { slug: string } }) {
-  const post = await getPostBySlug(params.slug);
+type BlogPostPageProps = {
+  params: Promise<{ slug: string }>;
+};
+
+export default async function BlogPostPage({ params }: BlogPostPageProps) {
+  const { slug } = await params;
+  const post = await getPostBySlug(slug);
   if (!post) notFound();
 
   const body = cleanMarkdown(post.body);

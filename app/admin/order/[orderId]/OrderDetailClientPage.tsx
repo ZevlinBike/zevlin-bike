@@ -11,13 +11,14 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
+
 import { PrintModal } from "@/app/admin/orders/components/PrintModal";
 import { toast } from "sonner";
 import { clsx } from "clsx";
 
-const money = (cents: number) =>
-  new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(cents / 100);
+type OrderStatus = "pending" | "paid" | "fulfilled" | "cancelled" | "refunded";
+
+
 
 export default function OrderDetailClientPage({ order }: { order: OrderDetails }) {
   const handleStatusChange = async (status: string) => {
@@ -48,7 +49,7 @@ export default function OrderDetailClientPage({ order }: { order: OrderDetails }
           </div>
 
           <div className="flex items-center gap-2">
-            <StatusPill status={order.status as any} />
+            <StatusPill status={order.status as OrderStatus} />
             <PrintModal orderId={order.id} />
           </div>
         </div>
@@ -211,12 +212,12 @@ export default function OrderDetailClientPage({ order }: { order: OrderDetails }
                 <div>
                   <div className="mb-1 font-medium text-sm">Shipping Address</div>
                   <address className="not-italic text-sm text-gray-700 dark:text-gray-300">
-                    {order.shipping_address_line1}
-                    {order.shipping_address_line2 && <> <br />{order.shipping_address_line2}</>}
+                    {order.billing_address_line1}
+                    {order.billing_address_line2 && <> <br />{order.billing_address_line2}</>}
                     <br />
-                    {order.shipping_city}, {order.shipping_state} {order.shipping_postal_code}
+                    {order.billing_city}, {order.billing_state} {order.billing_postal_code}
                     <br />
-                    {order.shipping_country}
+                    {order.billing_country}
                   </address>
                 </div>
 
@@ -264,7 +265,7 @@ export default function OrderDetailClientPage({ order }: { order: OrderDetails }
 
 /* --- Small bits --- */
 
-function StatusPill({ status }: { status: string }) {
+function StatusPill({ status }: { status: OrderStatus }) {
   const label = status?.charAt(0).toUpperCase() + status?.slice(1);
   return (
     <span

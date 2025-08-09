@@ -11,25 +11,25 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Product } from "@/lib/schema";
 import {
-  PlusCircle, Edit, Trash2, Loader2, Search, ArrowUpDown, ChevronDown,
+  PlusCircle, Edit, Trash2, Loader2, Search, ArrowUpDown,
 } from "lucide-react";
 import ProductForm from "./ProductForm";
 import { toast } from "sonner";
 import { deleteProduct } from "../actions";
 import { clsx } from "clsx";
 
-type ProductWithImages = Product & { product_images: { url: string }[] };
 
-type SortKey = "name" | "price";
+
+type SortKey = "name" | "price" | "updated_at";
 type SortDir = "asc" | "desc";
 
-export default function ProductTable({ products: initialProducts }: { products: ProductWithImages[] }) {
+export default function ProductTable({ products: initialProducts }: { products: Product[] }) {
   const [products, setProducts] = useState(initialProducts);
   const [query, setQuery] = useState("");
-  const [sortKey, setSortKey] = useState<SortKey>("updated_at" as any ?? "name");
+  const [sortKey, setSortKey] = useState<SortKey>("updated_at");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<ProductWithImages | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isPending, startTransition] = useTransition();
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -37,7 +37,7 @@ export default function ProductTable({ products: initialProducts }: { products: 
     setSelectedProduct(null);
     setIsFormOpen(true);
   };
-  const handleEditProduct = (product: ProductWithImages) => {
+  const handleEditProduct = (product: Product) => {
     setSelectedProduct(product);
     setIsFormOpen(true);
   };
@@ -60,14 +60,14 @@ export default function ProductTable({ products: initialProducts }: { products: 
   // derived view
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    let list = !q
+    const list = !q
       ? [...products]
       : products.filter((p) =>
           p.name.toLowerCase().includes(q) ||
           (p.description ?? "").toLowerCase().includes(q) ||
-          (p.sku ?? "").toLowerCase().includes(q)
+          (p.product_variants?.[0]?.sku ?? "").toLowerCase().includes(q)
         );
-    const cmp = (a: ProductWithImages, b: ProductWithImages) => {
+    const cmp = (a: Product, b: Product) => {
       let va: string | number = "", vb: string | number = "";
       if (sortKey === "name") { va = a.name; vb = b.name; }
       else { va = a.price_cents; vb = b.price_cents; }
@@ -157,9 +157,9 @@ export default function ProductTable({ products: initialProducts }: { products: 
                     <h3 className="text-sm font-medium leading-snug line-clamp-2">{product.name}</h3>
                     <div className="text-sm font-semibold tabular-nums">{money(product.price_cents)}</div>
                   </div>
-                  {product.sku && (
+                  {product.product_variants?.[0]?.sku && (
                     <div className="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">
-                      SKU: <span className="font-mono">{product.sku}</span>
+                      SKU: <span className="font-mono">{product.product_variants[0].sku}</span>
                     </div>
                   )}
                   <div className="mt-3 flex justify-end gap-1">
@@ -223,7 +223,7 @@ export default function ProductTable({ products: initialProducts }: { products: 
                   </TableCell>
                   <TableCell className="tabular-nums">{money(product.price_cents)}</TableCell>
                   <TableCell className="font-mono text-xs text-gray-600 dark:text-gray-400">
-                    {product.sku ?? "—"}
+                    {product.product_variants?.[0]?.sku ?? "—"}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">

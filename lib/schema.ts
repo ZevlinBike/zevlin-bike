@@ -9,6 +9,7 @@ export interface Product {
   slug: string;
   created_at?: string;
   product_images: ProductImage[];
+  product_variants: ProductVariant[];
 }
 
 export interface ProductImage {
