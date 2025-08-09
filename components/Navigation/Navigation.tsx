@@ -34,7 +34,7 @@ const Navigation = ({ user, notices } : { user:User | null, notices: Notificatio
         >
           <DesktopNav scrolled={scrolled} />
           <MobileNav open={open} setOpen={setOpen} scrolled={scrolled} />
-        {user && <UserSubNav user={user} />}
+        {user && !open && <UserSubNav user={user} />}
         </div>
       </header>
     </>
