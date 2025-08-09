@@ -20,16 +20,18 @@ export async function checkAdminRole(): Promise<{ isAdmin: boolean }> {
     return { isAdmin: false };
   }
 
-  const { data: userRoles, error: rolesError } = await supabase
-    .from('user_roles')
-    .select('roles(name)')
-    .eq('customer_id', customer.id);
+  const { data: userRoles, error: rolesError } = await supabase.rpc(
+    "get_user_roles",
+    {
+      user_id: customer.id,
+    },
+  );
 
   if (rolesError) {
     return { isAdmin: false };
   }
 
-  const isAdmin = userRoles?.some(userRole => userRole.roles?.[0]?.name === 'admin');
+  const isAdmin = userRoles?.includes("admin");
 
   return { isAdmin: !!isAdmin };
 }

@@ -150,14 +150,14 @@ export interface BlogPost {
   id: string;
   title: string;
   slug: string;
-  excerpt?: string;
+  excerpt?: string | null;
   body: string;
-  image_url?: string;
-  author_name?: string;
-  published?: boolean;
-  published_at?: string;
-  created_at?: string;
-  updated_at?: string;
+  image_url?: string | null;
+  author_name?: string | null;
+  published: boolean;
+  published_at?: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface NewsletterSignup {

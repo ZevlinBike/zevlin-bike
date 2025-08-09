@@ -19,13 +19,18 @@ export function PackingSlip({ order }: { order: OrderDetails }) {
 
   return (
     <div className="bg-white relative text-black  mx-auto shadow rounded-lg p-4 sm:p-8 text-[15px] font-sans">
-      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 border-b mb-6 gap-2">
-        <div>
-          <Logo className="h-8 mb-1 " />
-          <p className="text-[10px] text-gray-500 tracking-tight uppercase">goods for your goods</p>
-        </div>
-        <h2 className="text-2xl sm:text-3xl font-bold mt-2 sm:mt-0 text-right w-full sm:w-auto absolute top-4 right-4">Packing Slip</h2>
-      </header>
+
+<header className="flex flex-col sm:flex-row justify-between sm:items-center pb-4 border-b mb-6 gap-2">
+  <div className="flex flex-col items-start">
+    <Logo className="h-8 mb-1" />
+    <p className="text-[10px] text-gray-500 tracking-tight uppercase">
+      goods for your goods
+    </p>
+  </div>
+  <h2 className="text-xl sm:text-3xl font-bold text-gray-900 sm:text-right">
+    Packing Slip
+  </h2>
+</header>
 
       <section className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 mb-6">
         <div>

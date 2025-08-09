@@ -2,7 +2,6 @@ import { Product } from "@/lib/schema";
 import Image from "next/image";
 
 export default function HeroProduct({ product }: { product: Product }) {
-  console.log({product})
   return (
     <div className="flex relative flex-col items-center text-center group">
       {/* Outer container with glow and spacing */}

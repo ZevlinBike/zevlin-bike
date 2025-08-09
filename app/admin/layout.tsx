@@ -14,7 +14,8 @@ import {
   Settings, 
   LogOut,
   Menu,
-  X
+  X,
+  Newspaper
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -26,6 +27,7 @@ const navigation = [
   { name: "Products", href: "/admin/products", icon: Package },
   { name: "Orders", href: "/admin/orders", icon: ShoppingCart },
   { name: "Customers", href: "/admin/customers", icon: Users },
+  { name: "Blog", href: "/admin/blog", icon: Newspaper },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
@@ -44,7 +46,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-black dark:text-white">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 text-black dark:text-white">
       {/* Mobile sidebar */}
       <AnimatePresence>
         {sidebarOpen && (
@@ -54,7 +56,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               initial="closed"
               animate="open"
               exit="closed"
-              className="fixed inset-0 bg-gray-600 bg-opacity-75"
+              className="fixed inset-0 bg-neutral-600 bg-opacity-75"
               onClick={() => setSidebarOpen(false)}
             />
             <motion.div
@@ -63,10 +65,10 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               animate="open"
               exit="closed"
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white dark:bg-gray-800"
+              className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white dark:bg-neutral-800"
             >
               <div className="flex h-16 items-center justify-between px-4">
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">Admin</h1>
+                <h1 className="text-xl font-bold text-neutral-900 dark:text-white">Admin</h1>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -85,7 +87,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                       className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
                         isActive
                           ? 'bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-100'
-                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'
+                          : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-700 dark:hover:text-white'
                       }`}
                       onClick={() => setSidebarOpen(false)}
                     >
@@ -95,8 +97,8 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                   );
                 })}
               </nav>
-              <div className="border-t border-gray-200 dark:border-gray-700 p-4">
-                <Button variant="ghost" className="w-full justify-start text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
+              <div className="border-t border-neutral-200 dark:border-neutral-700 p-4">
+                <Button variant="ghost" className="w-full justify-start text-neutral-600 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-white">
                   <LogOut className="mr-3 h-5 w-5" />
                   Sign Out
                 </Button>
@@ -108,9 +110,9 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
       {/* Desktop sidebar */}
       <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
-        <div className="flex flex-col flex-grow bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+        <div className="flex flex-col flex-grow bg-white dark:bg-neutral-800 border-r border-neutral-200 dark:border-neutral-700">
           <div className="flex h-16 items-center px-4">
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">Admin</h1>
+            <h1 className="text-xl font-bold text-neutral-900 dark:text-white">Admin</h1>
           </div>
           <nav className="flex-1 space-y-1 px-2 py-4">
             {navigation.map((item) => {
@@ -122,7 +124,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                   className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
                     isActive
                       ? 'bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-100'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'
+                      : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-700 dark:hover:text-white'
                   }`}
                 >
                   <item.icon className="mr-3 h-5 w-5" />
@@ -131,8 +133,8 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               );
             })}
           </nav>
-          <div className="border-t border-gray-200 dark:border-gray-700 p-4">
-            <Button variant="ghost" className="w-full justify-start text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
+          <div className="border-t border-neutral-200 dark:border-neutral-700 p-4">
+            <Button variant="ghost" className="w-full justify-start text-neutral-600 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-white">
               <LogOut className="mr-3 h-5 w-5" />
               Sign Out
             </Button>
@@ -143,7 +145,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       {/* Main content */}
       <div className="lg:pl-64">
         {/* Top bar */}
-        <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
+        <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
           <Button
             variant="ghost"
             size="sm"
@@ -156,7 +158,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
             <div className="flex flex-1"></div>
             <div className="flex items-center gap-x-4 lg:gap-x-6">
-              <div className="text-sm text-gray-600 dark:text-gray-300">
+              <div className="text-sm text-neutral-600 dark:text-neutral-300">
                 Admin User
               </div>
             </div>
@@ -203,7 +205,7 @@ export default function AdminLayout({
 
   if (!isVerified) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-gray-900">
+      <div className="flex h-screen items-center justify-center bg-neutral-50 dark:bg-neutral-900">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
         <p className="ml-4">Verifying admin access...</p>
       </div>

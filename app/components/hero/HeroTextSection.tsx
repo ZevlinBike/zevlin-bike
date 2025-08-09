@@ -2,13 +2,8 @@ import { Anton } from "next/font/google";
 import Link from "next/link";
 const headerFont = Anton({ subsets: ["latin"], weight: ["400"] });
 
-const TAGLINES = [
-  "You're only a ride away from a good day",
-  "Zevlin. Anything else would be nuts",
-];
-
 export default function HeroTextSection() {
-  const randomTagline = TAGLINES[Math.floor(Math.random() * TAGLINES.length)];
+  const tagline = "Zevlin. Anything else would be nuts"
   return (
     <div className="flex-1 flex flex-col items-center md:items-start max-w-4xl px-4 md:px-0 space-y-8">
       <div className="w-full space-y-4">
@@ -20,7 +15,7 @@ export default function HeroTextSection() {
         </h1>
 
         <p className="text-lg sm:text-xl md:text-2xl font-light text-black dark:text-white dark:text-gray-300 backdrop-blur-sm w-full text-center md:text-left">
-          {randomTagline}
+          {tagline}
         </p>
       </div>
 

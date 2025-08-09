@@ -56,7 +56,7 @@ export default async function OrderHistoryPage() {
 
   return (
     <MainLayout>
-      <div className="pt-40 min-h-screen text-black">
+      <div className="pt-40 min-h-screen text-black dark:text-white">
         <OrderHistoryClientPage orders={orders as OrderWithLineItems[]} />
       </div>
     </MainLayout>

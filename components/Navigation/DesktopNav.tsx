@@ -39,7 +39,7 @@ const DesktopNav: React.FC<DesktopNavProps> = ({ scrolled }) => {
     }`}
   >
     <Container
-      className={`flex justify-between items-center transition-all ${scrolled ? "h-12" : "h-24"}`}
+      className={`flex justify-between items-center transition-all ${scrolled ? "h-12" : "h-20"}`}
     >
       <Logo
         className={`${scrolled ? "scale-100" : "scale-150 ml-8"} text-white`}
@@ -50,6 +50,7 @@ const DesktopNav: React.FC<DesktopNavProps> = ({ scrolled }) => {
         <Link href="/about">About</Link>
         <Link href="/contact">Contact</Link>
         <Link href="/faq">FAQ</Link>
+        <Link href="/blog">Blog</Link>
         <Link href="/cart" className="relative" aria-label="View Cart">
           {
             cartItems.length > 0 && (

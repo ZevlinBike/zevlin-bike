@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import {
   Table,
   TableBody,
@@ -24,7 +25,13 @@ type OrderWithCustomer = Order & {
   customers: Pick<Customer, "first_name" | "last_name" | "email"> | null;
 };
 
-export default function OrderTable({ orders }: { orders: OrderWithCustomer[] }) {
+export default function OrderTable({
+  orders,
+}: {
+  orders: OrderWithCustomer[];
+}) {
+  const router = useRouter();
+
   const handleStatusChange = async (orderId: string, status: string) => {
     const result = await updateOrderStatus(orderId, status);
     if (result.success) {
@@ -32,6 +39,10 @@ export default function OrderTable({ orders }: { orders: OrderWithCustomer[] }) 
     } else {
       toast.error(result.error || "Failed to update order status.");
     }
+  };
+
+  const handleRowClick = (orderId: string) => {
+    router.push(`/admin/order/${orderId}`);
   };
 
   return (
@@ -49,7 +60,11 @@ export default function OrderTable({ orders }: { orders: OrderWithCustomer[] }) 
         </TableHeader>
         <TableBody>
           {orders.map((order) => (
-            <TableRow key={order.id}>
+            <TableRow
+              key={order.id}
+              onClick={() => handleRowClick(order.id)}
+              className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+            >
               <TableCell className="font-mono text-sm">
                 {order.id.substring(0, 8)}
               </TableCell>
@@ -64,12 +79,10 @@ export default function OrderTable({ orders }: { orders: OrderWithCustomer[] }) 
               <TableCell>
                 {new Date(order.created_at!).toLocaleDateString()}
               </TableCell>
-              <TableCell>
+              <TableCell onClick={(e) => e.stopPropagation()}>
                 <Select
                   defaultValue={order.status}
-                  onValueChange={(value) =>
-                    handleStatusChange(order.id, value)
-                  }
+                  onValueChange={(value) => handleStatusChange(order.id, value)}
                 >
                   <SelectTrigger className="w-[120px]">
                     <SelectValue />
@@ -86,7 +99,10 @@ export default function OrderTable({ orders }: { orders: OrderWithCustomer[] }) 
               <TableCell className="text-right font-medium">
                 ${(order.total_cents / 100).toFixed(2)}
               </TableCell>
-              <TableCell className="text-right">
+              <TableCell
+                className="text-right"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <PrintModal orderId={order.id} />
               </TableCell>
             </TableRow>

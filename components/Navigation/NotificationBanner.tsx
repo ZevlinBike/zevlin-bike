@@ -1,74 +1,104 @@
 import Link from "next/link";
 import { ArrowRight, X, ArrowDown } from "lucide-react";
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion"; // Import motion and AnimatePresence
+import { motion, AnimatePresence } from "framer-motion";
 
-export default function NotificationBanner({
-  scrolled,
-}: {
-  scrolled: boolean;
-}) {
+export default function NotificationBanner({ scrolled }: { scrolled: boolean }) {
   const [closed, setClosed] = useState(false);
-
-  // Determine if the banner should be visible based on scrolled state and closed state
   const isBannerVisible = !closed && !scrolled;
 
   return (
     <>
-      {/* Re-open Button: Now uses Framer Motion for smoother reveal/hide */}
+      {/* Re-open Button */}
       <AnimatePresence>
         {closed && !scrolled && (
           <motion.button
-            key="reopen-button" // Required for AnimatePresence
-            initial={{ opacity: 0, y: -50 }} // Start slightly above and invisible
-            animate={{ opacity: 1, y: 0 }} // Animate to visible and normal position
-            exit={{ opacity: 0, y: -50 }} // Animate out
-            transition={{ duration: 0.3 }} // Fast transition for the button
+            key="reopen-button"
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -50 }}
+            transition={{ duration: 0.25 }}
             onClick={() => setClosed(false)}
-            // Positioned outside the banner flow, but still centered at the top
-            className="absolute top-0 left-1/2 z-20 py-1 px-3 bg-blue-600 rounded-b-lg shadow-lg transition-colors -translate-x-1/2 hover:bg-blue-700"
+            className="
+              absolute top-0 left-1/2 -translate-x-1/2 z-20
+              px-2 py-1
+              bg-gradient-to-b from-red-700 to-red-800
+              rounded-b-lg shadow-lg
+              text-white
+              hover:brightness-110
+              transition
+            "
+            aria-label="Show announcement"
           >
-            <ArrowDown className="w-4 h-4 text-white" />
+            <ArrowDown className="h-4 w-4" />
           </motion.button>
         )}
       </AnimatePresence>
 
-      {/* Main Notification Banner: Uses Framer Motion for height/slide animation */}
+      {/* Main Banner */}
       <AnimatePresence>
         {isBannerVisible && (
           <motion.div
-            key="notification-banner" // Required for AnimatePresence
-            initial={{ height: 0, opacity: 0 }} // Start collapsed and invisible
-            animate={{ height: 40, opacity: 1 }} // Animate to full height (h-10 = 40px) and visible
-            exit={{ height: 0, opacity: 0 }} // Animate back to collapsed and invisible
-            transition={{ duration: 0.5, ease: "easeInOut" }} // Smooth transition
-            className="flex overflow-hidden relative justify-center items-center text-white whitespace-nowrap bg-gradient-to-r from-red-700 via-red-600 to-red-800"
-            // The actual height comes from Framer Motion, not directly from Tailwind h-class
-            // Ensure no conflicting height classes here.
+            key="notification-banner"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 40, opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.45, ease: "easeInOut" }}
+            className="
+              flex overflow-hidden relative
+              justify-center items-center
+              bg-gradient-to-r from-red-700 via-red-600 to-red-800
+              text-white
+              shadow-md
+            "
           >
-            <div className="container px-4 mx-auto sm:px-6 lg:px-8">
-              <div className="flex justify-between items-center py-2">
-                {/* Content aligned left, close button right */}
-                <p className="text-sm font-medium">
-                  <span className="hidden mr-3 font-black uppercase sm:inline-block">
+            <div className="container px-3 mx-auto sm:px-6 lg:px-8">
+              <div className="flex items-center justify-between gap-2 h-10">
+                {/* Message */}
+                <p
+                  className="
+                    flex-1 min-w-0
+                    text-[12px] sm:text-sm
+                    font-medium
+                    truncate
+                  "
+                  title="New Products Coming Soon"
+                >
+                  <span className="hidden mr-2 font-black uppercase sm:inline-block">
                     Big News!
-                  </span>{" "}
+                  </span>
                   New Products Coming Soon
                 </p>
+
+                {/* CTA */}
                 <Link
                   href="/new-products"
-                  className="flex items-center ml-auto text-sm font-semibold hover:underline" // ml-auto pushes it right
+                  className="
+                    flex-shrink-0
+                    inline-flex items-center
+                    h-7 px-2 sm:px-3
+                    rounded-md bg-white/10 hover:bg-white/20
+                    text-[11px] sm:text-xs font-semibold
+                    transition
+                  "
                 >
-                  Learn More
-                  <ArrowRight className="ml-1 w-4 h-4" />
+                  <span className="hidden xs:inline">Learn More</span>
+                  <ArrowRight className=" h-3.5 w-3.5" />
                 </Link>
-                {/* Close Button: Placed directly next to content for better accessibility */}
+
+                {/* Close */}
                 <button
                   onClick={() => setClosed(true)}
-                  className="p-1 ml-4 rounded-full transition-colors hover:bg-red-800" // Added padding and hover
+                  className="
+                    flex-shrink-0
+                    inline-flex items-center justify-center
+                    h-7 w-7
+                    rounded-md hover:bg-black/20
+                    transition
+                  "
                   aria-label="Close banner"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -78,3 +108,4 @@ export default function NotificationBanner({
     </>
   );
 }
+

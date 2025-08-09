@@ -1,0 +1,197 @@
+
+/* Root wrapper for rendered markdown */
+.markdown {
+  /* readable line length + nice rhythm */
+  max-width: 72ch;
+  margin: 0 auto;
+  font-size: 1rem;
+  line-height: 1.75;
+  color: var(--md-fg, #0f172a);            /* slate-900 */
+}
+
+/* Dark mode (auto) */
+@media (prefers-color-scheme: dark) {
+  .markdown {
+    color: var(--md-fg, #e5e7eb);          /* gray-200 */
+  }
+}
+
+/* ===== Headings ===== */
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4,
+.markdown h5,
+.markdown h6 {
+  font-weight: 800;
+  line-height: 1.2;
+  margin: 1.6em 0 0.6em;
+  color: inherit;
+}
+
+.markdown h1 { font-size: clamp(2.2rem, 5vw, 3.2rem); letter-spacing: -0.02em; }
+.markdown h2 { font-size: clamp(1.8rem, 3.5vw, 2.4rem); letter-spacing: -0.01em; }
+.markdown h3 { font-size: clamp(1.4rem, 2.5vw, 1.8rem); }
+.markdown h4 { font-size: 1.25rem; }
+.markdown h5 { font-size: 1.125rem; }
+.markdown h6 { font-size: 1rem; text-transform: uppercase; letter-spacing: .06em; }
+
+/* Top of page first heading a bit tighter */
+.markdown > h1:first-child,
+.markdown > h2:first-child {
+  margin-top: 0.4em;
+}
+
+/* ===== Paragraphs & spacing ===== */
+.markdown p {
+  margin: 1em 0;
+}
+
+/* Lead paragraph (optional class you can inject) */
+.markdown .lead {
+  font-size: 1.125rem;
+  color: #334155; /* slate-700 */
+}
+@media (prefers-color-scheme: dark) {
+  .markdown .lead { color: #cbd5e1; /* slate-300 */ }
+}
+
+/* ===== Links ===== */
+.markdown a {
+  color: #2563eb; /* blue-600 */
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+.markdown a:hover { text-decoration-thickness: 3px; }
+@media (prefers-color-scheme: dark) {
+  .markdown a { color: #38bdf8; /* sky-400 */ }
+}
+
+/* ===== Lists ===== */
+.markdown ul,
+.markdown ol {
+  margin: 1em 0;
+  padding-left: 1.5rem; /* restore if reset nuked it */
+}
+.markdown ul { list-style: disc; }
+.markdown ol { list-style: decimal; }
+.markdown li { margin: .35em 0; }
+.markdown li > ul,
+.markdown li > ol { margin-top: .35em; }
+
+/* ===== Blockquotes ===== */
+.markdown blockquote {
+  margin: 1.2em 0;
+  padding: .8em 1em;
+  border-left: 4px solid #94a3b8; /* slate-400 */
+  background: rgba(148, 163, 184, 0.1);
+  border-radius: 0 .5rem .5rem 0;
+  color: inherit;
+}
+@media (prefers-color-scheme: dark) {
+  .markdown blockquote {
+    border-left-color: #475569; /* slate-600 */
+    background: rgba(71, 85, 105, 0.25);
+  }
+}
+
+/* ===== Code ===== */
+.markdown code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: .9em;
+  background: rgba(2, 6, 23, 0.06); /* slate-950 @ 6% */
+  padding: .15em .35em;
+  border-radius: .35rem;
+}
+@media (prefers-color-scheme: dark) {
+  .markdown code { background: rgba(248, 250, 252, 0.08); } /* zinc-50 @ 8% */
+}
+
+/* fenced code blocks */
+.markdown pre {
+  margin: 1.1em 0;
+  padding: 1rem;
+  overflow: auto;
+  border-radius: .75rem;
+  background: #0b1220; /* deep */
+  color: #e5e7eb;
+}
+.markdown pre code {
+  background: transparent;
+  padding: 0;
+  font-size: .95em;
+}
+
+/* ===== HR ===== */
+.markdown hr {
+  border: 0;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(100,116,139,.5), transparent);
+  margin: 2em 0;
+}
+
+/* ===== Images ===== */
+.markdown img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: .75rem;
+  margin: 1.25rem auto;
+}
+
+/* ===== Tables ===== */
+.markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.2em 0;
+  font-size: .95rem;
+}
+.markdown th,
+.markdown td {
+  border: 1px solid rgba(100,116,139,.25); /* slate-500 @ 25% */
+  padding: .6rem .7rem;
+  text-align: left;
+  vertical-align: top;
+}
+.markdown thead th {
+  background: rgba(100,116,139,.12);
+  font-weight: 700;
+}
+@media (prefers-color-scheme: dark) {
+  .markdown th,
+  .markdown td { border-color: rgba(148,163,184,.25); }
+  .markdown thead th { background: rgba(148,163,184,.12); }
+}
+
+/* ===== Figures ===== */
+.markdown figure { margin: 1.2em 0; }
+.markdown figcaption {
+  text-align: center;
+  font-size: .875rem;
+  color: #64748b; /* slate-500 */
+  margin-top: .5rem;
+}
+@media (prefers-color-scheme: dark) {
+  .markdown figcaption { color: #94a3b8; /* slate-400 */ }
+}
+
+/* ===== Small utility alignments for images, if you add classes in MD ===== */
+.markdown .img-left   { float: left;  margin: .25rem 1rem 1rem 0; max-width: 50%; }
+.markdown .img-right  { float: right; margin: .25rem 0 1rem 1rem; max-width: 50%; }
+.markdown .img-center { margin-left: auto; margin-right: auto; display: block; }
+@media (max-width: 640px) {
+  .markdown .img-left,
+  .markdown .img-right { float: none; max-width: 100%; margin: 1rem 0; }
+}
+
+/* ===== Captions for code/listings (optional) ===== */
+.markdown .caption {
+  text-align: center;
+  font-size: .875rem;
+  color: #64748b;
+  margin-top: .25rem;
+}
+@media (prefers-color-scheme: dark) {
+  .markdown .caption { color: #94a3b8; }
+}

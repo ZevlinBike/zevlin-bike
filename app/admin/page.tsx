@@ -21,7 +21,7 @@ export default async function AdminDashboard() {
   const recentOrders = await getRecentOrders();
 
   return (
-    <div className="space-y-6 text-black pt-24">
+    <div className="space-y-6 text-black dark:text-white">
       <h1 className="text-2xl font-bold">Dashboard</h1>
       
       <div className="grid gap-4 md:grid-cols-3">
@@ -68,6 +68,7 @@ export default async function AdminDashboard() {
             <TableHeader>
               <TableRow>
                 <TableHead>Customer</TableHead>
+                <TableHead>Date</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
               </TableRow>
@@ -77,11 +78,19 @@ export default async function AdminDashboard() {
                 <TableRow key={order.id}>
                   <TableCell>
                     <div className="font-medium">
-                      {order.customers?.[0]?.first_name || "Guest"} {order.customers?.[0]?.last_name || ""}
+                      {order.customers?.first_name || "Guest"}{" "}
+                      {order.customers?.last_name || ""}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={order.status === 'paid' ? 'default' : 'secondary'}>
+                    {new Date(order.created_at).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        order.status === "paid" ? "default" : "secondary"
+                      }
+                    >
                       {order.status}
                     </Badge>
                   </TableCell>

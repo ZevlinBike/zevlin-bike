@@ -21,6 +21,7 @@ const LINKS = [
   { href: "/contact", label: "Contact" },
   { href: "/mission", label: "Mission" },
   { href: "/events", label: "Events" },
+  { href: "/blog", label: "Blog" },
 ];
 
 const MobileNav: React.FC<MobileNavProps> = ({ scrolled, open, setOpen }) => {
@@ -74,11 +75,11 @@ const MobileNav: React.FC<MobileNavProps> = ({ scrolled, open, setOpen }) => {
       >
         <Container
           className={`flex justify-between items-center transition-all ${
-            scrolled ? "h-12" : "h-24"
+            scrolled ? "h-12" : "h-18"
           }`}
         >
           <Logo
-            className={`${scrolled ? "scale-100" : "scale-150 ml-8"} text-white`}
+            className={`${scrolled ? "scale-100" : "scale-125 ml-4"} text-white`}
           />
           <button onClick={() => setOpen((o) => !o)} aria-label="Toggle menu">
             {/* Use AnimatePresence for the icon transition */}

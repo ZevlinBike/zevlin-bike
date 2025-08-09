@@ -1,45 +1,61 @@
-"use client";
 
+"use client";
 import { ArrowRight, Loader2 } from "lucide-react";
 import HeroTextSection from "./HeroTextSection";
 import HeroBackground from "./HeroBackground";
 import HeroProductGrid from "./HeroProductsGrid";
 import useHeroProducts from "@/hooks/useHeroProducts";
+import { useEffect, useState } from "react";
 
 export default function Hero() {
   const { products: heroProducts, loading, error } = useHeroProducts();
+  const [showCue, setShowCue] = useState(true);
+
+  // Hide scroll cue after small scroll
+  useEffect(() => {
+    const onScroll = () => {
+      if (window.scrollY > 40) setShowCue(false);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
-    <section className="flex overflow-hidden relative flex-col justify-center min-h-screen">
+    <section className="relative flex min-h-[100svh] flex-col justify-center overflow-hidden">
       <HeroBackground />
-      <div className="container flex relative z-10 mb-12 flex-grow justify-center items-center px-4 mx-auto mt-32 lg:px-6">
-        <div className="flex flex-wrap gap-12 justify-center items-center py-10 w-full text-center sm:text-left md:flex-nowrap">
+
+      <div className="container relative z-20 mx-auto flex w-full flex-grow items-center justify-center px-4 pt-28 sm:pt-32 lg:px-6">
+        <div className="flex w-full flex-wrap items-center justify-center gap-10 py-10 text-center sm:text-left md:flex-nowrap">
           <HeroTextSection />
-          {loading ? (
-            <div className="flex items-center justify-center w-full md:w-1/2">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-            </div>
-          ) : error ? (
-            <div className="flex items-center justify-center w-full md:w-1/2">
-              <p className="text-red-500">Could not load products.</p>
-            </div>
-          ) : (
-            <HeroProductGrid products={heroProducts} />
-          )}
+
+          {/* Right: products / states */}
+          <div className="w-full md:w-1/2">
+            {loading ? (
+              <div className="mx-auto flex h-64 max-w-sm items-center justify-center rounded-xl border border-white/10 bg-white/50 shadow-sm backdrop-blur dark:bg-neutral-900/50">
+                <Loader2 className="h-7 w-7 animate-spin text-blue-600" />
+              </div>
+            ) : error ? (
+              <div className="mx-auto max-w-sm rounded-xl border border-rose-400/30 bg-rose-50/60 p-4 text-rose-700 dark:border-rose-400/20 dark:bg-rose-900/20 dark:text-rose-200">
+                Couldn’t load featured products. Please refresh.
+              </div>
+            ) : (
+              <HeroProductGrid products={heroProducts} />
+            )}
+          </div>
         </div>
       </div>
 
-      <ScrollCue />
+      {showCue && <ScrollCue />}
     </section>
   );
 }
 
 function ScrollCue() {
   return (
-    <div className="absolute bottom-8 left-1/2 z-10 text-black animate-bounce -translate-x-1/2 dark:text-gray-200">
-      <div className="flex flex-col items-center space-y-2">
+    <div className="absolute bottom-8 left-1/2 z-10 -translate-x-1/2 text-black dark:text-gray-200">
+      <div className="flex flex-col items-center space-y-2 animate-pulse">
         <div className="text-xs font-medium">Scroll to explore</div>
-        <ArrowRight className="w-4 h-4 rotate-90" />
+        <ArrowRight className="h-4 w-4 rotate-90" />
       </div>
     </div>
   );
