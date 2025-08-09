@@ -15,7 +15,8 @@ import {
   LogOut,
   Menu,
   X,
-  Newspaper
+  Newspaper,
+  Megaphone
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -28,6 +29,7 @@ const navigation = [
   { name: "Orders", href: "/admin/orders", icon: ShoppingCart },
   { name: "Customers", href: "/admin/customers", icon: Users },
   { name: "Blog", href: "/admin/blog", icon: Newspaper },
+  { name: "Announcements", href: "/admin/announcements", icon: Megaphone },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
