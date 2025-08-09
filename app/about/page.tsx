@@ -96,7 +96,7 @@ export default function AboutPage() {
               allowing you to focus on the road ahead and the joy of cycling.
             </motion.p>
             <motion.p variants={itemVariants}>
-              From our innovative chamois creams to our durable handlebar tapes,
+              From our innovative chamois creams
               every Zevlin product is a testament to our dedication to quality,
               natural ingredients, and rigorous testing by professional riders.
               We don&apos;t just sell products; we offer solutions crafted from
