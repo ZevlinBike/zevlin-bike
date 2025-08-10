@@ -40,18 +40,23 @@ export type RecentOrder = {
   id: string;
   total_cents: number;
   status: string;
+  payment_status: string;
+  order_status: string;
+  shipping_status: string;
   created_at: string;
   customers: {
     first_name: string;
     last_name: string;
-  }[] | null;
+  } | null;
 };
 
 export async function getRecentOrders(): Promise<RecentOrder[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("orders")
-    .select("id, total_cents, status, created_at, customers(first_name, last_name)")
+    .select(
+      "id, total_cents, status, payment_status, order_status, shipping_status, created_at, customers(first_name, last_name)"
+    )
     .order("created_at", { ascending: false })
     .limit(5);
 
@@ -60,5 +65,16 @@ export async function getRecentOrders(): Promise<RecentOrder[]> {
     return [];
   }
 
-  return data;
+  type CustomerName = { first_name: string; last_name: string };
+  type RecentOrderRow = Omit<RecentOrder, "customers"> & {
+    customers: CustomerName | CustomerName[] | null;
+  };
+
+  // Normalize embedded customers to a single object (first match) for typing
+  const normalized: RecentOrder[] = (data as unknown as RecentOrderRow[]).map((row) => ({
+    ...row,
+    customers: Array.isArray(row.customers) ? row.customers[0] ?? null : row.customers,
+  }));
+
+  return normalized;
 }

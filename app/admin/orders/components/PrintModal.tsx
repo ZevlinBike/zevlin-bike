@@ -23,8 +23,8 @@ export function PrintModal({ orderId }: { orderId: string }) {
 
   // UI-only zoom (screen preview). Print resets to 100%.
   const [scale, setScale] = useState(0.9); // mobile-first starting zoom
-  const minScale = 0.7;
-  const maxScale = 1.15;
+  const minScale = 0.5;
+  const maxScale = 1.5;
   const step = 0.05;
 
   const handlePrint = useReactToPrint({
@@ -94,7 +94,7 @@ export function PrintModal({ orderId }: { orderId: string }) {
             size="sm"
             onClick={handlePrint}
             disabled={isLoading || !orderDetails}
-            className="gap-2"
+            className="gap-2 text-black"
           >
             <Printer className="h-4 w-4" />
             <span className="hidden xs:inline">Print</span>
@@ -110,7 +110,7 @@ export function PrintModal({ orderId }: { orderId: string }) {
               flex items-center gap-2
               w-fit ml-auto
               rounded-full border bg-white/90 dark:bg-black/90 backdrop-blur px-2 py-1
-              shadow-sm
+              shadow-sm text-black
             ">
               <button
                 onClick={zoomOut}

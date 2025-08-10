@@ -10,6 +10,11 @@ export interface Product {
   created_at?: string;
   product_images: ProductImage[];
   product_variants: ProductVariant[];
+  // Shipping-related (added via migration 0007)
+  weight_g?: number | null;
+  length_cm?: number | null;
+  width_cm?: number | null;
+  height_cm?: number | null;
 }
 
 export interface ProductImage {
@@ -28,6 +33,11 @@ export interface ProductVariant {
   sku?: string;
   inventory?: number;
   created_at?: string;
+  // Shipping-related (added via migration 0007)
+  weight_g?: number | null;
+  length_cm?: number | null;
+  width_cm?: number | null;
+  height_cm?: number | null;
 }
 
 export interface Customer {

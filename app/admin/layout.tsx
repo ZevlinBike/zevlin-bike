@@ -25,6 +25,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const navigation = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
+  { name: "Fulfillment", href: "/admin/fulfillment", icon: Package },
   { name: "Products", href: "/admin/products", icon: Package },
   { name: "Orders", href: "/admin/orders", icon: ShoppingCart },
   { name: "Customers", href: "/admin/customers", icon: Users },

@@ -11,6 +11,11 @@ const productSchema = z.object({
   description: z.string().optional(),
   price: z.coerce.number(),
   slug: z.string(),
+  // Shipping fields (optional in form)
+  weight_g: z.coerce.number().optional(),
+  length_cm: z.coerce.number().optional(),
+  width_cm: z.coerce.number().optional(),
+  height_cm: z.coerce.number().optional(),
 });
 
 type ProductFromSupabase = Omit<Product, 'product_images' | 'product_variants'> & {
@@ -71,7 +76,7 @@ export async function addOrUpdateProduct(formData: FormData) {
   if (!validated.success) {
     return { error: "Invalid product data." };
   }
-  const { id, name, description, price, slug } = validated.data;
+  const { id, name, description, price, slug, weight_g, length_cm, width_cm, height_cm } = validated.data;
 
   // 1. Upsert the product details
   const { data: productData, error: productError } = await supabase
@@ -82,6 +87,11 @@ export async function addOrUpdateProduct(formData: FormData) {
       description,
       price_cents: price,
       slug,
+      // Shipping-related fields
+      weight_g: typeof weight_g === 'number' && !Number.isNaN(weight_g) ? Math.max(0, Math.round(weight_g)) : undefined,
+      length_cm: typeof length_cm === 'number' && !Number.isNaN(length_cm) ? length_cm : undefined,
+      width_cm: typeof width_cm === 'number' && !Number.isNaN(width_cm) ? width_cm : undefined,
+      height_cm: typeof height_cm === 'number' && !Number.isNaN(height_cm) ? height_cm : undefined,
     })
     .select()
     .single();

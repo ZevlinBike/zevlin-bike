@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { validateAddress } from "@/lib/shippo";
 import { CartItem } from "@/store/cartStore";
 import Stripe from 'stripe';
 
@@ -9,14 +10,35 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 const checkoutFormSchema = z.object({
   email: z.string().email(),
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
-  address: z.string().min(1),
-  city: z.string().min(1),
-  state: z.string().min(1),
-  zipCode: z.string().min(1),
   phone: z.string().optional(),
-});
+
+  // Shipping address (required)
+  shippingFirstName: z.string().min(1),
+  shippingLastName: z.string().min(1),
+  shippingAddress: z.string().min(1),
+  shippingCity: z.string().min(1),
+  shippingState: z.string().min(1),
+  shippingZipCode: z.string().min(1),
+
+  // Billing address
+  billingSameAsShipping: z.coerce.boolean().default(true),
+  billingFirstName: z.string().optional(),
+  billingLastName: z.string().optional(),
+  billingAddress: z.string().optional(),
+  billingCity: z.string().optional(),
+  billingState: z.string().optional(),
+  billingZipCode: z.string().optional(),
+}).refine((data) => {
+  if (data.billingSameAsShipping) return true;
+  return (
+    !!data.billingFirstName &&
+    !!data.billingLastName &&
+    !!data.billingAddress &&
+    !!data.billingCity &&
+    !!data.billingState &&
+    !!data.billingZipCode
+  );
+}, { message: "Billing address is required when not same as shipping", path: ["billingSameAsShipping"] });
 
 const costsSchema = z.object({
   subtotal: z.number(),
@@ -52,12 +74,32 @@ export async function processCheckout(
 
   let customerId: string;
 
+  // Validate shipping address via Shippo before charging
+  const validation = await validateAddress({
+    name: `${checkoutData.shippingFirstName} ${checkoutData.shippingLastName}`,
+    address1: checkoutData.shippingAddress,
+    city: checkoutData.shippingCity,
+    state: checkoutData.shippingState,
+    postal_code: checkoutData.shippingZipCode,
+    country: 'US',
+  });
+  if (!validation.isValid) {
+    return {
+      errors: {
+        _form: [
+          validation.messages?.[0] ||
+            "The shipping address appears invalid. Please review and try again.",
+        ],
+      },
+    };
+  }
+
   try {
     // Step 1: Find or Create Customer before anything else.
     if (user) {
       const { data: customer, error } = await supabase
         .from("customers")
-        .select("id")
+        .select("id, first_name, last_name")
         .eq("auth_user_id", user.id)
         .single();
 
@@ -67,12 +109,15 @@ export async function processCheckout(
       
       if (customer) {
         customerId = customer.id;
+        // If the customer exists, we can assume their name is already correct
+        // and don't need to update it. We'll use the shipping name for the
+        // shipping details only.
       } else {
         const { data: newCustomer, error: newCustomerError } = await supabase
           .from("customers")
           .insert({
-            first_name: checkoutData.firstName,
-            last_name: checkoutData.lastName,
+            first_name: checkoutData.shippingFirstName,
+            last_name: checkoutData.shippingLastName,
             email: checkoutData.email,
             phone: checkoutData.phone,
             auth_user_id: user.id,
@@ -100,8 +145,8 @@ export async function processCheckout(
         const { data: newCustomer, error: newCustomerError } = await supabase
           .from("customers")
           .insert({
-            first_name: checkoutData.firstName,
-            last_name: checkoutData.lastName,
+            first_name: checkoutData.shippingFirstName,
+            last_name: checkoutData.shippingLastName,
             email: checkoutData.email,
             phone: checkoutData.phone,
           })
@@ -137,17 +182,33 @@ export async function processCheckout(
       .from("orders")
       .insert({
         customer_id: customerId,
+        status: 'paid',
+        payment_status: 'paid',
+        order_status: 'pending_fulfillment',
+        shipping_status: 'not_shipped',
         subtotal_cents: Math.round(costData.subtotal * 100),
         shipping_cost_cents: Math.round(costData.shipping * 100),
         tax_cents: Math.round(costData.tax * 100),
         discount_cents: Math.round(costData.discount * 100),
         total_cents: totalInCents,
         stripe_payment_intent_id: paymentIntent.id,
-        billing_name: `${checkoutData.firstName} ${checkoutData.lastName}`,
-        billing_address_line1: checkoutData.address,
-        billing_city: checkoutData.city,
-        billing_state: checkoutData.state,
-        billing_postal_code: checkoutData.zipCode,
+        billing_name: `${
+          checkoutData.billingSameAsShipping
+            ? checkoutData.shippingFirstName + ' ' + checkoutData.shippingLastName
+            : `${checkoutData.billingFirstName} ${checkoutData.billingLastName}`
+        }`,
+        billing_address_line1: checkoutData.billingSameAsShipping
+          ? checkoutData.shippingAddress
+          : checkoutData.billingAddress!,
+        billing_city: checkoutData.billingSameAsShipping
+          ? checkoutData.shippingCity
+          : checkoutData.billingCity!,
+        billing_state: checkoutData.billingSameAsShipping
+          ? checkoutData.shippingState
+          : checkoutData.billingState!,
+        billing_postal_code: checkoutData.billingSameAsShipping
+          ? checkoutData.shippingZipCode
+          : checkoutData.billingZipCode!,
         billing_country: 'US',
       })
       .select("id")
@@ -169,11 +230,12 @@ export async function processCheckout(
 
     const { error: shippingDetailsError } = await supabase.from("shipping_details").insert({
       order_id: orderId,
-      name: `${checkoutData.firstName} ${checkoutData.lastName}`,
-      address_line1: checkoutData.address,
-      city: checkoutData.city,
-      state: checkoutData.state,
-      postal_code: checkoutData.zipCode,
+      name: `${checkoutData.shippingFirstName} ${checkoutData.shippingLastName}`,
+      address_line1: checkoutData.shippingAddress,
+      address_line2: null,
+      city: checkoutData.shippingCity,
+      state: checkoutData.shippingState,
+      postal_code: checkoutData.shippingZipCode,
       country: 'US',
     });
     if (shippingDetailsError) throw shippingDetailsError;

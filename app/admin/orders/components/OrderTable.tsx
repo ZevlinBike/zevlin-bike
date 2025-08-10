@@ -9,20 +9,47 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { Order, Customer } from "@/lib/schema";
-import { updateOrderStatus } from "../actions";
-import { toast } from "sonner";
 import { PrintModal } from "./PrintModal";
 
 type OrderWithCustomer = Order & {
   customers: Pick<Customer, "first_name" | "last_name" | "email"> | null;
+  payment_status: string | null;
+  order_status: string | null;
+  shipping_status: string | null;
+};
+
+// Map statuses to utility classes compatible with the Badge component
+const getStatusClass = (status: string | null): string => {
+  switch (status) {
+    case "paid":
+    case "fulfilled":
+    case "delivered":
+      return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300";
+    case "pending_fulfillment":
+    case "shipped":
+      return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300";
+    case "pending":
+    case "pending_payment":
+      return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300";
+    case "cancelled":
+    case "refunded":
+    case "returned":
+    case "partially_refunded":
+      return "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300";
+    default:
+      return "";
+  }
+};
+
+const formatStatus = (status: string | null) => {
+  if (!status) return "";
+  return status
+    .replace(/_/g, " ")
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 };
 
 export default function OrderTable({
@@ -31,15 +58,6 @@ export default function OrderTable({
   orders: OrderWithCustomer[];
 }) {
   const router = useRouter();
-
-  const handleStatusChange = async (orderId: string, status: string) => {
-    const result = await updateOrderStatus(orderId, status);
-    if (result.success) {
-      toast.success("Order status updated successfully.");
-    } else {
-      toast.error(result.error || "Failed to update order status.");
-    }
-  };
 
   const handleRowClick = (orderId: string) => {
     router.push(`/admin/order/${orderId}`);
@@ -53,7 +71,9 @@ export default function OrderTable({
             <TableHead>Order ID</TableHead>
             <TableHead>Customer</TableHead>
             <TableHead>Date</TableHead>
-            <TableHead>Status</TableHead>
+            <TableHead>Payment</TableHead>
+            <TableHead>Order Status</TableHead>
+            <TableHead>Shipping</TableHead>
             <TableHead className="text-right">Total</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
@@ -79,22 +99,20 @@ export default function OrderTable({
               <TableCell>
                 {new Date(order.created_at!).toLocaleDateString()}
               </TableCell>
-              <TableCell onClick={(e) => e.stopPropagation()}>
-                <Select
-                  defaultValue={order.status}
-                  onValueChange={(value) => handleStatusChange(order.id, value)}
-                >
-                  <SelectTrigger className="w-[120px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="paid">Paid</SelectItem>
-                    <SelectItem value="fulfilled">Fulfilled</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                    <SelectItem value="refunded">Refunded</SelectItem>
-                  </SelectContent>
-                </Select>
+              <TableCell>
+                <Badge variant="secondary" className={getStatusClass(order.payment_status)}>
+                  {formatStatus(order.payment_status)}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                <Badge variant="secondary" className={getStatusClass(order.order_status)}>
+                  {formatStatus(order.order_status)}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                <Badge variant="secondary" className={getStatusClass(order.shipping_status)}>
+                  {formatStatus(order.shipping_status)}
+                </Badge>
               </TableCell>
               <TableCell className="text-right font-medium">
                 ${(order.total_cents / 100).toFixed(2)}

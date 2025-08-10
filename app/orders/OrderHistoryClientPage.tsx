@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Table,
   TableBody,
@@ -36,6 +37,7 @@ import { toast } from "sonner";
 
 const OrderRow = ({ order }: { order: OrderWithLineItems }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const router = useRouter();
 
   const handleStatusUpdate = async (status: "cancelled" | "refunded") => {
     const confirmationText = status === 'cancelled' 
@@ -112,14 +114,17 @@ const OrderRow = ({ order }: { order: OrderWithLineItems }) => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="md:col-span-2 space-y-4">
                     <h4 className="font-semibold">Order Details</h4>
-                    {order.line_items.map((item, index) => (
-                      item.products && (
+                    {order.line_items.map((item, index) => {
+                      if (!item.products) return null;
+                      type ProductImage = { url: string; is_featured: boolean };
+                      const pi = item.products.product_images as ProductImage | ProductImage[] | null;
+                      const list: ProductImage[] = Array.isArray(pi) ? pi : (pi ? [pi] : []);
+                      const featured = list.find((im) => im?.is_featured) || list[0];
+                      const src = featured?.url || "/images/logo.png";
+                      return (
                         <div key={index} className="flex items-center gap-4">
                           <Image
-                            src={
-                              item.products.product_images?.[0]?.url ||
-                              "/images/placeholder.png"
-                            }
+                            src={src}
                             alt={item.products.name}
                             width={64}
                             height={64}
@@ -132,13 +137,21 @@ const OrderRow = ({ order }: { order: OrderWithLineItems }) => {
                             </p>
                           </div>
                         </div>
-                      )
-                    ))}
+                      );
+                    })}
                   </div>
                   <div className="space-y-4">
                     <h4 className="font-semibold">Actions</h4>
                     <div className="flex flex-col gap-2">
-                      <Button variant="outline" size="sm" className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center gap-2"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/order/${order.id}`);
+                        }}
+                      >
                         <FileText className="w-4 h-4" />
                         View Invoice
                       </Button>

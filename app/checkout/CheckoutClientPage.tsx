@@ -22,13 +22,22 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
 
 interface CheckoutForm {
   email: string;
-  firstName: string;
-  lastName: string;
-  address: string;
-  city: string;
-  state: string;
-  zipCode: string;
   phone: string;
+  // Shipping
+  shippingFirstName: string;
+  shippingLastName: string;
+  shippingAddress: string;
+  shippingCity: string;
+  shippingState: string;
+  shippingZipCode: string;
+  // Billing
+  billingSameAsShipping: boolean;
+  billingFirstName?: string;
+  billingLastName?: string;
+  billingAddress?: string;
+  billingCity?: string;
+  billingState?: string;
+  billingZipCode?: string;
 }
 
 const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Customer | null }) => {
@@ -47,13 +56,20 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
 
   const [formData, setFormData] = useState<CheckoutForm>({
     email: user?.email || (customer?.email || ""),
-    firstName: customer?.first_name || "",
-    lastName: customer?.last_name || "",
-    address: "",
-    city: "",
-    state: "",
-    zipCode: "",
     phone: customer?.phone || "",
+    shippingFirstName: customer?.first_name || "",
+    shippingLastName: customer?.last_name || "",
+    shippingAddress: "",
+    shippingCity: "",
+    shippingState: "",
+    shippingZipCode: "",
+    billingSameAsShipping: true,
+    billingFirstName: "",
+    billingLastName: "",
+    billingAddress: "",
+    billingCity: "",
+    billingState: "",
+    billingZipCode: "",
   });
 
   const [checkoutMode, setCheckoutMode] = useState<'guest' | 'login'>('guest');
@@ -68,9 +84,9 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
         setFormData(prev => ({
           ...prev,
           email: user.email || '',
-          firstName: customer.first_name || '',
-          lastName: customer.last_name || '',
           phone: customer.phone || '',
+          shippingFirstName: customer.first_name || '',
+          shippingLastName: customer.last_name || '',
         }));
       } else if (user && !customer) {
         router.push('/auth/create-profile');
@@ -90,6 +106,39 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
       [name]: value
     }));
   };
+
+  const handleToggleBillingSame = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const checked = e.target.checked;
+    setFormData(prev => ({ ...prev, billingSameAsShipping: checked }));
+  };
+
+  async function validateShippingAddress() {
+    try {
+      const res = await fetch('/api/shipping/validate-address', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          address: {
+            name: `${formData.shippingFirstName} ${formData.shippingLastName}`.trim(),
+            address1: formData.shippingAddress,
+            city: formData.shippingCity,
+            state: formData.shippingState,
+            postal_code: formData.shippingZipCode,
+            country: 'US',
+          }
+        })
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to validate address');
+      if (json.isValid) {
+        toast.success('Shipping address looks good');
+      } else {
+        toast.error(json.messages?.[0] || 'Address appears invalid');
+      }
+    } catch (e: unknown) {
+      toast.error((e as Error).message || 'Validation failed');
+    }
+  }
 
   const handlePromoCode = () => {
     const codes = {
@@ -383,28 +432,28 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
                             First Name *
                           </label>
                           <Input
-                            id="firstName"
-                            name="firstName"
+                            id="shippingFirstName"
+                            name="shippingFirstName"
                             required
-                            value={formData.firstName}
+                            value={formData.shippingFirstName}
                             onChange={handleInputChange}
                             placeholder="John"
                           />
-                          {errors.firstName && <p className="text-red-500 text-sm mt-1">{errors.firstName[0]}</p>}
+                          {errors.shippingFirstName && <p className="text-red-500 text-sm mt-1">{errors.shippingFirstName[0]}</p>}
                         </div>
                         <div>
                           <label htmlFor="lastName" className="block text-sm font-medium mb-2">
                             Last Name *
                           </label>
                           <Input
-                            id="lastName"
-                            name="lastName"
+                            id="shippingLastName"
+                            name="shippingLastName"
                             required
-                            value={formData.lastName}
+                            value={formData.shippingLastName}
                             onChange={handleInputChange}
                             placeholder="Doe"
                           />
-                          {errors.lastName && <p className="text-red-500 text-sm mt-1">{errors.lastName[0]}</p>}
+                          {errors.shippingLastName && <p className="text-red-500 text-sm mt-1">{errors.shippingLastName[0]}</p>}
                         </div>
                       </div>
                       
@@ -413,14 +462,19 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
                           Street Address *
                         </label>
                         <Input
-                          id="address"
-                          name="address"
+                          id="shippingAddress"
+                          name="shippingAddress"
                           required
-                          value={formData.address}
+                          value={formData.shippingAddress}
                           onChange={handleInputChange}
                           placeholder="123 Main St"
                         />
-                        {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address[0]}</p>}
+                        {errors.shippingAddress && <p className="text-red-500 text-sm mt-1">{errors.shippingAddress[0]}</p>}
+                        <div className="mt-2">
+                          <Button type="button" variant="outline" size="sm" onClick={validateShippingAddress}>
+                            Validate Address
+                          </Button>
+                        </div>
                       </div>
                       
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -429,44 +483,155 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
                             City *
                           </label>
                           <Input
-                            id="city"
-                            name="city"
+                            id="shippingCity"
+                            name="shippingCity"
                             required
-                            value={formData.city}
+                            value={formData.shippingCity}
                             onChange={handleInputChange}
                             placeholder="New York"
                           />
-                          {errors.city && <p className="text-red-500 text-sm mt-1">{errors.city[0]}</p>}
+                          {errors.shippingCity && <p className="text-red-500 text-sm mt-1">{errors.shippingCity[0]}</p>}
                         </div>
                         <div>
                           <label htmlFor="state" className="block text-sm font-medium mb-2">
                             State *
                           </label>
                           <Input
-                            id="state"
-                            name="state"
+                            id="shippingState"
+                            name="shippingState"
                             required
-                            value={formData.state}
+                            value={formData.shippingState}
                             onChange={handleInputChange}
                             placeholder="NY"
                           />
-                          {errors.state && <p className="text-red-500 text-sm mt-1">{errors.state[0]}</p>}
+                          {errors.shippingState && <p className="text-red-500 text-sm mt-1">{errors.shippingState[0]}</p>}
                         </div>
                         <div>
                           <label htmlFor="zipCode" className="block text-sm font-medium mb-2">
                             ZIP Code *
                           </label>
                           <Input
-                            id="zipCode"
-                            name="zipCode"
+                            id="shippingZipCode"
+                            name="shippingZipCode"
                             required
-                            value={formData.zipCode}
+                            value={formData.shippingZipCode}
                             onChange={handleInputChange}
                             placeholder="10001"
                           />
-                          {errors.zipCode && <p className="text-red-500 text-sm mt-1">{errors.zipCode[0]}</p>}
+                          {errors.shippingZipCode && <p className="text-red-500 text-sm mt-1">{errors.shippingZipCode[0]}</p>}
                         </div>
                       </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <CreditCard className="w-5 h-5" />
+                        Billing Address
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <input
+                          id="billingSameAsShipping"
+                          name="billingSameAsShipping"
+                          type="checkbox"
+                          checked={formData.billingSameAsShipping}
+                          onChange={handleToggleBillingSame}
+                        />
+                        <label htmlFor="billingSameAsShipping" className="text-sm">
+                          Same as shipping
+                        </label>
+                      </div>
+
+                      {!formData.billingSameAsShipping && (
+                        <>
+                          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <div>
+                              <label htmlFor="billingFirstName" className="block text-sm font-medium mb-2">
+                                First Name *
+                              </label>
+                              <Input
+                                id="billingFirstName"
+                                name="billingFirstName"
+                                value={formData.billingFirstName}
+                                onChange={handleInputChange}
+                                placeholder="John"
+                              />
+                              {errors.billingFirstName && <p className="text-red-500 text-sm mt-1">{errors.billingFirstName[0]}</p>}
+                            </div>
+                            <div>
+                              <label htmlFor="billingLastName" className="block text-sm font-medium mb-2">
+                                Last Name *
+                              </label>
+                              <Input
+                                id="billingLastName"
+                                name="billingLastName"
+                                value={formData.billingLastName}
+                                onChange={handleInputChange}
+                                placeholder="Doe"
+                              />
+                              {errors.billingLastName && <p className="text-red-500 text-sm mt-1">{errors.billingLastName[0]}</p>}
+                            </div>
+                          </div>
+                          <div>
+                            <label htmlFor="billingAddress" className="block text-sm font-medium mb-2">
+                              Street Address *
+                            </label>
+                            <Input
+                              id="billingAddress"
+                              name="billingAddress"
+                              value={formData.billingAddress}
+                              onChange={handleInputChange}
+                              placeholder="123 Main St"
+                            />
+                            {errors.billingAddress && <p className="text-red-500 text-sm mt-1">{errors.billingAddress[0]}</p>}
+                          </div>
+
+                          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                            <div>
+                              <label htmlFor="billingCity" className="block text-sm font-medium mb-2">
+                                City *
+                              </label>
+                              <Input
+                                id="billingCity"
+                                name="billingCity"
+                                value={formData.billingCity}
+                                onChange={handleInputChange}
+                                placeholder="New York"
+                              />
+                              {errors.billingCity && <p className="text-red-500 text-sm mt-1">{errors.billingCity[0]}</p>}
+                            </div>
+                            <div>
+                              <label htmlFor="billingState" className="block text-sm font-medium mb-2">
+                                State *
+                              </label>
+                              <Input
+                                id="billingState"
+                                name="billingState"
+                                value={formData.billingState}
+                                onChange={handleInputChange}
+                                placeholder="NY"
+                              />
+                              {errors.billingState && <p className="text-red-500 text-sm mt-1">{errors.billingState[0]}</p>}
+                            </div>
+                            <div>
+                              <label htmlFor="billingZipCode" className="block text-sm font-medium mb-2">
+                                ZIP Code *
+                              </label>
+                              <Input
+                                id="billingZipCode"
+                                name="billingZipCode"
+                                value={formData.billingZipCode}
+                                onChange={handleInputChange}
+                                placeholder="10001"
+                              />
+                              {errors.billingZipCode && <p className="text-red-500 text-sm mt-1">{errors.billingZipCode[0]}</p>}
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </CardContent>
                   </Card>
 

@@ -2,7 +2,6 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { Order } from "@/lib/schema";
-import { revalidatePath } from "next/cache";
 
 export type OrderWithCustomer = Order & {
   customers: {
@@ -10,11 +9,16 @@ export type OrderWithCustomer = Order & {
     last_name: string;
     email: string;
   } | null;
+  payment_status: string | null;
+  order_status: string | null;
+  shipping_status: string | null;
 };
 
 export async function getOrders(
   query: string,
-  status: string
+  paymentStatus: string,
+  orderStatus: string,
+  shippingStatus: string
 ): Promise<OrderWithCustomer[]> {
   const supabase = await createClient();
   let queryBuilder = supabase
@@ -28,8 +32,14 @@ export async function getOrders(
     );
   }
 
-  if (status && status !== "all") {
-    queryBuilder = queryBuilder.eq("status", status);
+  if (paymentStatus) {
+    queryBuilder = queryBuilder.eq("payment_status", paymentStatus);
+  }
+  if (orderStatus) {
+    queryBuilder = queryBuilder.eq("order_status", orderStatus);
+  }
+  if (shippingStatus) {
+    queryBuilder = queryBuilder.eq("shipping_status", shippingStatus);
   }
 
   const { data, error } = await queryBuilder;
@@ -42,35 +52,18 @@ export async function getOrders(
   return data;
 }
 
-export async function updateOrderStatus(orderId: string, status: string) {
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("orders")
-    .update({ status })
-    .eq("id", orderId);
-
-  if (error) {
-    console.error("Error updating order status:", error);
-    return { error: "Could not update order status." };
-  }
-
-  revalidatePath("/admin/orders");
-  return { success: true };
-}
-
 import Stripe from "stripe";
 
 export async function getOrderById(orderId: string) {
   const supabase = await createClient();
   const { data: order, error } = await supabase
     .from("orders")
-    .select(
-      `
+    .select(`
       *,
       customers(*),
-      line_items(*, products(name))
-    `
-    )
+      line_items(*, products(name)),
+      shipping_details(*)
+    `)
     .eq("id", orderId)
     .single();
 

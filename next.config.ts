@@ -3,7 +3,13 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
   images: {
-    domains: ['qyzcesrzhmpisdhdzdsw.supabase.co'], // ← add your Supabase project URL here
+    // Allow any Supabase storage domain and local/public assets
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '*.supabase.co',
+      },
+    ],
   },
 };
 

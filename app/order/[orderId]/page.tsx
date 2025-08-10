@@ -6,11 +6,33 @@ import { Separator } from "@/components/ui/separator";
 import { Customer, LineItem, Order, Product } from "@/lib/schema";
 import { Badge } from "@/components/ui/badge";
 
+type ShipmentLite = {
+  id: string;
+  status: string;
+  carrier: string | null;
+  service: string | null;
+  tracking_number: string | null;
+  tracking_url: string | null;
+  label_url: string | null;
+  created_at?: string | null;
+};
+
+type ShippingDetailsRow = {
+  id: string;
+  name: string | null;
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+  country: string | null;
+};
+
 type OrderDetails = Order & {
   customers: Customer | null;
-  line_items: (LineItem & {
-    products: Product | null;
-  })[];
+  line_items: (LineItem & { products: Product | null })[];
+  shipping_details: ShippingDetailsRow[];
+  shipments: ShipmentLite[];
 };
 
 async function getOrderDetails(orderId: string): Promise<OrderDetails> {
@@ -24,7 +46,9 @@ async function getOrderDetails(orderId: string): Promise<OrderDetails> {
       line_items (
         *,
         products (*)
-      )
+      ),
+      shipping_details (*),
+      shipments (id, status, carrier, service, tracking_number, tracking_url, label_url, created_at)
     `
     )
     .eq("id", orderId)
@@ -38,10 +62,11 @@ async function getOrderDetails(orderId: string): Promise<OrderDetails> {
   return data as OrderDetails;
 }
 
-export default async function Page({ params }: { params: Promise<{ orderId:string }> }) {
-  const resolvedParams = await params;
-  const order = await getOrderDetails(resolvedParams.orderId);
+export default async function Page(ctx: { params: Promise<{ orderId: string }> }) {
+  const { orderId } = await ctx.params;
+  const order = await getOrderDetails(orderId);
   const customer = order.customers;
+  const shipping = order.shipping_details?.[0] || null;
   
   return (
     <MainLayout>
@@ -89,6 +114,56 @@ export default async function Page({ params }: { params: Promise<{ orderId:strin
                       <p>{order.billing_city}, {order.billing_state} {order.billing_postal_code}</p>
                       <p>{order.billing_country}</p>
                     </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="font-semibold mb-2">Shipping Address</h3>
+                    {shipping ? (
+                      <div className="space-y-1 text-sm">
+                        {shipping.name && <p>{shipping.name}</p>}
+                        <p>{shipping.address_line1}</p>
+                        {shipping.address_line2 && <p>{shipping.address_line2}</p>}
+                        <p>{shipping.city}, {shipping.state} {shipping.postal_code}</p>
+                        <p>{shipping.country}</p>
+                      </div>
+                    ) : (
+                      <p className="text-sm">No shipping address on file.</p>
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold mb-2">Shipping & Tracking</h3>
+                    {order.shipments && order.shipments.length > 0 ? (
+                      <ul className="space-y-3 text-sm">
+                        {order.shipments.map((s) => (
+                          <li key={s.id} className="rounded border p-2">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <div className="font-medium capitalize">{s.status}</div>
+                                <div className="text-gray-600 dark:text-gray-400">
+                                  {(s.carrier || '').toUpperCase()} {s.service ? `· ${s.service}` : ''}
+                                </div>
+                                {s.tracking_number && (
+                                  <div className="mt-1">
+                                    <span className="font-medium">Tracking: </span>
+                                    {s.tracking_url ? (
+                                      <a href={s.tracking_url} className="underline" target="_blank" rel="noreferrer">{s.tracking_number}</a>
+                                    ) : (
+                                      <span>{s.tracking_number}</span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                              {s.label_url && (
+                                <a href={s.label_url} target="_blank" rel="noreferrer" className="underline">Label</a>
+                              )}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm">We&apos;ll share tracking once your order ships.</p>
+                    )}
                   </div>
                 </div>
                 <Separator />

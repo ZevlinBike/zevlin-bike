@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Order, Customer, LineItem, Product } from "@/lib/schema";
+import { Order, Customer, LineItem, Product, ShippingDetails } from "@/lib/schema";
 import Logo from "@/components/Logo";
 
 type LineItemWithProduct = LineItem & {
@@ -12,6 +12,11 @@ export type OrderDetails = Order & {
   customers: Customer | null;
   line_items: LineItemWithProduct[];
   card_last4: string | null;
+  // Additional status fields used in admin views
+  payment_status: string | null;
+  order_status: string | null;
+  shipping_status: string | null;
+  shipping_details?: ShippingDetails[];
 };
 
 export function PackingSlip({ order }: { order: OrderDetails }) {
@@ -93,4 +98,3 @@ export function PackingSlip({ order }: { order: OrderDetails }) {
     </div>
   );
 }
-

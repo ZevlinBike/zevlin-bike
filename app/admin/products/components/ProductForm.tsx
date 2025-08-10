@@ -109,6 +109,26 @@ export default function ProductForm({ product, isOpen, onClose }: ProductFormPro
             <p className="text-xs text-gray-500 dark:text-gray-400">Select one or more images to upload.</p>
           </div>
 
+          {/* Shipping fields */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="weight_g">Weight (g)</Label>
+              <Input id="weight_g" name="weight_g" type="number" min={0} step={1} defaultValue={product?.weight_g ?? 0} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="length_cm">Length (cm)</Label>
+              <Input id="length_cm" name="length_cm" type="number" min={0} step={0.1} defaultValue={product?.length_cm ?? ''} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="width_cm">Width (cm)</Label>
+              <Input id="width_cm" name="width_cm" type="number" min={0} step={0.1} defaultValue={product?.width_cm ?? ''} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="height_cm">Height (cm)</Label>
+              <Input id="height_cm" name="height_cm" type="number" min={0} step={0.1} defaultValue={product?.height_cm ?? ''} />
+            </div>
+          </div>
+
           {(previewUrls.length > 0 || (product?.product_images && product.product_images.length > 0)) && (
             <div>
               <Label>Image Previews</Label>

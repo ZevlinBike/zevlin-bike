@@ -1,31 +1,147 @@
 "use client";
 
 import { OrderDetails } from "@/app/admin/orders/components/PackingSlip";
-import { updateOrderStatus } from "@/app/admin/orders/actions";
+
 import {
   Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle,
 } from "@/components/ui/card";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 
 import { PrintModal } from "@/app/admin/orders/components/PrintModal";
+import { useEffect, useState, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { clsx } from "clsx";
 
-type OrderStatus = "pending" | "paid" | "fulfilled" | "cancelled" | "refunded";
-
-
-
 export default function OrderDetailClientPage({ order }: { order: OrderDetails }) {
-  const handleStatusChange = async (status: string) => {
-    const result = await updateOrderStatus(order.id, status);
-    if (result.success) toast.success("Order status updated.");
-    else toast.error(result.error || "Failed to update order status.");
+  // Shipping state
+  type Shipment = {
+    id: string;
+    status: string;
+    carrier: string | null;
+    service: string | null;
+    tracking_number: string | null;
+    tracking_url: string | null;
+    label_url: string | null;
+    created_at?: string | null;
   };
+  type RateOption = {
+    rateObjectId: string;
+    carrier: string;
+    service: string;
+    amountCents: number;
+    currency: string;
+    estimatedDays?: number;
+  };
+
+  const [shipments, setShipments] = useState<Shipment[]>([]);
+  const [rates, setRates] = useState<RateOption[] | null>(null);
+  const [loadingRates, setLoadingRates] = useState(false);
+  const [buying, setBuying] = useState<string | null>(null);
+  const [voidingId, setVoidingId] = useState<string | null>(null);
+  const [refunding, setRefunding] = useState(false);
+
+  async function handleRefund() {
+    if (!confirm("Are you sure you want to refund this order? This action cannot be undone.")) {
+      return;
+    }
+    setRefunding(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${order.id}/refund`, {
+        method: "POST",
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to refund order");
+      toast.success("Order refunded successfully.");
+      // Refresh the page to show the updated status
+      window.location.reload();
+    } catch (e: unknown) {
+      toast.error((e as Error).message || "Failed to refund order");
+    } finally {
+      setRefunding(false);
+    }
+  }
+
+  const loadShipments = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/admin/orders/${order.id}/shipments`, { cache: "no-store" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to load shipments");
+      setShipments(json.shipments || []);
+    } catch (e: unknown) {
+      toast.error((e as Error).message || "Failed to load shipments");
+    }
+  }, [order.id]);
+
+  useEffect(() => {
+    loadShipments();
+  }, [order.id, loadShipments]);
+
+  async function fetchRates() {
+    setLoadingRates(true);
+    try {
+      const res = await fetch(`/api/shipping/rates`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ orderId: order.id }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to get rates");
+      setRates(json.rates || []);
+      toast.success("Fetched live shipping rates");
+    } catch (e: unknown) {
+      toast.error((e as Error).message || "Failed to get rates");
+    } finally {
+      setLoadingRates(false);
+    }
+  }
+
+  async function buyLabel(rate: RateOption) {
+    setBuying(rate.rateObjectId);
+    try {
+      const res = await fetch(`/api/shipping/labels`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          // Idempotency for safety on retries
+          "Idempotency-Key": crypto.randomUUID(),
+        },
+        body: JSON.stringify({ orderId: order.id, rateObjectId: rate.rateObjectId }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to purchase label");
+      toast.success("Label purchased");
+      setRates(null);
+      await loadShipments();
+    } catch (e: unknown) {
+      toast.error((e as Error).message || "Failed to purchase label");
+    } finally {
+      setBuying(null);
+    }
+  }
+
+  async function voidLabelById(shipmentId: string) {
+    setVoidingId(shipmentId);
+    try {
+      const res = await fetch(`/api/shipping/labels/void`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ shipmentId }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to void label");
+      toast.success("Label voided");
+      await loadShipments();
+    } catch (e: unknown) {
+      toast.error((e as Error).message || "Failed to void label");
+    } finally {
+      setVoidingId(null);
+    }
+  }
+  
 
   const orderIdShort = order.id.substring(0, 8);
   const orderDate = order.created_at ? new Date(order.created_at).toLocaleString() : "";
@@ -49,7 +165,17 @@ export default function OrderDetailClientPage({ order }: { order: OrderDetails }
           </div>
 
           <div className="flex items-center gap-2">
-            <StatusPill status={order.status as OrderStatus} />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefund}
+              disabled={refunding}
+            >
+              {refunding ? "Refunding..." : "Refund"}
+            </Button>
+            <StatusPill status={order.payment_status} />
+            <StatusPill status={order.order_status} />
+            <StatusPill status={order.shipping_status} />
             <PrintModal orderId={order.id} />
           </div>
         </div>
@@ -167,30 +293,89 @@ export default function OrderDetailClientPage({ order }: { order: OrderDetails }
 
         {/* Right column */}
         <div className="grid gap-6">
-          {/* Status */}
+          {/* Shipping */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle>Order Status</CardTitle>
-              <CardDescription>Set the current fulfillment state.</CardDescription>
+              <CardTitle>Shipping</CardTitle>
+              <CardDescription>Rates, labels, and tracking.</CardDescription>
             </CardHeader>
-            <CardContent>
-              <Select defaultValue={order.status} onValueChange={handleStatusChange}>
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {["pending", "paid", "fulfilled", "cancelled", "refunded"].map((s) => (
-                    <SelectItem key={s} value={s}>
-                      <div className="flex items-center gap-2">
-                        <Dot className={statusColor(s)} />
-                        <span className="capitalize">{s}</span>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  {shipments.length > 0 ? (
+                    <span>{shipments.length} shipment{shipments.length > 1 ? "s" : ""} found</span>
+                  ) : (
+                    <span>No shipments yet</span>
+                  )}
+                </div>
+                <Button size="sm" onClick={fetchRates} disabled={loadingRates}>
+                  {loadingRates ? "Getting rates…" : "Get Rates"}
+                </Button>
+              </div>
+
+              {/* Rates list */}
+              {rates && rates.length > 0 && (
+                <div className="space-y-2">
+                  {rates.map((r) => (
+                    <div key={r.rateObjectId} className="flex items-center justify-between rounded border p-2">
+                      <div className="text-sm">
+                        <div className="font-medium">
+                          {r.carrier} · {r.service}
+                        </div>
+                        <div className="text-gray-600 dark:text-gray-400">
+                          {money(r.amountCents)}
+                          {r.estimatedDays ? ` · ~${r.estimatedDays} day(s)` : ""}
+                        </div>
                       </div>
-                    </SelectItem>
+                      <Button size="sm" onClick={() => buyLabel(r)} disabled={buying === r.rateObjectId}>
+                        {buying === r.rateObjectId ? "Buying…" : "Buy Label"}
+                      </Button>
+                    </div>
                   ))}
-                </SelectContent>
-              </Select>
+                </div>
+              )}
+
+              {/* Shipments list */}
+              <div className="space-y-2">
+                {shipments.map((s) => (
+                  <div key={s.id} className="rounded border p-2">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm">
+                        <div className="font-medium flex items-center gap-2">
+                          <Badge variant="secondary" className="capitalize">{s.status}</Badge>
+                          <span>
+                            {(s.carrier || "").toUpperCase()} {s.service ? `· ${s.service}` : ""}
+                          </span>
+                        </div>
+                        <div className="text-gray-600 dark:text-gray-400 mt-0.5">
+                          {s.tracking_number ? (
+                            <a className="underline" href={s.tracking_url ?? undefined} target="_blank" rel="noreferrer">
+                              {s.tracking_number}
+                            </a>
+                          ) : (
+                            <span>No tracking</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {s.label_url && (
+                          <a className="text-sm underline" href={s.label_url} target="_blank" rel="noreferrer">
+                            Download Label
+                          </a>
+                        )}
+                        {s.status === "purchased" && (
+                          <Button size="sm" variant="outline" onClick={() => voidLabelById(s.id)} disabled={voidingId === s.id}>
+                            {voidingId === s.id ? "Voiding…" : "Void Label"}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
+          
 
           {/* Customer */}
           <Card>
@@ -212,12 +397,23 @@ export default function OrderDetailClientPage({ order }: { order: OrderDetails }
                 <div>
                   <div className="mb-1 font-medium text-sm">Shipping Address</div>
                   <address className="not-italic text-sm text-gray-700 dark:text-gray-300">
-                    {order.billing_address_line1}
-                    {order.billing_address_line2 && <> <br />{order.billing_address_line2}</>}
-                    <br />
-                    {order.billing_city}, {order.billing_state} {order.billing_postal_code}
-                    <br />
-                    {order.billing_country}
+                    {(() => {
+                      const sd = order.shipping_details?.[0];
+                      const lines = [
+                        sd?.address_line1 ?? order.billing_address_line1,
+                        sd?.address_line2 ?? order.billing_address_line2,
+                      ].filter(Boolean);
+                      return (
+                        <>
+                          {lines[0]}
+                          {lines[1] && (<><br />{lines[1]}</>)}
+                          <br />
+                          {(sd?.city ?? order.billing_city)}, {(sd?.state ?? order.billing_state)} {(sd?.postal_code ?? order.billing_postal_code)}
+                          <br />
+                          {(sd?.country ?? order.billing_country)}
+                        </>
+                      );
+                    })()}
                   </address>
                 </div>
 
@@ -265,8 +461,9 @@ export default function OrderDetailClientPage({ order }: { order: OrderDetails }
 
 /* --- Small bits --- */
 
-function StatusPill({ status }: { status: OrderStatus }) {
-  const label = status?.charAt(0).toUpperCase() + status?.slice(1);
+function StatusPill({ status }: { status: string | null }) {
+  if (!status) return null;
+  const label = formatStatus(status);
   return (
     <span
       className={clsx(
@@ -292,46 +489,54 @@ function Dot({ className }: { className?: string }) {
   );
 }
 
-function pillColor(s: string) {
+const formatStatus = (status: string | null) => {
+  if (!status) return "";
+  return status
+    .replace(/_/g, " ")
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+
+function pillColor(s: string | null) {
   switch (s) {
     case "paid":
-      return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300";
     case "fulfilled":
+    case "delivered":
+      return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300";
+    case "pending_fulfillment":
+    case "shipped":
       return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300";
+    case "pending":
+    case "pending_payment":
+      return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300";
     case "cancelled":
-      return "bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300";
     case "refunded":
+    case "returned":
+    case "partially_refunded":
       return "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300";
     default:
       return "bg-gray-100 text-gray-800 dark:bg-neutral-800 dark:text-gray-300";
   }
 }
-function dotColor(s: string) {
+function dotColor(s: string | null) {
   switch (s) {
     case "paid":
-      return "text-emerald-500";
     case "fulfilled":
+    case "delivered":
+      return "text-emerald-500";
+    case "pending_fulfillment":
+    case "shipped":
       return "text-blue-500";
+    case "pending":
+    case "pending_payment":
+      return "text-yellow-500";
     case "cancelled":
-      return "text-rose-500";
     case "refunded":
+    case "returned":
+    case "partially_refunded":
       return "text-amber-500";
     default:
       return "text-gray-400";
   }
 }
-function statusColor(s: string) {
-  switch (s) {
-    case "paid":
-      return "text-emerald-500";
-    case "fulfilled":
-      return "text-blue-500";
-    case "cancelled":
-      return "text-rose-500";
-    case "refunded":
-      return "text-amber-500";
-    default:
-      return "text-gray-400";
-  }
-}
-
