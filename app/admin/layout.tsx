@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-
+import { createClient } from "@/lib/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
 
 const navigation = [
@@ -37,6 +37,13 @@ const navigation = [
 function AdminShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+  const supabase = createClient();
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    router.push("/auth/login");
+  };
 
   const sidebarVariants = {
     open: { x: 0 },
@@ -101,7 +108,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                 })}
               </nav>
               <div className="border-t border-neutral-200 dark:border-neutral-700 p-4">
-                <Button variant="ghost" className="w-full justify-start text-neutral-600 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-white">
+                <Button variant="ghost" className="w-full justify-start text-neutral-600 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-white" onClick={handleSignOut}>
                   <LogOut className="mr-3 h-5 w-5" />
                   Sign Out
                 </Button>
@@ -141,7 +148,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
           <div className="border-t border-neutral-200 dark:border-neutral-700 p-2 mt-auto shrink-0">
-            <Button variant="ghost" className="w-full justify-center lg:justify-start text-neutral-600 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-white px-3">
+            <Button variant="ghost" className="w-full justify-center lg:justify-start text-neutral-600 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-white px-3" onClick={handleSignOut}>
               <LogOut className="h-5 w-5 shrink-0" />
               <span className="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 delay-100">Sign Out</span>
             </Button>
