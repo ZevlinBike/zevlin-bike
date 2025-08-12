@@ -162,6 +162,9 @@ export default function ProductTable({ products: initialProducts }: { products: 
                       SKU: <span className="font-mono">{product.product_variants[0].sku}</span>
                     </div>
                   )}
+                  <div className="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">
+                    Stock: <span className="font-mono">{product.quantity_in_stock}</span>
+                  </div>
                   <div className="mt-3 flex justify-end gap-1">
                     <IconBtn label="Edit" onClick={() => handleEditProduct(product)}>
                       <Edit className="h-4 w-4" />
@@ -196,6 +199,7 @@ export default function ProductTable({ products: initialProducts }: { products: 
               <TableHead>Name</TableHead>
               <TableHead className="w-[120px]">Price</TableHead>
               <TableHead className="w-[120px]">SKU</TableHead>
+              <TableHead className="w-[120px]">Stock</TableHead>
               <TableHead className="w-[120px] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -225,6 +229,7 @@ export default function ProductTable({ products: initialProducts }: { products: 
                   <TableCell className="font-mono text-xs text-gray-600 dark:text-gray-400">
                     {product.product_variants?.[0]?.sku ?? "—"}
                   </TableCell>
+                  <TableCell className="tabular-nums">{product.quantity_in_stock}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
                       <IconBtn label="Edit" onClick={() => handleEditProduct(product)}>
@@ -249,7 +254,7 @@ export default function ProductTable({ products: initialProducts }: { products: 
             })}
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5}>
+                <TableCell colSpan={6}>
                   <EmptyState />
                 </TableCell>
               </TableRow>

@@ -240,6 +240,14 @@ export async function processCheckout(
     });
     if (shippingDetailsError) throw shippingDetailsError;
 
+    // Step 5: Decrement stock
+    const { error: decrementError } = await supabase.rpc('decrement_stock', { order_id_param: orderId });
+    if (decrementError) {
+      // If this fails, we should probably have a system to flag this order for manual review.
+      // For now, we'll just log the error.
+      console.error(`Failed to decrement stock for order ${orderId}:`, decrementError);
+    }
+
     console.log("Checkout process complete. Order ID:", orderId);
     return { success: true, orderId: orderId };
 

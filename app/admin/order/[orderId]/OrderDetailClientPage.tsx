@@ -16,7 +16,8 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { clsx } from "clsx";
 
-export default function OrderDetailClientPage({ order }: { order: OrderDetails }) {
+export default function OrderDetailClientPage({ order: initialOrder }: { order: OrderDetails }) {
+  const [order, setOrder] = useState(initialOrder);
   // Shipping state
   type Shipment = {
     id: string;
@@ -44,6 +45,17 @@ export default function OrderDetailClientPage({ order }: { order: OrderDetails }
   const [voidingId, setVoidingId] = useState<string | null>(null);
   const [refunding, setRefunding] = useState(false);
 
+  const loadOrder = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/admin/orders/${order.id}`, { cache: "no-store" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to load order");
+      setOrder(json.order);
+    } catch (e: unknown) {
+      toast.error((e as Error).message || "Failed to load order");
+    }
+  }, [order.id]);
+
   async function handleRefund() {
     if (!confirm("Are you sure you want to refund this order? This action cannot be undone.")) {
       return;
@@ -57,7 +69,7 @@ export default function OrderDetailClientPage({ order }: { order: OrderDetails }
       if (!res.ok) throw new Error(json.error || "Failed to refund order");
       toast.success("Order refunded successfully.");
       // Refresh the page to show the updated status
-      window.location.reload();
+      await loadOrder();
     } catch (e: unknown) {
       toast.error((e as Error).message || "Failed to refund order");
     } finally {
@@ -116,6 +128,7 @@ export default function OrderDetailClientPage({ order }: { order: OrderDetails }
       toast.success("Label purchased");
       setRates(null);
       await loadShipments();
+      await loadOrder();
     } catch (e: unknown) {
       toast.error((e as Error).message || "Failed to purchase label");
     } finally {
@@ -135,6 +148,7 @@ export default function OrderDetailClientPage({ order }: { order: OrderDetails }
       if (!res.ok) throw new Error(json.error || "Failed to void label");
       toast.success("Label voided");
       await loadShipments();
+      await loadOrder();
     } catch (e: unknown) {
       toast.error((e as Error).message || "Failed to void label");
     } finally {
@@ -151,7 +165,7 @@ export default function OrderDetailClientPage({ order }: { order: OrderDetails }
     new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(c / 100);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 md:px-6 lg:px-8 py-6 md:py-8">
+    <div className="">
       {/* Page header */}
       <div className="mb-4 md:mb-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -299,7 +313,7 @@ export default function OrderDetailClientPage({ order }: { order: OrderDetails }
               <CardTitle>Shipping</CardTitle>
               <CardDescription>Rates, labels, and tracking.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 overflow-x-auto">
               <div className="flex items-center justify-between gap-3">
                 <div className="text-sm text-gray-600 dark:text-gray-400">
                   {shipments.length > 0 ? (
@@ -343,13 +357,13 @@ export default function OrderDetailClientPage({ order }: { order: OrderDetails }
                       <div className="text-sm">
                         <div className="font-medium flex items-center gap-2">
                           <Badge variant="secondary" className="capitalize">{s.status}</Badge>
-                          <span>
+                          <span className="whitespace-nowrap">
                             {(s.carrier || "").toUpperCase()} {s.service ? `· ${s.service}` : ""}
                           </span>
                         </div>
                         <div className="text-gray-600 dark:text-gray-400 mt-0.5">
                           {s.tracking_number ? (
-                            <a className="underline" href={s.tracking_url ?? undefined} target="_blank" rel="noreferrer">
+                            <a className="underline whitespace-nowrap" href={s.tracking_url ?? undefined} target="_blank" rel="noreferrer">
                               {s.tracking_number}
                             </a>
                           ) : (

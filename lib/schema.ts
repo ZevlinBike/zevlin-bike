@@ -8,6 +8,7 @@ export interface Product {
   price_cents: number;
   slug: string;
   created_at?: string;
+  quantity_in_stock?: number;
   product_images: ProductImage[];
   product_variants: ProductVariant[];
   // Shipping-related (added via migration 0007)

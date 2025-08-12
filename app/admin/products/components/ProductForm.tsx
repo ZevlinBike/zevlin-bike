@@ -92,9 +92,14 @@ export default function ProductForm({ product, isOpen, onClose }: ProductFormPro
               <Input id="price" name="price" type="number" defaultValue={product?.price_cents} required />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="slug">URL Slug</Label>
-              <Input id="slug" name="slug" defaultValue={product?.slug} required />
+              <Label htmlFor="quantity_in_stock">Quantity in Stock</Label>
+              <Input id="quantity_in_stock" name="quantity_in_stock" type="number" defaultValue={product?.quantity_in_stock ?? 0} required />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="slug">URL Slug</Label>
+            <Input id="slug" name="slug" defaultValue={product?.slug} required />
           </div>
 
           <div className="space-y-2">

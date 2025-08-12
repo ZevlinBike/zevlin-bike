@@ -112,41 +112,45 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       </AnimatePresence>
 
       {/* Desktop sidebar */}
-      <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
-        <div className="flex flex-col flex-grow bg-white dark:bg-neutral-800 border-r border-neutral-200 dark:border-neutral-700">
-          <div className="flex h-16 items-center px-4">
-            <h1 className="text-xl font-bold text-neutral-900 dark:text-white">Admin</h1>
+      <div className="group hidden lg:fixed lg:inset-y-0 lg:flex lg:w-20 hover:lg:w-64 lg:flex-col transition-all duration-300 ease-in-out z-50">
+        <div className="flex flex-col flex-grow bg-white dark:bg-neutral-800 border-r border-neutral-200 dark:border-neutral-700 overflow-y-auto">
+          <div className="flex h-16 items-center justify-center px-4 shrink-0">
+            <h1 className="text-xl font-bold text-neutral-900 dark:text-white">
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 delay-100">Admin</span>
+              <span className="absolute left-1/2 -translate-x-1/2 group-hover:opacity-0 transition-opacity duration-200">A</span>
+            </h1>
           </div>
           <nav className="flex-1 space-y-1 px-2 py-4">
             {navigation.map((item) => {
-              const isActive = pathname === item.href;
+              const isActive = pathname.startsWith(item.href);
               return (
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
+                  title={item.name}
+                  className={`flex items-center justify-center lg:justify-start px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                     isActive
                       ? 'bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-100'
                       : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-700 dark:hover:text-white'
                   }`}
                 >
-                  <item.icon className="mr-3 h-5 w-5" />
-                  {item.name}
+                  <item.icon className="h-5 w-5 shrink-0" />
+                  <span className="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 delay-100">{item.name}</span>
                 </Link>
               );
             })}
           </nav>
-          <div className="border-t border-neutral-200 dark:border-neutral-700 p-4">
-            <Button variant="ghost" className="w-full justify-start text-neutral-600 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-white">
-              <LogOut className="mr-3 h-5 w-5" />
-              Sign Out
+          <div className="border-t border-neutral-200 dark:border-neutral-700 p-2 mt-auto shrink-0">
+            <Button variant="ghost" className="w-full justify-center lg:justify-start text-neutral-600 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-white px-3">
+              <LogOut className="h-5 w-5 shrink-0" />
+              <span className="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 delay-100">Sign Out</span>
             </Button>
           </div>
         </div>
       </div>
 
       {/* Main content */}
-      <div className="lg:pl-64">
+      <div className="lg:pl-20">
         {/* Top bar */}
         <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
           <Button
@@ -176,7 +180,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           transition={{ duration: 0.2, ease: "easeInOut" }}
           className="py-6"
         >
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-7xl px-4 ">
             {children}
           </div>
         </motion.main>
