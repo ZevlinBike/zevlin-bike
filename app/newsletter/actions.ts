@@ -4,7 +4,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
-export async function signUp(prevState: any, formData: FormData) {
+type ActionState = { message: string; error?: string };
+
+export async function signUp(
+  prevState: ActionState,
+  formData: FormData
+) {
   const supabase = await createClient();
   const email = formData.get("email") as string;
 

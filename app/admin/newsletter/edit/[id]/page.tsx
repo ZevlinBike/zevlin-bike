@@ -1,4 +1,4 @@
-
+// app/admin/newsletter/edit/[id]/page.tsx
 import { NewsletterForm } from "../../components/NewsletterForm";
 import { getNewsletter, updateNewsletter } from "../../actions";
 import { notFound } from "next/navigation";
@@ -6,10 +6,11 @@ import { notFound } from "next/navigation";
 export default async function EditNewsletterPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const newsletter = await getNewsletter(params.id);
+  const { id } = await params;
 
+  const newsletter = await getNewsletter(id);
   if (!newsletter) {
     notFound();
   }
@@ -21,3 +22,4 @@ export default async function EditNewsletterPage({
     </div>
   );
 }
+

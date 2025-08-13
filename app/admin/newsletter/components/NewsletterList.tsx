@@ -11,7 +11,11 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Newsletter } from "../actions";
+import { useActionState, useEffect } from "react";
+import { useFormStatus } from "react-dom";
+import { toast } from "sonner";
+import type { Newsletter, ActionState } from "../actions";
+import { sendNewsletter } from "../actions";
 
 interface NewsletterListProps {
   newsletters: Newsletter[];
@@ -40,13 +44,40 @@ export function NewsletterList({ newsletters }: NewsletterListProps) {
                   Edit
                 </Link>
               </Button>
-              <Button variant="outline" size="sm">
-                Resend
-              </Button>
+              <SendNewsletterForm id={newsletter.id} />
             </TableCell>
           </TableRow>
         ))}
       </TableBody>
     </Table>
+  );
+}
+
+function SendNewsletterForm({ id }: { id: string }) {
+  const [state, formAction] = useActionState<ActionState, FormData>(
+    sendNewsletter,
+    { message: "" }
+  );
+
+  useEffect(() => {
+    if (state?.message) {
+      toast(state.message);
+    }
+  }, [state]);
+
+  return (
+    <form action={formAction} className="inline">
+      <input type="hidden" name="id" value={id} />
+      <SubmitButton />
+    </form>
+  );
+}
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <Button variant="outline" size="sm" type="submit" disabled={pending}>
+      {pending ? "Sending..." : "Send"}
+    </Button>
   );
 }

@@ -5,19 +5,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { useFormState } from "react-dom";
-import { Newsletter } from "../actions";
+import { useActionState } from "react";
+import type { Newsletter, ActionState } from "../actions";
 
 interface NewsletterFormProps {
   newsletter?: Newsletter;
   action: (
-    prevState: any,
+    prevState: ActionState,
     formData: FormData
-  ) => Promise<{ message: string; error?: string }>;
+  ) => Promise<ActionState>;
 }
 
 export function NewsletterForm({ newsletter, action }: NewsletterFormProps) {
-  const [state, formAction] = useFormState(action, { message: "" });
+  const [state, formAction] = useActionState<ActionState, FormData>(
+    action,
+    { message: "" }
+  );
 
   return (
     <form action={formAction} className="space-y-4">

@@ -7,7 +7,10 @@ import { signUp } from "@/app/newsletter/actions";
 import { toast } from "sonner";
 
 export default function Newsletter() {
-  const [state, formAction] = useActionState(signUp, { message: "" });
+  const [state, formAction] = useActionState<{ message: string; error?: string }, FormData>(
+    signUp,
+    { message: "" }
+  );
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
