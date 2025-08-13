@@ -1,5 +1,7 @@
 "use server";
 
+import { env } from "@/lib/env";
+import { sendTransactionalEmail } from "@/lib/brevo";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { validateAddress } from "@/lib/shippo";
@@ -246,6 +248,83 @@ export async function processCheckout(
       // If this fails, we should probably have a system to flag this order for manual review.
       // For now, we'll just log the error.
       console.error(`Failed to decrement stock for order ${orderId}:`, decrementError);
+    }
+
+    // Step 6: Send emails
+    try {
+      // 6a: Send order confirmation to customer
+      const customerEmailHtml = `
+        <h1>Thank you for your order!</h1>
+        <p>Your order ID is ${orderId}.</p>
+        <p>We'll notify you when your order ships.</p>
+        <h2>Order Summary</h2>
+        <ul>
+          ${cartItems.map(item => `<li>${item.name} (x${item.quantity}) - ${(item.price_cents / 100).toFixed(2)}</li>`).join('')}
+        </ul>
+        <h3>Subtotal: ${(costData.subtotal).toFixed(2)}</h3>
+        <h3>Shipping: ${(costData.shipping).toFixed(2)}</h3>
+        <h3>Tax: ${(costData.tax).toFixed(2)}</h3>
+        <h3>Total: ${(costData.total).toFixed(2)}</h3>
+      `;
+      await sendTransactionalEmail(
+        { email: checkoutData.email, name: `${checkoutData.shippingFirstName} ${checkoutData.shippingLastName}` },
+        `Your Zevlin Bike Order #${orderId} is Confirmed`,
+        customerEmailHtml
+      );
+
+      // 6b: Send new order notification to admins
+      // First, get the role ID for 'admin'
+      const { data: adminRole, error: roleError } = await supabase
+        .from('roles')
+        .select('id')
+        .eq('name', 'admin')
+        .single();
+
+      if (roleError || !adminRole) {
+        console.error("Error fetching admin role:", roleError);
+      } else {
+        // Then, get all customer IDs with that role
+        const { data: adminUserIds, error: userRolesError } = await supabase
+          .from('user_roles')
+          .select('customer_id')
+          .eq('role_id', adminRole.id);
+
+        if (userRolesError) {
+          console.error("Error fetching admin user IDs:", userRolesError);
+        } else if (adminUserIds && adminUserIds.length > 0) {
+          const adminIds = adminUserIds.map(item => item.customer_id);
+          
+          // Finally, get the email addresses for those customer IDs
+          const { data: adminUsers, error: adminError } = await supabase
+            .from('customers')
+            .select('email, first_name, last_name')
+            .in('id', adminIds);
+
+          if (adminError) {
+            console.error("Error fetching admin users:", adminError);
+          } else if (adminUsers) {
+            const adminEmailHtml = `
+              <h1>New Order Received</h1>
+              <p>Order ID: ${orderId}</p>
+              <p>Customer: ${checkoutData.shippingFirstName} ${checkoutData.shippingLastName} (${checkoutData.email})</p>
+              <p>Total: ${(costData.total).toFixed(2)}</p>
+              <p><a href="${env.APP_URL}/admin/order/${orderId}">View Order Details</a></p>
+            `;
+            for (const admin of adminUsers) {
+              if (admin.email) {
+                await sendTransactionalEmail(
+                  { email: admin.email, name: `${admin.first_name || ''} ${admin.last_name || ''}`.trim() },
+                  `New Order #${orderId}`,
+                  adminEmailHtml
+                );
+              }
+            }
+          }
+        }
+      }
+    } catch (emailError) {
+      console.error(`Failed to send emails for order ${orderId}:`, emailError);
+      // Do not block the checkout process if emails fail
     }
 
     console.log("Checkout process complete. Order ID:", orderId);

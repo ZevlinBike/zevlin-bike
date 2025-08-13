@@ -1,12 +1,12 @@
-// app/api/admin/orders/[orderId]/shipments/route.ts
+// app/api/admin/orders/[orderId]/route.ts
+import { getOrderById } from "@/app/admin/orders/actions";
+import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 
-// NB: createClient() is async in your setup, so we use Awaited<ReturnType<...>>
+// createClient() is async, so await its return type
 type ServerSupabase = Awaited<ReturnType<typeof createClient>>;
 
-// Self-contained auth check
 async function requireAdmin(supabase: ServerSupabase) {
   const {
     data: { user },
@@ -38,24 +38,20 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { orderId } = await ctx.params || {};
+  const { orderId } = await ctx.params;
   if (!orderId) {
     return NextResponse.json({ error: "Missing orderId" }, { status: 400 });
   }
 
   try {
-    const { data: shipments, error } = await supabase
-      .from("shipments")
-      .select("*")
-      .eq("order_id", orderId)
-      .order("created_at", { ascending: false });
-
-    if (error) throw error;
-
-    return NextResponse.json({ shipments });
+    const order = await getOrderById(orderId);
+    if (!order) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+    return NextResponse.json({ order });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Failed to fetch shipments";
-    console.error(`Failed to fetch shipments for order ${orderId}:`, err);
+    const msg = err instanceof Error ? err.message : "Failed to fetch order";
+    console.error(`Failed to fetch order ${orderId}:`, err);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

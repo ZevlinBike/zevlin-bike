@@ -1,3 +1,4 @@
+import { sendTransactionalEmail } from "@/lib/brevo";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
@@ -109,9 +110,11 @@ export async function POST(req: NextRequest) {
       .eq("order_id", body.orderId)
       .maybeSingle();
 
-    const customer = order.customers as
+    const rawCustomers = order.customers as
       | { first_name?: string; last_name?: string; email?: string; phone?: string }
+      | { first_name?: string; last_name?: string; email?: string; phone?: string }[]
       | null;
+    const customer = Array.isArray(rawCustomers) ? rawCustomers[0] : rawCustomers;
     const to: Address = sd
       ? {
           name:
@@ -251,6 +254,25 @@ export async function POST(req: NextRequest) {
     if (updateError) {
       // Log this error but don't fail the request, as the label was already purchased
       console.error(`Failed to update order ${body.orderId} status after label purchase:`, updateError);
+    }
+
+    // Send shipping confirmation email
+    if (to.email) {
+      try {
+        const emailHtml = `
+          <h1>Your Order has Shipped!</h1>
+          <p>Your order #${body.orderId} is on its way.</p>
+          <p>You can track your shipment here: <a href="${label.trackingUrl}">${label.trackingUrl}</a></p>
+          <p>Tracking Number: ${label.trackingNumber}</p>
+        `;
+        await sendTransactionalEmail(
+          { email: to.email, name: to.name || '' },
+          `Your Zevlin Bike Order #${body.orderId} has shipped`,
+          emailHtml
+        );
+      } catch (emailError) {
+        console.error(`Failed to send shipping email for order ${body.orderId}:`, emailError);
+      }
     }
 
     // Log event (also stores idempotency key if provided)

@@ -76,9 +76,11 @@ export async function POST(req: NextRequest) {
         .eq("order_id", body.orderId)
         .maybeSingle();
 
-      const customer = order.customers as
+      const rawCustomers = order.customers as
         | { first_name?: string; last_name?: string; email?: string; phone?: string }
+        | { first_name?: string; last_name?: string; email?: string; phone?: string }[]
         | null;
+      const customer = Array.isArray(rawCustomers) ? rawCustomers[0] : rawCustomers;
       const to: Address = sd
         ? {
             name:

@@ -101,8 +101,13 @@ export async function getOrderById(orderId: string) {
     }
   }
 
-  return {
+  const rawOrder = {
     ...order,
     card_last4,
+  };
+
+  return {
+    ...rawOrder,
+    customers: Array.isArray(rawOrder.customers) ? rawOrder.customers[0] : rawOrder.customers,
   };
 }

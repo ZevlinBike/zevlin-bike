@@ -16,7 +16,10 @@ const ProductCard = ({ product }: { product: Product }) => {
 
   const featuredImage = product.product_images?.find(img => img.is_featured)?.url || product.product_images?.[0]?.url || "/images/placeholder.png";
 
+  const isOutOfStock = !product.quantity_in_stock || product.quantity_in_stock <= 0;
+
   const handleAddToCart = (e: React.MouseEvent) => {
+    if (isOutOfStock) return;
     e.stopPropagation();
     setAdded(true);
     addToCart(product);
@@ -43,12 +46,18 @@ const ProductCard = ({ product }: { product: Product }) => {
             />
           </div>
           {/* Placeholder for category */}
-          <Badge className="mb-2 text-xs text-red-700 border dark:text-red-300 bg-red-700/10 border-red-700/20 dark:bg-red-700/20 dark:border-red-700/30 w-fit">
-            Cycling
-          </Badge>
           <h3 className="mb-1 text-base font-semibold text-gray-900 dark:text-white truncate">
             {product.name}
           </h3>
+          {product.quantity_in_stock && product.quantity_in_stock > 0 ? (
+            <Badge className="mb-2 text-xs text-green-700 border bg-green-700/10 border-green-700/20 dark:bg-green-700/20 dark:border-green-700/30 w-fit">
+              In Stock
+            </Badge>
+          ) : (
+            <Badge className="mb-2 text-xs text-gray-500 border bg-gray-500/10 border-gray-500/20 dark:bg-gray-500/20 dark:border-gray-500/30 w-fit">
+              Out of Stock
+            </Badge>
+          )}
           <p className="mb-2 text-xs text-gray-600 dark:text-gray-400 truncate" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
             {product.description}
           </p>
@@ -57,13 +66,20 @@ const ProductCard = ({ product }: { product: Product }) => {
               ${(product.price_cents / 100).toFixed(2)}
             </span>
             <motion.button
-              className={`text-white px-3 py-1.5 rounded transition-colors duration-300 font-semibold focus:outline-none text-sm ${added ? "bg-green-500" : "bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600"}`}
+              className={`text-white px-3 py-1.5 rounded transition-colors duration-300 font-semibold focus:outline-none text-sm ${
+                added
+                  ? "bg-green-500"
+                  : isOutOfStock
+                  ? "bg-gray-400 dark:bg-gray-600 cursor-not-allowed"
+                  : "bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600"
+              }`}
               onClick={handleAddToCart}
               animate={controls}
               whileTap={{ scale: 0.9 }}
               style={{ outline: "none", border: "none" }}
+              disabled={isOutOfStock}
             >
-              {added ? "Added!" : "Add to Cart"}
+              {added ? "Added!" : isOutOfStock ? "Out of Stock" : "Add to Cart"}
             </motion.button>
           </div>
         </CardContent>
@@ -100,12 +116,18 @@ const ProductCard = ({ product }: { product: Product }) => {
                     className="object-contain rounded-lg bg-gray-100 dark:bg-gray-800"
                   />
                 </div>
-                <Badge className="mb-2 text-xs text-red-700 border dark:text-red-300 bg-red-700/10 border-red-700/20 dark:bg-red-700/20 dark:border-red-700/30">
-                  Cycling
-                </Badge>
                 <h2 className="mb-2 text-xl font-bold text-gray-900 dark:text-white text-center">
                   {product.name}
                 </h2>
+                {product.quantity_in_stock && product.quantity_in_stock > 0 ? (
+                  <Badge className="mb-2 text-xs text-green-700 border bg-green-700/10 border-green-700/20 dark:bg-green-700/20 dark:border-green-700/30 w-fit">
+                    In Stock
+                  </Badge>
+                ) : (
+                  <Badge className="mb-2 text-xs text-gray-500 border bg-gray-500/10 border-gray-500/20 dark:bg-gray-500/20 dark:border-gray-500/30 w-fit">
+                    Out of Stock
+                  </Badge>
+                )}
                 <p className="mb-4 text-sm text-gray-600 dark:text-gray-300 text-center">
                   {product.description}
                 </p>
@@ -113,13 +135,20 @@ const ProductCard = ({ product }: { product: Product }) => {
                   ${(product.price_cents / 100).toFixed(2)}
                 </span>
                 <motion.button
-                  className={`text-white px-4 py-2 rounded transition-colors duration-300 font-semibold focus:outline-none text-base ${added ? "bg-green-500" : "bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600"}`}
+                  className={`text-white px-4 py-2 rounded transition-colors duration-300 font-semibold focus:outline-none text-base ${
+                    added
+                      ? "bg-green-500"
+                      : isOutOfStock
+                      ? "bg-gray-400 dark:bg-gray-600 cursor-not-allowed"
+                      : "bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600"
+                  }`}
                   onClick={handleAddToCart}
                   animate={controls}
                   whileTap={{ scale: 0.9 }}
                   style={{ outline: "none", border: "none" }}
+                  disabled={isOutOfStock}
                 >
-                  {added ? "Added!" : "Add to Cart"}
+                  {added ? "Added!" : isOutOfStock ? "Out of Stock" : "Add to Cart"}
                 </motion.button>
               </div>
             </motion.div>
