@@ -4,35 +4,77 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function getDashboardStats() {
   const supabase = await createClient();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayIso = today.toISOString();
 
-  // Get total revenue and order count from paid orders
-  const { data: paidOrders, error: ordersError } = await supabase
+  // Revenue and orders today
+  const { data: todayOrders, error: todayOrdersError } = await supabase
     .from("orders")
-    .select("total_cents")
-    .eq("status", "paid");
+    .select("total_cents, payment_status")
+    .gte("created_at", todayIso);
 
-  // Get total customer count
-  const { count: customerCount, error: customersError } = await supabase
-    .from("customers")
-    .select("*", { count: "exact", head: true });
-
-  if (ordersError || customersError) {
-    console.error("Error fetching dashboard stats:", ordersError || customersError);
-    // Return zeroed stats on error
-    return {
-      totalRevenue: 0,
-      orderCount: 0,
-      customerCount: 0,
-    };
+  if (todayOrdersError) {
+    console.error("Error fetching today's orders:", todayOrdersError);
   }
 
-  const totalRevenue = paidOrders.reduce((sum, order) => sum + order.total_cents, 0) / 100;
-  const orderCount = paidOrders.length;
+  const revenueToday = (todayOrders || [])
+    .filter(o => o.payment_status === 'paid')
+    .reduce((sum, order) => sum + order.total_cents, 0) / 100;
+
+  const ordersToday = (todayOrders || []).length;
+
+  // Avg order value
+  const avgOrderValue = ordersToday > 0 ? revenueToday / ordersToday : 0;
+
+  // Unfulfilled orders
+  const { count: unfulfilledCount, error: unfulfilledError } = await supabase
+    .from("orders")
+    .select("*", { count: "exact", head: true })
+    .eq("order_status", "pending_fulfillment");
+
+  if (unfulfilledError) {
+    console.error("Error fetching unfulfilled count:", unfulfilledError);
+  }
+
+  // Labels created today
+  const { count: labelsTodayCount, error: labelsError } = await supabase
+    .from("shipments")
+    .select("*", { count: "exact", head: true })
+    .gte("created_at", todayIso);
+
+  if (labelsError) {
+    console.error("Error fetching labels count:", labelsError);
+  }
+
+  // In-transit orders
+  const { count: inTransitCount, error: inTransitError } = await supabase
+    .from("orders")
+    .select("*", { count: "exact", head: true })
+    .eq("shipping_status", "shipped");
+
+  if (inTransitError) {
+    console.error("Error fetching in-transit count:", inTransitError);
+  }
+
+  // Exceptions
+  const { count: exceptionsCount, error: exceptionsError } = await supabase
+    .from("orders")
+    .select("*", { count: "exact", head: true })
+    .eq("shipping_status", "lost");
+
+  if (exceptionsError) {
+    console.error("Error fetching exceptions count:", exceptionsError);
+  }
 
   return {
-    totalRevenue,
-    orderCount,
-    customerCount: customerCount ?? 0,
+    revenueToday,
+    ordersToday,
+    avgOrderValue,
+    unfulfilledCount: unfulfilledCount ?? 0,
+    labelsTodayCount: labelsTodayCount ?? 0,
+    inTransitCount: inTransitCount ?? 0,
+    exceptionsCount: exceptionsCount ?? 0,
   };
 }
 
@@ -77,4 +119,96 @@ export async function getRecentOrders(): Promise<RecentOrder[]> {
   }));
 
   return normalized;
+}
+
+export type LowStockProduct = {
+  slug: string;
+  name: string;
+  price_cents: number;
+};
+
+export async function getLowStockProducts(): Promise<LowStockProduct[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select("slug, name, price_cents")
+    .lte("price_cents", 12)
+    .order("price_cents", { ascending: true })
+    .limit(5);
+
+  if (error) {
+    console.error("Error fetching low stock products:", error);
+    return [];
+  }
+
+  return data;
+}
+
+export type Activity = {
+  ts: string;
+  text: string;
+};
+
+export async function getRecentActivity(): Promise<Activity[]> {
+  const supabase = await createClient();
+
+  const { data: orders, error: ordersError } = await supabase
+    .from("orders")
+    .select("id, created_at, total_cents, customers(first_name, last_name)")
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  const { data: newCustomers, error: customersError } = await supabase
+    .from("customers")
+    .select("id, created_at, first_name, last_name")
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  if (ordersError || customersError) {
+    console.error("Error fetching recent activity:", ordersError || customersError);
+    return [];
+  }
+
+  type OrderActivity = {
+    id: string;
+    created_at: string;
+    total_cents: number;
+    customers: { first_name: string; last_name: string; } | null;
+    type: 'order';
+  };
+
+  type CustomerActivity = {
+    id: string;
+    created_at: string;
+    first_name: string;
+    last_name: string;
+    type: 'customer';
+  };
+
+  type CombinedActivity = OrderActivity | CustomerActivity;
+
+  const combined: CombinedActivity[] = [
+    ...(orders || []).map(o => ({
+      ...o,
+      type: 'order' as const,
+      customers: Array.isArray(o.customers) ? o.customers[0] : o.customers,
+    })),
+    ...(newCustomers || []).map(c => ({ ...c, type: 'customer' as const })),
+  ];
+
+  combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+  const activity: Activity[] = combined.slice(0, 5).map(item => {
+    const ts = new Date(item.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
+    if (item.type === 'order') {
+      const customerName = item.customers ? `${item.customers.first_name} ${item.customers.last_name}` : 'Guest';
+      const total = `${(item.total_cents / 100).toFixed(2)}`;
+      return { ts, text: `New order from ${customerName} (${total})` };
+    } else {
+      const customerName = `${item.first_name} ${item.last_name}`;
+      return { ts, text: `${customerName} signed up.` };
+    }
+  });
+
+  return activity;
 }

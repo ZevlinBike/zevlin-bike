@@ -3,7 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { getRecentOrders } from "./actions";
+import { getRecentOrders, getDashboardStats, getLowStockProducts, getRecentActivity } from "./actions";
 import {
   DollarSign, Package, Truck, TrendingUp, Clock, AlertTriangle, Activity, Plus,
 } from "lucide-react";
@@ -40,30 +40,23 @@ const formatStatus = (status: string | null) => {
 };
 
 export default async function AdminDashboard() {
-  const recentOrders = await getRecentOrders();
+  const [recentOrders, stats, lowStock, activity] = await Promise.all([
+    getRecentOrders(),
+    getDashboardStats(),
+    getLowStockProducts(),
+    getRecentActivity(),
+  ]);
 
-  // Placeholder metrics for the visual design — wire real data later
   const kpis = [
-    { label: "Revenue Today", value: "$4,320", icon: DollarSign },
-    { label: "Orders Today", value: "38", icon: Package },
-    { label: "Avg. Order Value", value: "$56.84", icon: TrendingUp },
-    { label: "Unfulfilled", value: "12", icon: Clock },
-    { label: "Labels Today", value: "27", icon: Truck },
-    { label: "In Transit", value: "81", icon: Activity },
+    { label: "Revenue Today", value: `${stats.revenueToday.toFixed(2)}`, icon: DollarSign },
+    { label: "Orders Today", value: String(stats.ordersToday), icon: Package },
+    { label: "Avg. Order Value", value: `${stats.avgOrderValue.toFixed(2)}`, icon: TrendingUp },
+    { label: "Unfulfilled", value: String(stats.unfulfilledCount), icon: Clock },
+    { label: "Labels Today", value: String(stats.labelsTodayCount), icon: Truck },
+    { label: "In Transit", value: String(stats.inTransitCount), icon: Activity },
   ];
 
   const toFulfill = recentOrders.filter(o => o.order_status === 'pending_fulfillment').slice(0, 6);
-  const lowStock = [
-    { sku: "ZEV-CRACK-4oz", name: "Crack Chamois (4oz)", qty: 8 },
-    { sku: "ZEV-SCRK-8oz", name: "Super Crack (8oz)", qty: 3 },
-    { sku: "ZEV-BYOT", name: "BYOT Fitness Wash", qty: 12 },
-  ];
-  const activity = [
-    { ts: "10:21a", text: "Label purchased for #24af9c12 (USPS Priority)" },
-    { ts: "10:05a", text: "Tracking update: #1Z839… in transit (UPS)" },
-    { ts: "9:58a", text: "New order from Jane Doe ($74.99)" },
-    { ts: "9:42a", text: "Low stock alert: Super Crack (8oz)" },
-  ];
 
   return (
     <div className="space-y-6 text-black dark:text-white">
@@ -138,15 +131,15 @@ export default async function AdminDashboard() {
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2"><Truck className="h-4 w-4" /> Labels Purchased</div>
-              <div className="font-semibold">27</div>
+              <div className="font-semibold">{stats.labelsTodayCount}</div>
             </div>
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2"><Activity className="h-4 w-4" /> In Transit</div>
-              <div className="font-semibold">81</div>
+              <div className="font-semibold">{stats.inTransitCount}</div>
             </div>
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2 text-amber-600"><AlertTriangle className="h-4 w-4" /> Exceptions</div>
-              <div className="font-semibold">3</div>
+              <div className="font-semibold">{stats.exceptionsCount}</div>
             </div>
             <div className="pt-2 flex gap-2">
               <Button asChild size="sm" className="flex-1"><Link href="/admin/fulfillment">Fulfill Orders</Link></Button>
@@ -160,17 +153,17 @@ export default async function AdminDashboard() {
         {/* Inventory alerts */}
         <Card>
           <CardHeader className="flex items-center justify-between">
-            <CardTitle>Inventory Alerts</CardTitle>
+            <CardTitle>Low Price Products</CardTitle>
             <Button asChild variant="outline" size="sm"><Link href="/admin/products">Manage</Link></Button>
           </CardHeader>
           <CardContent className="space-y-2">
             {lowStock.map((i) => (
-              <div key={i.sku} className="flex items-center justify-between text-sm">
+              <div key={i.slug} className="flex items-center justify-between text-sm">
                 <div>
                   <div className="font-medium">{i.name}</div>
-                  <div className="text-gray-500 text-xs">SKU {i.sku}</div>
+                  <div className="text-gray-500 text-xs">Slug: {i.slug}</div>
                 </div>
-                <Badge variant={i.qty < 5 ? 'destructive' : 'secondary'}>{i.qty} left</Badge>
+                <Badge variant={i.price_cents < 500 ? 'destructive' : 'secondary'}>${(i.price_cents / 100).toFixed(2)}</Badge>
               </div>
             ))}
           </CardContent>
