@@ -6,6 +6,7 @@ import HeroBackground from "./HeroBackground";
 import HeroProductGrid from "./HeroProductsGrid";
 import useHeroProducts from "@/hooks/useHeroProducts";
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 
 export default function Hero() {
   const { products: heroProducts, loading, error } = useHeroProducts();
@@ -31,15 +32,15 @@ export default function Hero() {
           {/* Right: products / states */}
           <div className="w-full md:w-1/2">
             {loading ? (
-              <div className="mx-auto flex h-64 max-w-sm items-center justify-center rounded-xl border border-white/10 bg-white/50 shadow-sm backdrop-blur dark:bg-neutral-900/50">
-                <Loader2 className="h-7 w-7 animate-spin text-blue-600" />
-              </div>
+              null
             ) : error ? (
               <div className="mx-auto max-w-sm rounded-xl border border-rose-400/30 bg-rose-50/60 p-4 text-rose-700 dark:border-rose-400/20 dark:bg-rose-900/20 dark:text-rose-200">
                 Couldn’t load featured products. Please refresh.
               </div>
             ) : (
+              <motion.div initial={{opacity:0}} animate={{opacity:100}}>
               <HeroProductGrid products={heroProducts} />
+              </motion.div>
             )}
           </div>
         </div>
