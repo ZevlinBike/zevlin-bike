@@ -1,10 +1,24 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { motion, Variants } from "framer-motion"; // Import motion for animations
+import { motion, Variants } from "framer-motion";
+import { useActionState, useEffect, useRef } from "react";
+import { signUp } from "@/app/newsletter/actions";
+import { toast } from "sonner";
 
 export default function Newsletter() {
-  // Framer Motion variants
+  const [state, formAction] = useActionState(signUp, { message: "" });
+  const formRef = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    if (state.message) {
+      toast(state.message);
+      if (state.message === "Thanks for signing up!") {
+        formRef.current?.reset();
+      }
+    }
+  }, [state]);
+
   const fadeInRise = {
     hidden: { opacity: 0, y: 30 },
     visible: {
@@ -28,7 +42,7 @@ export default function Newsletter() {
     <section className="overflow-hidden relative py-20 text-gray-900 dark:text-white dark:from-gray-900 dark:to-black">
       <div className="container relative z-10 px-4 mx-auto lg:px-6">
         <motion.div
-          className="p-8 mx-auto max-w-3xl text-center bg-white rounded-2xl border border-gray-100 shadow-xl dark:bg-gray-800 dark:border-gray-700" 
+          className="p-8 mx-auto max-w-3xl text-center bg-white rounded-2xl border border-gray-100 shadow-xl dark:bg-gray-800 dark:border-gray-700"
           variants={staggerContainer}
           initial="hidden"
           whileInView="visible"
@@ -53,16 +67,21 @@ export default function Newsletter() {
             className="flex flex-col gap-4 mx-auto max-w-md sm:flex-row"
             variants={fadeInRise}
           >
-            <Input
-              type="email"
-              placeholder="Your email address"
-              className="flex-grow py-2.5 px-4 placeholder-gray-400 text-gray-900 bg-gray-50 rounded-lg border border-gray-200 shadow-sm transition-all duration-300 dark:text-white dark:bg-gray-700 dark:border-gray-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" // Clean input styling
-            />
-            <Button className="font-bold text-white whitespace-nowrap bg-blue-600 shadow-md transition-all duration-300 hover:bg-blue-700 hover:scale-105">
-              {" "}
-              {/* Primary brand color button */}
-              Subscribe Now
-            </Button>
+            <form action={formAction} ref={formRef} className="flex flex-col gap-4 mx-auto max-w-md sm:flex-row">
+              <Input
+                type="email"
+                name="email"
+                placeholder="Your email address"
+                className="flex-grow py-2.5 px-4 placeholder-gray-400 text-gray-900 bg-gray-50 rounded-lg border border-gray-200 shadow-sm transition-all duration-300 dark:text-white dark:bg-gray-700 dark:border-gray-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                required
+              />
+              <Button
+                type="submit"
+                className="font-bold text-white whitespace-nowrap bg-blue-600 shadow-md transition-all duration-300 hover:bg-blue-700 hover:scale-105"
+              >
+                Subscribe Now
+              </Button>
+            </form>
           </motion.div>
         </motion.div>
       </div>

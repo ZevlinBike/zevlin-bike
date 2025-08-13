@@ -31,6 +31,7 @@ const navigation = [
   { name: "Customers", href: "/admin/customers", icon: Users },
   { name: "Blog", href: "/admin/blog", icon: Newspaper },
   { name: "Announcements", href: "/admin/announcements", icon: Megaphone },
+  { name: "Newsletter", href: "/admin/newsletter", icon: Newspaper },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
