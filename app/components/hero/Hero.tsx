@@ -1,6 +1,6 @@
 
 "use client";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import HeroTextSection from "./HeroTextSection";
 import HeroBackground from "./HeroBackground";
 import HeroProductGrid from "./HeroProductsGrid";
