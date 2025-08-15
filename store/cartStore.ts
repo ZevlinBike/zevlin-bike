@@ -16,6 +16,7 @@ interface CartState {
   clearCart: () => void;
   getTotalItems: () => number;
   getTotalPrice: () => number;
+  getTotalWeight: () => number;
   setHydrated: (hydrated: boolean) => void;
 }
 
@@ -75,6 +76,31 @@ export const useCartStore = create<CartState>()(
           (total, item) => total + item.price_cents * item.quantity,
           0,
         );
+      },
+      getTotalWeight: () => {
+        return get().items.reduce((total, item) => {
+          if (!item.weight || !item.weight_unit) {
+            return total;
+          }
+
+          let weightInGrams = 0;
+          switch (item.weight_unit) {
+            case 'g':
+              weightInGrams = item.weight;
+              break;
+            case 'oz':
+              weightInGrams = item.weight * 28.3495;
+              break;
+            case 'lb':
+              weightInGrams = item.weight * 453.592;
+              break;
+            case 'kg':
+              weightInGrams = item.weight * 1000;
+              break;
+          }
+
+          return total + weightInGrams * item.quantity;
+        }, 0);
       },
       setHydrated: (hydrated) => set({ hydrated }),
     }),

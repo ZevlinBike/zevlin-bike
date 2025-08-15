@@ -165,6 +165,9 @@ export default function ProductTable({ products: initialProducts }: { products: 
                   <div className="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">
                     Stock: <span className="font-mono">{product.quantity_in_stock}</span>
                   </div>
+                  <div className="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">
+                    Weight: <span className="font-mono">{product.weight ? `${product.weight} ${product.weight_unit}` : "—"}</span>
+                  </div>
                   <div className="mt-3 flex justify-end gap-1">
                     <IconBtn label="Edit" onClick={() => handleEditProduct(product)}>
                       <Edit className="h-4 w-4" />
@@ -200,6 +203,7 @@ export default function ProductTable({ products: initialProducts }: { products: 
               <TableHead className="w-[120px]">Price</TableHead>
               <TableHead className="w-[120px]">SKU</TableHead>
               <TableHead className="w-[120px]">Stock</TableHead>
+              <TableHead className="w-[120px]">Weight</TableHead>
               <TableHead className="w-[120px] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -230,6 +234,9 @@ export default function ProductTable({ products: initialProducts }: { products: 
                     {product.product_variants?.[0]?.sku ?? "—"}
                   </TableCell>
                   <TableCell className="tabular-nums">{product.quantity_in_stock}</TableCell>
+                  <TableCell className="tabular-nums">
+                    {product.weight ? `${product.weight} ${product.weight_unit}` : "—"}
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
                       <IconBtn label="Edit" onClick={() => handleEditProduct(product)}>

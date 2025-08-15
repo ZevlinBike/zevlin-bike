@@ -21,11 +21,18 @@ export default async function PackagesPage() {
   async function addPackageAction(formData: FormData) {
     "use server";
     const name = String(formData.get("name") || "").trim();
-    const length_cm = Number(formData.get("length_cm") || 0);
-    const width_cm = Number(formData.get("width_cm") || 0);
-    const height_cm = Number(formData.get("height_cm") || 0);
-    const weight_g = Number(formData.get("weight_g") || 0);
-    if (!name || !length_cm || !width_cm || !height_cm) return;
+    const length_in = Number(formData.get("length_in") || 0);
+    const width_in = Number(formData.get("width_in") || 0);
+    const height_in = Number(formData.get("height_in") || 0);
+    const weight_oz = Number(formData.get("weight_oz") || 0);
+
+    if (!name || !length_in || !width_in || !height_in) return;
+
+    const length_cm = length_in * 2.54;
+    const width_cm = width_in * 2.54;
+    const height_cm = height_in * 2.54;
+    const weight_g = weight_oz * 28.3495;
+
     await createPackage({ name, length_cm, width_cm, height_cm, weight_g });
     revalidatePath("/admin/settings/packages");
   }
@@ -49,10 +56,10 @@ export default async function PackagesPage() {
               <Input id="name" name="name" placeholder="Small Box" required />
             </div>
             <div>
-              <Label htmlFor="length_cm">L (cm)</Label>
+              <Label htmlFor="length_in">L (in)</Label>
               <Input
-                id="length_cm"
-                name="length_cm"
+                id="length_in"
+                name="length_in"
                 type="number"
                 step="0.1"
                 min="0"
@@ -60,10 +67,10 @@ export default async function PackagesPage() {
               />
             </div>
             <div>
-              <Label htmlFor="width_cm">W (cm)</Label>
+              <Label htmlFor="width_in">W (in)</Label>
               <Input
-                id="width_cm"
-                name="width_cm"
+                id="width_in"
+                name="width_in"
                 type="number"
                 step="0.1"
                 min="0"
@@ -71,10 +78,10 @@ export default async function PackagesPage() {
               />
             </div>
             <div>
-              <Label htmlFor="height_cm">H (cm)</Label>
+              <Label htmlFor="height_in">H (in)</Label>
               <Input
-                id="height_cm"
-                name="height_cm"
+                id="height_in"
+                name="height_in"
                 type="number"
                 step="0.1"
                 min="0"
@@ -82,12 +89,12 @@ export default async function PackagesPage() {
               />
             </div>
             <div>
-              <Label htmlFor="weight_g">Pkg Weight (g)</Label>
+              <Label htmlFor="weight_oz">Pkg Weight (oz)</Label>
               <Input
-                id="weight_g"
-                name="weight_g"
+                id="weight_oz"
+                name="weight_oz"
                 type="number"
-                step="1"
+                step="0.1"
                 min="0"
                 defaultValue={0}
               />
@@ -121,8 +128,14 @@ export default async function PackagesPage() {
                     )}
                   </div>
                   <div className="text-gray-600 dark:text-gray-400">
-                    {p.length_cm} × {p.width_cm} × {p.height_cm} cm ·{" "}
-                    {p.weight_g} g
+                    {(p.length_cm / 2.54).toFixed(1)} × {(p.width_cm / 2.54).toFixed(1)} × {(p.height_cm / 2.54).toFixed(1)} in ·{" "}
+                    {(() => {
+                      const totalOunces = p.weight_g / 28.3495;
+                      if (totalOunces < 16) return `${totalOunces.toFixed(1)} oz`;
+                      const pounds = Math.floor(totalOunces / 16);
+                      const ounces = totalOunces % 16;
+                      return `${pounds} lb ${ounces.toFixed(1)} oz`;
+                    })()}
                   </div>
                 </div>
                 <PackageActions pkg={p} />

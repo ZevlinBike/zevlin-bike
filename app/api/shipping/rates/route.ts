@@ -4,8 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getRates, type Address, type Parcel, type RateOption } from "@/lib/shippo";
 
 const BodySchema = z.object({
-  orderId: z.string().uuid().optional(),
-  cartId: z.string().uuid().optional(),
+  orderId: z.string().uuid(),
+  packageId: z.string().uuid(),
 });
 
 export async function POST(req: NextRequest) {
@@ -17,9 +17,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  if (!body.orderId && !body.cartId) {
-    return NextResponse.json({ error: "Provide orderId or cartId" }, { status: 400 });
-  }
+  // if (!body.orderId && !body.cartId) {
+  //   return NextResponse.json({ error: "Provide orderId or cartId" }, { status: 400 });
+  // }
 
   try {
     // Fetch origin address from settings
@@ -45,7 +45,6 @@ export async function POST(req: NextRequest) {
       country: settings.shipping_origin_country,
     };
 
-    // Prefer orderId path (admin usage)
     if (body.orderId) {
       const { data: order, error } = await supabase
         .from("orders")
@@ -57,8 +56,8 @@ export async function POST(req: NextRequest) {
             id,
             quantity,
             unit_price_cents,
-            products(weight_g),
-            product_variants(weight_g)
+            products(weight, weight_unit),
+            product_variants(*)
           )
         `
         )
@@ -111,17 +110,17 @@ export async function POST(req: NextRequest) {
             country: (order.billing_country as string) || "US",
           };
 
-      // Determine package: use default shipping_packages; item-level package_name not present in current schema.
+      // Determine package: use the one specified in the request
       const { data: pkg } = await supabase
         .from("shipping_packages")
-        .select("name,length_cm,width_cm,height_cm,weight_g,is_default")
-        .eq("is_default", true)
+        .select("name,length_cm,width_cm,height_cm,weight_g")
+        .eq("id", body.packageId)
         .limit(1)
-        .maybeSingle();
+        .single();
 
       if (!pkg) {
         return NextResponse.json(
-          { error: "No default shipping package configured. Create one in admin settings." },
+          { error: "The selected shipping package could not be found." },
           { status: 400 }
         );
       }
@@ -129,15 +128,36 @@ export async function POST(req: NextRequest) {
       // Compute weight: base package weight + sum(item weights)
       type LI = {
         quantity: number;
-        products?: { weight_g?: number | null } | null;
-        product_variants?: { weight_g?: number | null } | null;
+        products?: { weight?: number | null; weight_unit?: string | null } | null;
+        product_variants?: { id: string } | null; // Variants don't have weight
       };
       const items = (order.line_items as unknown as LI[]) || [];
       const assumedItemWeightG = 200;
       const itemsWeight = items.reduce((sum, li) => {
-        const w = li.product_variants?.weight_g ?? li.products?.weight_g ?? 0;
-        const each = w && w > 0 ? w : assumedItemWeightG;
-        return sum + each * (li.quantity || 0);
+        const itemData = li.products; // Always use the product for weight info
+        const weight = itemData?.weight;
+        const unit = itemData?.weight_unit;
+
+        if (weight && unit) {
+          let weightInGrams = 0;
+          switch (unit) {
+            case 'g':
+              weightInGrams = weight;
+              break;
+            case 'oz':
+              weightInGrams = weight * 28.3495;
+              break;
+            case 'lb':
+              weightInGrams = weight * 453.592;
+              break;
+            case 'kg':
+              weightInGrams = weight * 1000;
+              break;
+          }
+          return sum + weightInGrams * (li.quantity || 0);
+        }
+
+        return sum + assumedItemWeightG * (li.quantity || 0);
       }, 0);
       const totalWeightG = Math.max(1, (pkg.weight_g || 0) + itemsWeight);
 
@@ -149,11 +169,10 @@ export async function POST(req: NextRequest) {
       };
 
       const rates: RateOption[] = await getRates({ to, from: ORIGIN, parcel });
-      return NextResponse.json({ rates });
+      return NextResponse.json({ rates, totalWeightG });
     }
 
-    // Minimal cart support (if needed later); not implemented in current UI
-    return NextResponse.json({ error: "Cart rate quoting not implemented" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Failed to get rates";
     return NextResponse.json({ error: msg }, { status: 500 });

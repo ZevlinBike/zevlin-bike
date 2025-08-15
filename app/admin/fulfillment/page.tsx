@@ -13,7 +13,11 @@ type LineItem = {
   id: string;
   quantity: number;
   unit_price_cents: number;
-  products: { name: string } | null;
+  products: {
+    name: string;
+    weight?: number | null;
+    weight_unit?: string | null;
+  } | null;
 };
 
 type OrderRow = {
@@ -36,7 +40,7 @@ export default async function FulfillmentPage() {
       *,
       customers(first_name, last_name, email),
       shipping_details(*),
-      line_items(*),
+      line_items(*, products(name, weight, weight_unit)),
       shipments(id, status, label_url)
     `)
     .eq("order_status", "pending_fulfillment")

@@ -20,7 +20,6 @@ const LINKS = [
   { href: "/privacy", label: "Privacy" },
   { href: "/contact", label: "Contact" },
   { href: "/mission", label: "Mission" },
-  { href: "/events", label: "Events" },
   { href: "/blog", label: "Blog" },
 ];
 

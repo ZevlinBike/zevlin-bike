@@ -13,7 +13,8 @@ const productSchema = z.object({
   slug: z.string(),
   quantity_in_stock: z.coerce.number().optional(),
   // Shipping fields (optional in form)
-  weight_g: z.coerce.number().optional(),
+  weight: z.coerce.number().optional(),
+  weight_unit: z.string().optional(),
   length_cm: z.coerce.number().optional(),
   width_cm: z.coerce.number().optional(),
   height_cm: z.coerce.number().optional(),
@@ -77,7 +78,7 @@ export async function addOrUpdateProduct(formData: FormData) {
   if (!validated.success) {
     return { error: "Invalid product data." };
   }
-  const { id, name, description, price, slug, quantity_in_stock, weight_g, length_cm, width_cm, height_cm } = validated.data;
+  const { id, name, description, price, slug, quantity_in_stock, weight, weight_unit, length_cm, width_cm, height_cm } = validated.data;
 
   // 1. Upsert the product details
   const { data: productData, error: productError } = await supabase
@@ -90,7 +91,8 @@ export async function addOrUpdateProduct(formData: FormData) {
       slug,
       quantity_in_stock,
       // Shipping-related fields
-      weight_g: typeof weight_g === 'number' && !Number.isNaN(weight_g) ? Math.max(0, Math.round(weight_g)) : undefined,
+      weight: typeof weight === 'number' && !Number.isNaN(weight) ? Math.max(0, weight) : undefined,
+      weight_unit: weight_unit,
       length_cm: typeof length_cm === 'number' && !Number.isNaN(length_cm) ? length_cm : undefined,
       width_cm: typeof width_cm === 'number' && !Number.isNaN(width_cm) ? width_cm : undefined,
       height_cm: typeof height_cm === 'number' && !Number.isNaN(height_cm) ? height_cm : undefined,

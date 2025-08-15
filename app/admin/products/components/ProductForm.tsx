@@ -117,8 +117,22 @@ export default function ProductForm({ product, isOpen, onClose }: ProductFormPro
           {/* Shipping fields */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="weight_g">Weight (g)</Label>
-              <Input id="weight_g" name="weight_g" type="number" min={0} step={1} defaultValue={product?.weight_g ?? 0} />
+              <Label htmlFor="weight">Weight</Label>
+              <Input id="weight" name="weight" type="number" min={0} step={0.01} defaultValue={product?.weight ?? 0} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="weight_unit">Weight Unit</Label>
+              <select
+                id="weight_unit"
+                name="weight_unit"
+                defaultValue={product?.weight_unit ?? 'g'}
+                className="w-full p-2 border rounded-md bg-white dark:bg-neutral-800"
+              >
+                <option value="g">g</option>
+                <option value="oz">oz</option>
+                <option value="lb">lb</option>
+                <option value="kg">kg</option>
+              </select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="length_cm">Length (cm)</Label>
