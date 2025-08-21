@@ -16,7 +16,8 @@ import {
   Menu,
   X,
   Newspaper,
-  Megaphone
+  Megaphone,
+  Ticket
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -29,6 +30,7 @@ const navigation = [
   { name: "Products", href: "/admin/products", icon: Package },
   { name: "Orders", href: "/admin/orders", icon: ShoppingCart },
   { name: "Customers", href: "/admin/customers", icon: Users },
+  { name: "Discounts", href: "/admin/discounts", icon: Ticket },
   { name: "Blog", href: "/admin/blog", icon: Newspaper },
   { name: "Announcements", href: "/admin/announcements", icon: Megaphone },
   { name: "Newsletter", href: "/admin/newsletter", icon: Newspaper },

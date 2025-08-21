@@ -354,3 +354,24 @@ export async function processCheckout(
     return { errors: { _form: [errorMessage] } };
   }
 }
+
+export async function verifyDiscountCode(code: string) {
+  'use server';
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('discounts')
+    .select('*')
+    .eq('code', code)
+    .single();
+
+  if (error || !data) {
+    return { error: 'Invalid discount code.' };
+  }
+
+  if (!data.active) {
+    return { error: 'This discount code is no longer active.' };
+  }
+
+  return { data };
+}

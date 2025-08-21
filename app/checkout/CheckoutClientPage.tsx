@@ -9,7 +9,7 @@ import { useCartStore } from "@/store/cartStore";
 import MainLayout from "@/components/layouts/MainLayout";
 import { Loader2, CreditCard, Truck, User, LogIn, UserPlus } from "lucide-react";
 import Link from "next/link";
-import { processCheckout } from "./actions";
+import { processCheckout, verifyDiscountCode } from "./actions";
 import { login } from "@/app/auth/login/actions";
 import { useRouter } from "next/navigation";
 import { User as UserType } from "@supabase/supabase-js";
@@ -140,22 +140,26 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
     }
   }
 
-  const handlePromoCode = () => {
-    const codes = {
-      "SAVE10": 10,
-      "WELCOME20": 20,
-      "FREESHIP": shipping,
-    };
-    
-    const upperCode = promoCode.toUpperCase();
-    if (codes[upperCode as keyof typeof codes]) {
-      setAppliedPromo(upperCode);
-      setDiscount(codes[upperCode as keyof typeof codes]);
-      setPromoCode("");
-      toast.success("Promo code applied!");
-    } else {
-      toast.error("Invalid promo code. Try SAVE10, WELCOME20, or FREESHIP");
+  const handlePromoCode = async () => {
+    const result = await verifyDiscountCode(promoCode.toUpperCase());
+
+    if (result.error) {
+      toast.error(result.error);
+      return;
     }
+
+    const { data: discountData } = result;
+    let discountAmount = 0;
+    if (discountData.type === 'percentage') {
+      discountAmount = (subtotal * discountData.value) / 100;
+    } else if (discountData.type === 'fixed') {
+      discountAmount = discountData.value;
+    }
+
+    setAppliedPromo(discountData.code);
+    setDiscount(discountAmount);
+    setPromoCode("");
+    toast.success("Promo code applied!");
   };
 
   const removePromoCode = () => {
