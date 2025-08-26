@@ -162,10 +162,10 @@ export default function FulfillmentClientPage({ orders, initialQuery = "" }: { o
 
   return (
     <div className="space-y-6 text-black dark:text-white">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold">Fulfillment Queue</h1>
-        <div className="flex items-center gap-2">
-          <Input placeholder="Search orders or customers" value={query} onChange={(e) => setQuery(e.target.value)} className="w-72" />
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Input placeholder="Search orders or customers" value={query} onChange={(e) => setQuery(e.target.value)} className="w-full sm:w-72" />
           <Button asChild variant="outline"><Link href="/admin/orders">Open Orders</Link></Button>
         </div>
       </div>

@@ -69,7 +69,7 @@ export default async function AdminDashboard() {
       </div>
 
       {/* KPI grid */}
-      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-6">
         {kpis.map(({ label, value, icon: Icon }) => (
           <Card key={label}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -86,7 +86,7 @@ export default async function AdminDashboard() {
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* Fulfillment queue */}
         <Card className="lg:col-span-2">
           <CardHeader className="flex items-center justify-between">
@@ -149,7 +149,7 @@ export default async function AdminDashboard() {
         </Card>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* Inventory alerts */}
         <Card>
           <CardHeader className="flex items-center justify-between">

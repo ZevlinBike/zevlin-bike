@@ -36,25 +36,28 @@ export default function GlobalSearch() {
   [results]);
 
   type QuickAction = { label: string; href: string; keywords: string[] };
-  const quickActions: QuickAction[] = [
-    { label: "Go to Dashboard", href: "/admin", keywords: ["dashboard", "home"] },
-    { label: "Go to Products", href: "/admin/products", keywords: ["product", "products"] },
-    { label: "New Product", href: "/admin/products?new=1", keywords: ["new product", "create product", "add product"] },
-    { label: "Go to Categories", href: "/admin/categories", keywords: ["category", "categories", "tags"] },
-    { label: "Go to Orders", href: "/admin/orders", keywords: ["order", "orders"] },
-    { label: "Go to Customers", href: "/admin/customers", keywords: ["customer", "customers", "users"] },
-    { label: "Go to Discounts", href: "/admin/discounts", keywords: ["discount", "coupon", "coupons", "codes"] },
-    { label: "New Discount", href: "/admin/discounts?new=1", keywords: ["new discount", "create coupon", "add code"] },
-    { label: "Go to Blog", href: "/admin/blog", keywords: ["blog", "posts", "post"] },
-    { label: "Go to Announcements", href: "/admin/announcements", keywords: ["announcements", "announcement", "banner", "promo"] },
-    { label: "Go to Newsletter", href: "/admin/newsletter", keywords: ["newsletter", "email", "subscribers"] },
-    { label: "Go to Settings", href: "/admin/settings", keywords: ["settings", "config", "preferences"] },
-  ];
+  const quickActions: QuickAction[] = useMemo(
+    () => [
+      { label: "Go to Dashboard", href: "/admin", keywords: ["dashboard", "home"] },
+      { label: "Go to Products", href: "/admin/products", keywords: ["product", "products"] },
+      { label: "New Product", href: "/admin/products?new=1", keywords: ["new product", "create product", "add product"] },
+      { label: "Go to Categories", href: "/admin/categories", keywords: ["category", "categories", "tags"] },
+      { label: "Go to Orders", href: "/admin/orders", keywords: ["order", "orders"] },
+      { label: "Go to Customers", href: "/admin/customers", keywords: ["customer", "customers", "users"] },
+      { label: "Go to Discounts", href: "/admin/discounts", keywords: ["discount", "coupon", "coupons", "codes"] },
+      { label: "New Discount", href: "/admin/discounts?new=1", keywords: ["new discount", "create coupon", "add code"] },
+      { label: "Go to Blog", href: "/admin/blog", keywords: ["blog", "posts", "post"] },
+      { label: "Go to Announcements", href: "/admin/announcements", keywords: ["announcements", "announcement", "banner", "promo"] },
+      { label: "Go to Newsletter", href: "/admin/newsletter", keywords: ["newsletter", "email", "subscribers"] },
+      { label: "Go to Settings", href: "/admin/settings", keywords: ["settings", "config", "preferences"] },
+    ],
+    []
+  );
   const matchedActions = useMemo(() => {
     const s = q.trim().toLowerCase();
     if (!s) return [] as QuickAction[];
     return quickActions.filter(a => a.keywords.some(k => k.includes(s) || s.includes(k)));
-  }, [q]);
+  }, [q, quickActions]);
 
   useEffect(() => {
     if (q.trim().length < 2) {
@@ -76,7 +79,7 @@ export default function GlobalSearch() {
         if (!res.ok) throw new Error("Search failed");
         const json = await res.json();
         setResults(json);
-      } catch (_) {
+      } catch {
         // ignore aborts
       } finally {
         setLoading(false);

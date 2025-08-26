@@ -34,9 +34,9 @@ type AdminDiscount = {
 
   return (
     <div className="space-y-6 text-black dark:text-white">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold">Discounts</h1>
-        <DiscountForm autoOpen={!!autoOpen} />
+        <div className="w-full sm:w-auto"><DiscountForm autoOpen={!!autoOpen} /></div>
       </div>
 
       <Card>

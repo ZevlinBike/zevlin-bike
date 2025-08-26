@@ -15,22 +15,17 @@ type FooterCategory = {
 
 export default function Footer() {
   const [footerCats, setFooterCats] = useState<FooterCategory[] | null>(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const supabase = createClient();
     (async () => {
-      try {
-        const { data, error } = await supabase
-          .from("product_categories")
-          .select("name, slug, sort_order, active, show_in_footer")
-          .eq("active", true)
-          .eq("show_in_footer", true)
-          .order("sort_order");
-        if (!error) setFooterCats(data as FooterCategory[] | null);
-      } finally {
-        setLoading(false);
-      }
+      const { data, error } = await supabase
+        .from("product_categories")
+        .select("name, slug, sort_order, active, show_in_footer")
+        .eq("active", true)
+        .eq("show_in_footer", true)
+        .order("sort_order");
+      if (!error) setFooterCats(data as FooterCategory[] | null);
     })();
   }, []);
 

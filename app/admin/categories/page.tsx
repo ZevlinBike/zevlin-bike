@@ -27,9 +27,9 @@ export default async function CategoriesPage({
     : categories;
   return (
     <div className="space-y-6 text-black dark:text-white">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold">Categories</h1>
-        <CategoryForm />
+        <div className="w-full sm:w-auto"><CategoryForm /></div>
       </div>
 
       <Card>

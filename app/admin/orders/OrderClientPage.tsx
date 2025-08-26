@@ -51,18 +51,18 @@ export default function OrderClientPage({
 
   return (
     <div>
-      <div className="flex items-center gap-4 mb-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center mb-4">
         <Input
           placeholder="Search by name, email, or order ID..."
           onChange={(e) => handleSearch(e.target.value)}
           defaultValue={searchParams.get("query")?.toString()}
-          className="flex-1"
+          className="w-full sm:flex-1"
         />
         <Select
           onValueChange={(value) => handleFilterChange("payment_status", value)}
           defaultValue={searchParams.get("payment_status") || "all"}
         >
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="Payment Status" />
           </SelectTrigger>
           <SelectContent>
@@ -77,7 +77,7 @@ export default function OrderClientPage({
           onValueChange={(value) => handleFilterChange("order_status", value)}
           defaultValue={searchParams.get("order_status") || "all"}
         >
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="Order Status" />
           </SelectTrigger>
           <SelectContent>
@@ -92,7 +92,7 @@ export default function OrderClientPage({
           onValueChange={(value) => handleFilterChange("shipping_status", value)}
           defaultValue={searchParams.get("shipping_status") || "all"}
         >
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="Shipping Status" />
           </SelectTrigger>
           <SelectContent>

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import Navigation from "@/components/Navigation";
 import { ThemeProvider } from "@/app/components/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
+import SocialFABs from "@/components/SocialFABs";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -43,6 +44,7 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <SocialFABs />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
