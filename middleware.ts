@@ -8,7 +8,12 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     "/admin((?!login|auth).*)",
-    "/auth/:path*"
+    "/auth/login",
+    "/auth/register",
+    "/auth/forgot-password",
+    "/auth/reset-password",
+    "/auth/create-profile",
+    "/auth/verify-email",
     
   ],
 };

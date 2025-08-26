@@ -12,6 +12,26 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       const supabase = createClient();
+      const searchParams = new URLSearchParams(window.location.search);
+      const code = searchParams.get("code");
+
+      // This is a server-side auth flow, likely a password reset.
+      // The middleware has already exchanged the code for a session.
+      if (code) {
+        router.push("/auth/reset-password");
+        return;
+      }
+      
+      const hash = window.location.hash;
+      const params = new URLSearchParams(hash.substring(1)); // remove the '#'
+      const type = params.get("type");
+
+      if (type === "recovery") {
+        // It's a password recovery callback.
+        // The session is now set. Redirect to the password reset page.
+        router.push("/auth/reset-password");
+        return;
+      }
 
       try {
         const { data, error } = await supabase.auth.getSession();
