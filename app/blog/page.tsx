@@ -1,4 +1,4 @@
-import MainLayout from "@/components/layouts/MainLayout";
+import MainLayout from "@/app/components/layouts/MainLayout";
 import { getPublishedPosts } from "./actions";
 import PostCard from "./components/PostCard";
 

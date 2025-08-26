@@ -5,14 +5,38 @@ import { getDiscounts } from "./actions";
 import DiscountForm from "./components/DiscountForm";
 import { Badge } from "@/components/ui/badge";
 
-export default async function DiscountsPage() {
-  const discounts = await getDiscounts();
+export default async function DiscountsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = (await searchParams) || {};
+  const autoOpen = sp.new === '1' || sp.new === 'true';
+  const q = ((sp.q as string) || "").toLowerCase();
+type AdminDiscount = {
+  id: string;
+  code: string | null;
+  description: string | null;
+  type: 'percentage' | 'fixed';
+  value: number | string;
+  usage_limit: number | null;
+  uses: number;
+  expiration_date: string | null;
+  active: boolean;
+  created_at: string;
+};
+  const discounts = (await getDiscounts()) as AdminDiscount[];
+  const filtered: AdminDiscount[] = q
+    ? discounts.filter((d: AdminDiscount) =>
+        (d.code || '').toLowerCase().includes(q) || (d.description || '').toLowerCase().includes(q)
+      )
+    : discounts;
 
   return (
     <div className="space-y-6 text-black dark:text-white">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Discounts</h1>
-        <DiscountForm />
+        <DiscountForm autoOpen={!!autoOpen} />
       </div>
 
       <Card>
@@ -35,7 +59,7 @@ export default async function DiscountsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {discounts.map((discount) => (
+              {filtered.map((discount) => (
                 <TableRow key={discount.id}>
                   <TableCell className="font-mono text-sm">{discount.code}</TableCell>
                   <TableCell>{discount.description}</TableCell>

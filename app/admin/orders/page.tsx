@@ -6,7 +6,7 @@ export default async function OrdersPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sp = await searchParams;
-  const query = (sp.query as string) || "";
+  const query = (sp.q as string) || (sp.query as string) || "";
   const payment_status = (sp.payment_status as string) || "";
   const order_status = (sp.order_status as string) || "";
   const shipping_status = (sp.shipping_status as string) || "";

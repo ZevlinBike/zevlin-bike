@@ -1,16 +1,52 @@
+"use client";
 
+import { useEffect, useMemo, useState } from "react";
 import Logo from "@/components/Logo";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
+
+type FooterCategory = {
+  name: string;
+  slug: string;
+  sort_order: number | null;
+  active: boolean;
+  show_in_footer: boolean;
+};
 
 export default function Footer() {
+  const [footerCats, setFooterCats] = useState<FooterCategory[] | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const supabase = createClient();
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("product_categories")
+          .select("name, slug, sort_order, active, show_in_footer")
+          .eq("active", true)
+          .eq("show_in_footer", true)
+          .order("sort_order");
+        if (!error) setFooterCats(data as FooterCategory[] | null);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const productLinks = useMemo(
+    () =>
+      (footerCats || []).map((c) => ({
+        name: c.name,
+        href: `/products?category=${c.slug}`,
+      })),
+    [footerCats]
+  );
+
   const columns = [
     {
       title: "Products",
-      links: [
-        { name: "Chamois Cream", href: "/products?category=cream" },
-        { name: "Cycling Apparel", href: "/products?category=apparel" },
-        { name: "Limited Drops", href: "/products?category=limited" },
-      ],
+      links: productLinks,
     },
     {
       title: "Support",
@@ -29,10 +65,7 @@ export default function Footer() {
         { name: "Privacy Policy", href: "/privacy" },
       ],
     },
-    {
-      title: "🤫",
-      links: [{ name: "Admin", href: "/admin" }],
-    },
+    { title: "🤫", links: [{ name: "Admin", href: "/admin" }] },
     {
       title: "Account",
       links: [
@@ -117,4 +150,3 @@ export default function Footer() {
     </footer>
   );
 }
-

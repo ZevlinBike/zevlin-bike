@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +18,7 @@ import { Product } from "@/lib/schema";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { addOrUpdateProduct } from "../actions";
+import { createClient } from "@/lib/supabase/client";
 
 interface ProductFormProps {
   product?: Product & { product_images: { id: string, url: string }[] } | null;
@@ -29,6 +30,20 @@ export default function ProductForm({ product, isOpen, onClose }: ProductFormPro
   const [isPending, startTransition] = useTransition();
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    const loadCategories = async () => {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("product_categories")
+        .select("id, name")
+        .eq("active", true)
+        .order("sort_order");
+      if (!error && data) setCategories(data as { id: string; name: string }[]);
+    };
+    loadCategories();
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -95,6 +110,21 @@ export default function ProductForm({ product, isOpen, onClose }: ProductFormPro
               <Label htmlFor="quantity_in_stock">Quantity in Stock</Label>
               <Input id="quantity_in_stock" name="quantity_in_stock" type="number" defaultValue={product?.quantity_in_stock ?? 0} required />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="category_id">Category</Label>
+            <select
+              id="category_id"
+              name="category_id"
+              defaultValue={product?.category_id ?? ''}
+              className="w-full p-2 border rounded-md bg-white dark:bg-neutral-800"
+            >
+              <option value="">Uncategorized</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
           </div>
 
           <div className="space-y-2">

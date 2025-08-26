@@ -1,4 +1,4 @@
-import MainLayout from "@/components/layouts/MainLayout";
+import MainLayout from "@/app/components/layouts/MainLayout";
 
 
 export default function AuthLayout({

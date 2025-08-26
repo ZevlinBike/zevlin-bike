@@ -1,6 +1,16 @@
 export type OrderStatus = 'pending' | 'paid' | 'fulfilled' | 'cancelled' | 'refunded';
 export type RsvpStatus = 'going' | 'not_going' | 'interested';
 
+export interface ProductCategoryRow {
+  id: string;
+  name: string;
+  slug: string;
+  sort_order: number;
+  active: boolean;
+  show_in_footer: boolean;
+  created_at?: string;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -9,6 +19,7 @@ export interface Product {
   slug: string;
   created_at?: string;
   quantity_in_stock?: number;
+  category_id?: string | null;
   product_images: ProductImage[];
   product_variants: ProductVariant[];
   // Shipping-related (added via migration 0007)

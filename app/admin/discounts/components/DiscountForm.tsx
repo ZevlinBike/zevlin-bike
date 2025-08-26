@@ -31,7 +31,7 @@ import { createDiscount, updateDiscount } from "../actions";
 
 type Discount = {
   id: string;
-  code: string;
+  code: string | null;
   type: "percentage" | "fixed";
   value: number | string;
   active: boolean;
@@ -55,7 +55,7 @@ type FormErrors = Partial<
   >
 >;
 
-export default function DiscountForm({ discount }: { discount?: Discount }) {
+export default function DiscountForm({ discount, autoOpen = false }: { discount?: Discount; autoOpen?: boolean }) {
   const isEdit = Boolean(discount);
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -78,6 +78,11 @@ export default function DiscountForm({ discount }: { discount?: Discount }) {
   const [expirationDate, setExpirationDate] = useState(
     discount?.expiration_date?.split("T")[0] ?? ""
   );
+
+  useEffect(() => {
+    if (autoOpen && !isEdit) setOpen(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpen]);
 
   useEffect(() => {
     if (!open) {

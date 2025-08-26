@@ -27,9 +27,10 @@ export default function UserSubNav({ user }: { user: User }) {
       className="
         sticky top-[var(--subnav-offset,0px)]
         z-40
-        mx-4 mt-1
-        rounded-xl
-        bg-black/60
+        mx-4 
+        rounded-b-xl
+        bg-gradient-to-r
+        from-black/80 via-black/70 to-black/80 
         border border-white/10
         backdrop-blur
         shadow-[0_1px_0_0_rgba(255,255,255,0.06)_inset,0_8px_20px_rgba(0,0,0,0.25)]
@@ -65,61 +66,35 @@ export default function UserSubNav({ user }: { user: User }) {
               inline-flex items-center gap-1
               text-[11px] sm:text-xs
               text-white/80 hover:text-white
-              px-2 py-1
               rounded-md
               ring-1 ring-white/10 hover:ring-white/20
               transition
+              px-2
               focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40
             "
             title="View your orders"
           >
-            {/* Package icon (inline SVG, no deps) */}
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 24 24"
-              className="h-3.5 w-3.5 opacity-80 group-hover:opacity-100"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M12 3 3 7l9 4 9-4-9-4Z" />
-              <path d="M3 17l9 4 9-4" />
-              <path d="M3 7v10m18-10v10M12 7v14" />
-            </svg>
-            <span className="hidden xs:inline">Orders</span>
+            my orders
           </Link>
 
           <button
             onClick={handleSignOut}
             className="
-              inline-flex items-center justify-center
-              h-7 w-7
-              text-white/75 hover:text-white
+              group
+              inline-flex items-center gap-1
+              text-[11px] sm:text-xs
+              text-white/80 hover:text-white
               rounded-md
               ring-1 ring-white/10 hover:ring-white/20
               transition
+              cursor-pointer
+              px-2
               focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40
             "
             title="Sign out"
             aria-label="Sign out"
           >
-            {/* Log out icon */}
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 24 24"
-              className="h-3.5 w-3.5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-              <path d="M10 17l5-5-5-5" />
-              <path d="M15 12H3" />
-            </svg>
+            sign out
           </button>
         </div>
       </div>

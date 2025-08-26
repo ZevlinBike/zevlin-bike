@@ -49,7 +49,7 @@ export default function AdminAnnouncementsPage() {
   const pathname = usePathname();
   const { replace } = useRouter();
 
-  const query = searchParams.get("query") || "";
+  const query = searchParams.get("q") || searchParams.get("query") || "";
   const status = (searchParams.get("status") || "all").toLowerCase();
   const variant = (searchParams.get("variant") || "all").toLowerCase();
   const sort = searchParams.get("sort") || "updated_at-desc";
@@ -323,4 +323,3 @@ export default function AdminAnnouncementsPage() {
     </div>
   );
 }
-

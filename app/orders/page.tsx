@@ -1,4 +1,4 @@
-import MainLayout from "@/components/layouts/MainLayout";
+import MainLayout from "@/app/components/layouts/MainLayout";
 import { createClient } from "@/lib/supabase/server";
 import { OrderWithLineItems } from "@/lib/schema";
 import { redirect } from "next/navigation";

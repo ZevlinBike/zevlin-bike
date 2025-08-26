@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCartStore } from "@/store/cartStore";
-import MainLayout from "@/components/layouts/MainLayout";
+import MainLayout from "@/app/components/layouts/MainLayout";
 import { Loader2, CreditCard, Truck, User, LogIn, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { processCheckout, verifyDiscountCode } from "./actions";

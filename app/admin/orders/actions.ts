@@ -77,11 +77,9 @@ export async function getOrderById(orderId: string) {
   }
 
   let card_last4 = null;
-  if (order.stripe_payment_intent_id) {
+  if (order.stripe_payment_intent_id && process.env.STRIPE_SECRET_KEY) {
     try {
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-        apiVersion: "2025-07-30.basil",
-      });
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
       const paymentIntent = await stripe.paymentIntents.retrieve(
         order.stripe_payment_intent_id,
@@ -96,8 +94,9 @@ export async function getOrderById(orderId: string) {
         card_last4 = paymentIntent.payment_method.card.last4;
       }
     } catch (stripeError) {
-      console.error("Error fetching from Stripe:", stripeError);
-      // Don't block the whole process if Stripe fails, just log it
+      // Log as a warning to avoid dev overlay while keeping diagnostics
+      console.warn("Stripe lookup failed for payment intent", order.stripe_payment_intent_id, stripeError);
+      // Continue without card_last4
     }
   }
 

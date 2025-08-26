@@ -3,11 +3,20 @@ import Link from "next/link";
 import { getNewsletters, getNewsletterSignupCount } from "./actions";
 import { NewsletterList } from "./components/NewsletterList";
 
-export default async function NewsletterPage() {
+export default async function NewsletterPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = (await searchParams) || {};
+  const q = ((sp.q as string) || "").toLowerCase();
   const [newsletters, signupCount] = await Promise.all([
     getNewsletters(),
     getNewsletterSignupCount(),
   ]);
+  const filtered = q
+    ? newsletters.filter((n) => (n.subject || '').toLowerCase().includes(q))
+    : newsletters;
 
   return (
     <div className="container mx-auto py-10">
@@ -22,7 +31,7 @@ export default async function NewsletterPage() {
           <Link href="/admin/newsletter/new">New Newsletter</Link>
         </Button>
       </div>
-      <NewsletterList newsletters={newsletters} />
+      <NewsletterList newsletters={filtered} />
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { motion, Variants } from "framer-motion";
-import MainLayout from "@/components/layouts/MainLayout";
+import MainLayout from "@/app/components/layouts/MainLayout";
 
 export default function AboutPage() {
   const containerVariants = {

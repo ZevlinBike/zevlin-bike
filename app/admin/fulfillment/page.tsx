@@ -31,7 +31,11 @@ type OrderRow = {
   shipments?: { id: string; status: string; label_url: string | null }[];
 };
 
-export default async function FulfillmentPage() {
+export default async function FulfillmentPage({
+  searchParams,
+}: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
+  const sp = (await searchParams) || {};
+  const initialQuery = (sp.q as string) || "";
   const supabase = await createClient();
 
   const { data: orders } = await supabase
@@ -55,5 +59,5 @@ export default async function FulfillmentPage() {
     customers: Array.isArray(row.customers) ? row.customers[0] ?? null : row.customers,
   }));
 
-  return <FulfillmentClientPage orders={normalized} />;
+  return <FulfillmentClientPage orders={normalized} initialQuery={initialQuery} />;
 }

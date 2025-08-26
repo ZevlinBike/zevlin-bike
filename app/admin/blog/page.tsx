@@ -76,7 +76,7 @@ export default function AdminBlogPage() {
 
   const [selected, setSelected] = useState<Record<string, boolean>>({});
 
-  const query = searchParams.get("query") || "";
+  const query = searchParams.get("q") || searchParams.get("query") || "";
   const status = searchParams.get("status") || "all";
   const sort = searchParams.get("sort") || "updated_at-desc";
   const page = Number(searchParams.get("page")) || 1;

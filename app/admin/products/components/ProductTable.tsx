@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition, useEffect } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,9 +23,22 @@ import { clsx } from "clsx";
 type SortKey = "name" | "price" | "updated_at";
 type SortDir = "asc" | "desc";
 
-export default function ProductTable({ products: initialProducts }: { products: Product[] }) {
+export default function ProductTable({ products: initialProducts, initialQuery = "", openNewOnLoad = false }: { products: Product[]; initialQuery?: string; openNewOnLoad?: boolean }) {
   const [products, setProducts] = useState(initialProducts);
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
+  
+  // keep query in sync if the prop changes (e.g., via URL)
+  useEffect(() => {
+    setQuery(initialQuery);
+  }, [initialQuery]);
+
+  useEffect(() => {
+    if (openNewOnLoad) {
+      setSelectedProduct(null);
+      setIsFormOpen(true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [sortKey, setSortKey] = useState<SortKey>("updated_at");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -200,6 +213,7 @@ export default function ProductTable({ products: initialProducts }: { products: 
             <TableRow className="bg-gray-50 dark:bg-neutral-800/60">
               <TableHead className="w-[116px]">Image</TableHead>
               <TableHead>Name</TableHead>
+              <TableHead className="w-[160px]">Category</TableHead>
               <TableHead className="w-[120px]">Price</TableHead>
               <TableHead className="w-[120px]">SKU</TableHead>
               <TableHead className="w-[120px]">Stock</TableHead>
@@ -229,6 +243,7 @@ export default function ProductTable({ products: initialProducts }: { products: 
                   <TableCell className="font-medium">
                     <div className="line-clamp-2">{product.name}</div>
                   </TableCell>
+                  <TableCell>{(product as (Product & { category?: { name: string } | null })).category?.name ?? "—"}</TableCell>
                   <TableCell className="tabular-nums">{money(product.price_cents)}</TableCell>
                   <TableCell className="font-mono text-xs text-gray-600 dark:text-gray-400">
                     {product.product_variants?.[0]?.sku ?? "—"}
@@ -261,7 +276,7 @@ export default function ProductTable({ products: initialProducts }: { products: 
             })}
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6}>
+                <TableCell colSpan={8}>
                   <EmptyState />
                 </TableCell>
               </TableRow>
@@ -334,4 +349,3 @@ function PlusCTA() {
     </Button>
   );
 }
-

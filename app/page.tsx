@@ -1,4 +1,4 @@
-import MainLayout from "@/components/layouts/MainLayout";
+import MainLayout from "@/app/components/layouts/MainLayout";
 import CTA from "./components/CTA";
 import FeaturedProducts from "./components/FeaturedProducts";
 import Features from "./components/Features";

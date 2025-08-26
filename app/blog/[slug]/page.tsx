@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import { getPostBySlug } from "../actions";
 import { Calendar, User2 } from "lucide-react";
-import MainLayout from "@/components/layouts/MainLayout";
+import MainLayout from "@/app/components/layouts/MainLayout";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import styles from "@/markdown-styles.module.css";
@@ -82,4 +82,3 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     </MainLayout>
   );
 }
-

@@ -12,6 +12,7 @@ const productSchema = z.object({
   price: z.coerce.number(),
   slug: z.string(),
   quantity_in_stock: z.coerce.number().optional(),
+  category_id: z.string().uuid().optional(),
   // Shipping fields (optional in form)
   weight: z.coerce.number().optional(),
   weight_unit: z.string().optional(),
@@ -25,12 +26,26 @@ type ProductFromSupabase = Omit<Product, 'product_images' | 'product_variants'> 
   product_variants: ProductVariant | ProductVariant[] | null;
 };
 
-export async function getProducts(): Promise<Product[]> {
+export async function getProducts(categorySlug?: string): Promise<Product[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("products")
-    .select("*, product_images(*), product_variants(*)")
+    .select("*, product_images(*), product_variants(*), category:product_categories(id,name,slug)")
     .order("name");
+
+  if (categorySlug) {
+    // Resolve slug -> id for filtering
+    const { data: cat, error: catErr } = await supabase
+      .from("product_categories")
+      .select("id, slug")
+      .eq("slug", categorySlug)
+      .single();
+    if (!catErr && cat?.id) {
+      query = query.eq("category_id", cat.id);
+    }
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("Error fetching products:", error);
@@ -78,7 +93,7 @@ export async function addOrUpdateProduct(formData: FormData) {
   if (!validated.success) {
     return { error: "Invalid product data." };
   }
-  const { id, name, description, price, slug, quantity_in_stock, weight, weight_unit, length_cm, width_cm, height_cm } = validated.data;
+  const { id, name, description, price, slug, quantity_in_stock, category_id, weight, weight_unit, length_cm, width_cm, height_cm } = validated.data;
 
   // 1. Upsert the product details
   const { data: productData, error: productError } = await supabase
@@ -90,6 +105,7 @@ export async function addOrUpdateProduct(formData: FormData) {
       price_cents: price,
       slug,
       quantity_in_stock,
+      category_id,
       // Shipping-related fields
       weight: typeof weight === 'number' && !Number.isNaN(weight) ? Math.max(0, weight) : undefined,
       weight_unit: weight_unit,

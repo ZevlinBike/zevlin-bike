@@ -58,8 +58,8 @@ type ShippingPackage = {
   is_default: boolean;
 };
 
-export default function FulfillmentClientPage({ orders }: { orders: OrderRow[] }) {
-  const [query, setQuery] = useState("");
+export default function FulfillmentClientPage({ orders, initialQuery = "" }: { orders: OrderRow[]; initialQuery?: string }) {
+  const [query, setQuery] = useState(initialQuery);
   const [openOrderId, setOpenOrderId] = useState<string | null>(null);
   const [rates, setRates] = useState<RateOption[] | null>(null);
   const [loadingRates, setLoadingRates] = useState(false);

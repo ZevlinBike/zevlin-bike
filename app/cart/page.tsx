@@ -14,7 +14,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useCartStore } from "@/store/cartStore";
-import MainLayout from "@/components/layouts/MainLayout";
+import MainLayout from "@/app/components/layouts/MainLayout";
 import { useMemo } from "react";
 
 export default function CartPage() {
@@ -117,7 +117,7 @@ export default function CartPage() {
                     Your cart is empty.
                   </p>
                   <Button asChild>
-                    <Link href="/shop" className="inline-flex items-center gap-2">
+                    <Link href="/products" className="inline-flex items-center gap-2">
                       Continue shopping <ChevronRight className="h-4 w-4" />
                     </Link>
                   </Button>
@@ -298,4 +298,3 @@ export default function CartPage() {
     </MainLayout>
   );
 }
-
