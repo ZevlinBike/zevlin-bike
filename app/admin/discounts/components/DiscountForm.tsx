@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { createDiscount, updateDiscount } from "../actions";
 
 type Discount = {
@@ -34,9 +35,25 @@ type Discount = {
   type: "percentage" | "fixed";
   value: number | string;
   active: boolean;
+  description?: string | null;
+  product_ids?: string[] | null;
+  usage_limit?: number | null;
+  expiration_date?: string | null;
 };
 
-type FormErrors = Partial<Record<"code" | "type" | "value" | "_form", string>>;
+type FormErrors = Partial<
+  Record<
+    | "code"
+    | "type"
+    | "value"
+    | "description"
+    | "product_ids"
+    | "usage_limit"
+    | "expiration_date"
+    | "_form",
+    string
+  >
+>;
 
 export default function DiscountForm({ discount }: { discount?: Discount }) {
   const isEdit = Boolean(discount);
@@ -51,6 +68,16 @@ export default function DiscountForm({ discount }: { discount?: Discount }) {
   );
   const [value, setValue] = useState(String(discount?.value ?? ""));
   const [active, setActive] = useState<boolean>(discount?.active ?? true);
+  const [description, setDescription] = useState(discount?.description ?? "");
+  const [productIds, setProductIds] = useState(
+    discount?.product_ids?.join(", ") ?? ""
+  );
+  const [usageLimit, setUsageLimit] = useState(
+    String(discount?.usage_limit ?? "")
+  );
+  const [expirationDate, setExpirationDate] = useState(
+    discount?.expiration_date?.split("T")[0] ?? ""
+  );
 
   useEffect(() => {
     if (!open) {
@@ -64,6 +91,10 @@ export default function DiscountForm({ discount }: { discount?: Discount }) {
       );
       setValue(String(discount?.value ?? ""));
       setActive(discount?.active ?? true);
+      setDescription(discount?.description ?? "");
+      setProductIds(discount?.product_ids?.join(", ") ?? "");
+      setUsageLimit(String(discount?.usage_limit ?? ""));
+      setExpirationDate(discount?.expiration_date?.split("T")[0] ?? "");
     }
   }, [open, discount]);
 
@@ -88,6 +119,22 @@ export default function DiscountForm({ discount }: { discount?: Discount }) {
     else if (discountType === "fixed" && num <= 0)
       next.value = "Amount must be greater than 0";
 
+    if (usageLimit) {
+      const limit = Number(usageLimit);
+      if (Number.isNaN(limit) || limit < 0) {
+        next.usage_limit = "Usage limit must be a non-negative number";
+      }
+    }
+
+    if (productIds) {
+      const ids = productIds.split(",").map((id) => id.trim());
+      const uuidRegex =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (ids.some((id) => !uuidRegex.test(id))) {
+        next.product_ids = "Please provide a valid comma-separated list of UUIDs";
+      }
+    }
+
     setErrors(next);
     return Object.keys(next).length === 0;
   }
@@ -103,6 +150,10 @@ export default function DiscountForm({ discount }: { discount?: Discount }) {
     formData.set("type", discountType);
     formData.set("value", String(value));
     formData.set("active", active ? "on" : "");
+    if (description) formData.set("description", description);
+    if (productIds) formData.set("product_ids", productIds);
+    if (usageLimit) formData.set("usage_limit", usageLimit);
+    if (expirationDate) formData.set("expiration_date", expirationDate);
     if (isEdit && discount?.id) formData.set("id", discount.id);
 
     setErrors({});
@@ -160,6 +211,17 @@ export default function DiscountForm({ discount }: { discount?: Discount }) {
             )}
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              name="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="e.g., 20% off for our summer sale!"
+            />
+          </div>
+
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Type</Label>
@@ -205,6 +267,51 @@ export default function DiscountForm({ discount }: { discount?: Discount }) {
               {errors.value && (
                 <p className="text-sm text-red-500">{errors.value}</p>
               )}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="product_ids">Product IDs</Label>
+            <Input
+              id="product_ids"
+              name="product_ids"
+              value={productIds}
+              onChange={(e) => setProductIds(e.target.value)}
+              placeholder="Comma-separated UUIDs"
+            />
+            <p className="text-xs text-gray-500">
+              Leave blank to apply to all products.
+            </p>
+            {errors.product_ids && (
+              <p className="text-sm text-red-500">{errors.product_ids}</p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="usage_limit">Usage Limit</Label>
+              <Input
+                id="usage_limit"
+                name="usage_limit"
+                type="number"
+                min="0"
+                value={usageLimit}
+                onChange={(e) => setUsageLimit(e.target.value)}
+                placeholder="e.g., 100"
+              />
+              {errors.usage_limit && (
+                <p className="text-sm text-red-500">{errors.usage_limit}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="expiration_date">Expiration Date</Label>
+              <Input
+                id="expiration_date"
+                name="expiration_date"
+                type="date"
+                value={expirationDate}
+                onChange={(e) => setExpirationDate(e.target.value)}
+              />
             </div>
           </div>
 

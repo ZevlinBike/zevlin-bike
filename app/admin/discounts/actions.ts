@@ -16,12 +16,17 @@ export async function getDiscounts() {
 
 export async function createDiscount(formData: FormData) {
   const supabase = await createClient();
+  const productIds = formData.get('product_ids') as string;
   const { data, error } = await supabase.from('discounts').insert([
     {
       code: formData.get('code'),
       type: formData.get('type'),
       value: formData.get('value'),
       active: formData.get('active') === 'on',
+      description: formData.get('description'),
+      product_ids: productIds ? productIds.split(',').map(id => id.trim()) : null,
+      usage_limit: formData.get('usage_limit') ? Number(formData.get('usage_limit')) : null,
+      expiration_date: formData.get('expiration_date') ? new Date(formData.get('expiration_date') as string).toISOString() : null,
     },
   ]);
 
@@ -37,6 +42,7 @@ export async function createDiscount(formData: FormData) {
 export async function updateDiscount(formData: FormData) {
   const supabase = await createClient();
   const id = formData.get('id');
+  const productIds = formData.get('product_ids') as string;
   const { data, error } = await supabase
     .from('discounts')
     .update({
@@ -44,6 +50,10 @@ export async function updateDiscount(formData: FormData) {
       type: formData.get('type'),
       value: formData.get('value'),
       active: formData.get('active') === 'on',
+      description: formData.get('description'),
+      product_ids: productIds ? productIds.split(',').map(id => id.trim()) : null,
+      usage_limit: formData.get('usage_limit') ? Number(formData.get('usage_limit')) : null,
+      expiration_date: formData.get('expiration_date') ? new Date(formData.get('expiration_date') as string).toISOString() : null,
     })
     .eq('id', id);
 

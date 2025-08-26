@@ -24,8 +24,11 @@ export default async function DiscountsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Code</TableHead>
+                <TableHead>Description</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Value</TableHead>
+                <TableHead>Usage</TableHead>
+                <TableHead>Expires</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Created At</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -35,9 +38,16 @@ export default async function DiscountsPage() {
               {discounts.map((discount) => (
                 <TableRow key={discount.id}>
                   <TableCell className="font-mono text-sm">{discount.code}</TableCell>
+                  <TableCell>{discount.description}</TableCell>
                   <TableCell className="capitalize">{discount.type}</TableCell>
                   <TableCell>
                     {discount.type === 'percentage' ? `${discount.value}%` : `${Number(discount.value).toFixed(2)}`}
+                  </TableCell>
+                  <TableCell>
+                    {discount.usage_limit ? `${discount.uses} / ${discount.usage_limit}` : discount.uses}
+                  </TableCell>
+                  <TableCell>
+                    {discount.expiration_date ? new Date(discount.expiration_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Never'}
                   </TableCell>
                   <TableCell>
                     <Badge variant={discount.active ? "default" : "destructive"}>
