@@ -32,25 +32,41 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
-import { updateOrderStatus } from "./actions";
+import { requestRefund, updateOrderStatus } from "./actions";
 import { toast } from "sonner";
+import { Textarea } from "@/components/ui/textarea";
 
 const OrderRow = ({ order }: { order: OrderWithLineItems }) => {
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
+  const [reason, setReason] = useState("");
 
-  const handleStatusUpdate = async (status: "cancelled" | "refunded") => {
-    const confirmationText = status === 'cancelled' 
-      ? "Are you sure you want to cancel this order?"
-      : "Are you sure you want to request a refund for this order?";
-      
-    if (window.confirm(confirmationText)) {
-      const result = await updateOrderStatus(order.id, status);
-      if (result.success) {
-        toast.success(`Order has been ${status}.`);
-      } else {
-        toast.error(result.error || "An unexpected error occurred.");
-      }
+  const handleCancel = async () => {
+    if (!window.confirm("Are you sure you want to cancel this order?")) return;
+    const result = await updateOrderStatus(order.id, 'cancelled');
+    if (result.success) {
+      toast.success('Order has been cancelled.');
+      router.refresh();
+    } else {
+      toast.error(result.error || 'An unexpected error occurred.');
+    }
+  };
+
+  const hasPendingOrApprovedRefund = Array.isArray(order.refunds) && order.refunds.some(r => r.status === 'pending' || r.status === 'approved');
+
+  const handleRequestRefund = async () => {
+    if (hasPendingOrApprovedRefund) {
+      toast.info('A refund has already been requested for this order.');
+      return;
+    }
+    if (!window.confirm("Are you sure you want to request a refund for this order?")) return;
+    const trimmed = reason.trim();
+    const result = await requestRefund(order.id, trimmed || undefined);
+    if (result.success) {
+      toast.success('Refund request submitted. We\'ll email you once reviewed.');
+      router.refresh();
+    } else {
+      toast.error(result.error || 'Failed to request refund.');
     }
   };
 
@@ -159,7 +175,7 @@ const OrderRow = ({ order }: { order: OrderWithLineItems }) => {
                         <Button
                           variant="destructive"
                           size="sm"
-                          onClick={() => handleStatusUpdate("cancelled")}
+                          onClick={handleCancel}
                           className="flex items-center gap-2"
                         >
                           <XCircle className="w-4 h-4" />
@@ -167,15 +183,27 @@ const OrderRow = ({ order }: { order: OrderWithLineItems }) => {
                         </Button>
                       )}
                       {order.status === "fulfilled" && (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => handleStatusUpdate("refunded")}
-                          className="flex items-center gap-2"
-                        >
-                          <RefreshCw className="w-4 h-4" />
-                          Request Refund
-                        </Button>
+                        <div className="space-y-2">
+                          <Textarea
+                            placeholder="Reason for refund (shared with admin)"
+                            value={reason}
+                            onChange={(e) => setReason(e.target.value)}
+                            maxLength={500}
+                            className="h-20"
+                            disabled={hasPendingOrApprovedRefund}
+                          />
+                          <div className="text-xs text-gray-500">Max 500 characters.</div>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={handleRequestRefund}
+                            disabled={hasPendingOrApprovedRefund}
+                            className="flex items-center gap-2"
+                          >
+                            <RefreshCw className="w-4 h-4" />
+                            {hasPendingOrApprovedRefund ? 'Refund Pending' : 'Request Refund'}
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </div>

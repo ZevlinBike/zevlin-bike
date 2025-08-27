@@ -1,4 +1,5 @@
 export type OrderStatus = 'pending' | 'paid' | 'fulfilled' | 'cancelled' | 'refunded';
+export type RefundStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 export type RsvpStatus = 'going' | 'not_going' | 'interested';
 
 export interface ProductCategoryRow {
@@ -92,6 +93,12 @@ export type OrderWithLineItems = Order & {
       name: string;
       product_images: { url: string }[];
     } | null;
+  }[];
+  refunds?: {
+    id: string;
+    status: RefundStatus;
+    amount_cents: number;
+    created_at?: string;
   }[];
 };
 

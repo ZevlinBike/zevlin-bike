@@ -63,6 +63,7 @@ export default async function AdminDashboard() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <div className="flex items-center gap-2">
+          <Button asChild variant="outline" size="sm"><Link href="/admin/refunds">Refunds</Link></Button>
           <Button asChild variant="outline" size="sm"><Link href="/admin/settings">Settings</Link></Button>
           <Button asChild size="sm"><Link href="/admin/orders"><Plus className="h-4 w-4 mr-1" /> New Order</Link></Button>
         </div>

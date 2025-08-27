@@ -25,7 +25,7 @@ export default async function OrderHistoryPage() {
 
   const { data: orders, error } = await supabase
     .from("orders")
-    .select("*, line_items(*, products(*, product_images(*)))")
+    .select("*, line_items(*, products(*, product_images(*))), refunds(*)")
     .eq("customer_id", customer.id)
     .order("created_at", { ascending: false });
 

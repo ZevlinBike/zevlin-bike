@@ -20,7 +20,8 @@ import {
   Ticket,
   Truck,
   Tags,
-  Mail
+  Mail,
+  RefreshCw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -35,6 +36,7 @@ const navigation = [
   { name: "Products", href: "/admin/products", icon: Package },
   { name: "Categories", href: "/admin/categories", icon: Tags },
   { name: "Orders", href: "/admin/orders", icon: ShoppingCart },
+  { name: "Refunds", href: "/admin/refunds", icon: RefreshCw },
   { name: "Customers", href: "/admin/customers", icon: Users },
   { name: "Discounts", href: "/admin/discounts", icon: Ticket },
   { name: "Blog", href: "/admin/blog", icon: Newspaper },
@@ -49,6 +51,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const supabase = createClient();
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [navCounts, setNavCounts] = useState<{ refunds: number; toFulfill: number; openOrders: number }>({ refunds: 0, toFulfill: 0, openOrders: 0 });
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -56,6 +59,43 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       setUserEmail(data.user?.email ?? null);
     };
     fetchUser();
+  }, [supabase]);
+
+  useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        // Pending refunds
+        const { count: refundsCount } = await supabase
+          .from('refunds')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'pending');
+
+        // Orders to fulfill
+        const { count: fulfillCount } = await supabase
+          .from('orders')
+          .select('id', { count: 'exact', head: true })
+          .eq('order_status', 'pending_fulfillment');
+
+        // Open orders (pending payment or fulfillment)
+        const { count: openOrdersCount } = await supabase
+          .from('orders')
+          .select('id', { count: 'exact', head: true })
+          .in('order_status', ['pending_payment', 'pending_fulfillment']);
+
+        setNavCounts({
+          refunds: refundsCount ?? 0,
+          toFulfill: fulfillCount ?? 0,
+          openOrders: openOrdersCount ?? 0,
+        });
+      } catch (e) {
+        // Non-fatal; keep counts at 0
+        console.warn('Failed to fetch admin nav counts', e);
+      }
+    };
+    fetchCounts();
+    // periodic refresh while on admin UI
+    const id = setInterval(fetchCounts, 30_000);
+    return () => clearInterval(id);
   }, [supabase]);
 
   const handleSignOut = async () => {
@@ -121,6 +161,15 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                     >
                       <item.icon className="mr-3 h-5 w-5" />
                       {item.name}
+                      {(item.href === '/admin/refunds' && navCounts.refunds > 0) && (
+                        <span className="ml-auto inline-flex items-center justify-center rounded-full bg-blue-600 text-white text-xs px-2 py-0.5 min-w-5">{navCounts.refunds}</span>
+                      )}
+                      {(item.href === '/admin/fulfillment' && navCounts.toFulfill > 0) && (
+                        <span className="ml-auto inline-flex items-center justify-center rounded-full bg-blue-600 text-white text-xs px-2 py-0.5 min-w-5">{navCounts.toFulfill}</span>
+                      )}
+                      {(item.href === '/admin/orders' && navCounts.openOrders > 0) && (
+                        <span className="ml-auto inline-flex items-center justify-center rounded-full bg-blue-600 text-white text-xs px-2 py-0.5 min-w-5">{navCounts.openOrders}</span>
+                      )}
                     </Link>
                   );
                 })}
@@ -165,7 +214,18 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                   }`}
                 >
                   <item.icon className="h-5 w-5 shrink-0" />
-                  <span className="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 delay-100">{item.name}</span>
+                  <span className="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 delay-100 flex-1 flex items-center">
+                    <span>{item.name}</span>
+                    {(item.href === '/admin/refunds' && navCounts.refunds > 0) && (
+                      <span className="ml-auto inline-flex items-center justify-center rounded-full bg-blue-600 text-white text-xs px-2 py-0.5 min-w-5">{navCounts.refunds}</span>
+                    )}
+                    {(item.href === '/admin/fulfillment' && navCounts.toFulfill > 0) && (
+                      <span className="ml-auto inline-flex items-center justify-center rounded-full bg-blue-600 text-white text-xs px-2 py-0.5 min-w-5">{navCounts.toFulfill}</span>
+                    )}
+                    {(item.href === '/admin/orders' && navCounts.openOrders > 0) && (
+                      <span className="ml-auto inline-flex items-center justify-center rounded-full bg-blue-600 text-white text-xs px-2 py-0.5 min-w-5">{navCounts.openOrders}</span>
+                    )}
+                  </span>
                 </Link>
               );
             })}
