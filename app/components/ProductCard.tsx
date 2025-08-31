@@ -37,12 +37,12 @@ const ProductCard = ({ product }: { product: Product }) => {
         onClick={handleCardClick}
       >
         <CardContent className="flex flex-col p-4 h-full">
-          <div className="flex overflow-hidden relative justify-center items-center mb-3 w-full bg-gray-50 rounded-lg transition-transform duration-300 dark:bg-gray-700 aspect-square group-hover:scale-[1.03]">
+          <div className="flex overflow-hidden relative justify-center items-center mb-3 w-full rounded-lg aspect-square ">
             <Image
               alt={product.name}
               src={featuredImage}
               fill
-              className="object-contain p-2"
+              className="object-contain p-2 group-hover:scale-[1.03] transition-transform duration-300 "
             />
           </div>
           {/* Placeholder for category */}
@@ -113,7 +113,7 @@ const ProductCard = ({ product }: { product: Product }) => {
                     alt={product.name}
                     src={featuredImage}
                     fill
-                    className="object-contain rounded-lg bg-gray-100 dark:bg-gray-800"
+                    className="object-contain rounded-lg"
                   />
                 </div>
                 <h2 className="mb-2 text-xl font-bold text-gray-900 dark:text-white text-center">
