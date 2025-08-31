@@ -6,6 +6,7 @@ import Navigation from "@/components/Navigation";
 import { ThemeProvider } from "@/app/components/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
 import SocialFABs from "@/components/SocialFABs";
+import { Analytics } from "@vercel/analytics/next"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,7 +23,6 @@ export const metadata: Metadata = {
   description:
     "The ultimate cream to keep you riding better, harder, and longer.",
 };
-
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -45,6 +45,7 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <SocialFABs />
+        <Analytics />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

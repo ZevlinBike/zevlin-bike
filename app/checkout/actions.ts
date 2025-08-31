@@ -51,10 +51,11 @@ const costsSchema = z.object({
 });
 
 export async function processCheckout(
-  formData: unknown, 
-  cartItems: CartItem[], 
+  formData: unknown,
+  cartItems: CartItem[],
   costs: unknown,
-  paymentMethodId: string
+  paymentMethodId: string,
+  idempotencyKey?: string
 ) {
   console.log("Starting checkout process...");
   
@@ -161,19 +162,23 @@ export async function processCheckout(
 
     // Step 2: Now that we have a customer, create the Payment Intent.
     const totalInCents = Math.round(costData.total * 100);
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: totalInCents,
-      currency: 'usd',
-      payment_method: paymentMethodId,
-      confirm: true,
-      automatic_payment_methods: {
-        enabled: true,
-        allow_redirects: 'never'
+    const paymentIntent = await stripe.paymentIntents.create(
+      {
+        amount: totalInCents,
+        currency: 'usd',
+        payment_method: paymentMethodId,
+        confirm: true,
+        automatic_payment_methods: {
+          enabled: true,
+          allow_redirects: 'never',
+        },
+        metadata: {
+          customerId: customerId,
+        },
       },
-      metadata: {
-        customerId: customerId,
-      }
-    });
+      // Prevent duplicate charges if client retries or double-submits
+      idempotencyKey ? { idempotencyKey } : undefined
+    );
 
     if (paymentIntent.status !== 'succeeded') {
       return { errors: { _form: ["Payment failed. Please try another card."] } };
@@ -216,7 +221,23 @@ export async function processCheckout(
       .select("id")
       .single();
 
-    if (orderError) throw orderError;
+    // If unique constraint hit due to idempotent retry, fetch and return the existing order
+    if (orderError) {
+      const isUniqueViolation = orderError.code === '23505' ||
+        (typeof orderError.message === 'string' && orderError.message.includes('stripe_payment_intent_id'));
+      if (isUniqueViolation) {
+        const { data: existingOrder } = await supabase
+          .from('orders')
+          .select('id')
+          .eq('stripe_payment_intent_id', paymentIntent.id)
+          .single();
+        if (existingOrder?.id) {
+          console.warn('Duplicate checkout detected. Returning existing order for PI', paymentIntent.id);
+          return { success: true, orderId: existingOrder.id };
+        }
+      }
+      throw orderError;
+    }
 
     const orderId = order!.id;
 

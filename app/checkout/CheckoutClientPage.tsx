@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -93,6 +93,17 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
   const [promoCode, setPromoCode] = useState("");
   const [appliedPromo, setAppliedPromo] = useState("");
   const [discount, setDiscount] = useState(0);
+  const [localSubmitting, setLocalSubmitting] = useState(false);
+  // Stable idempotency key per page load to avoid double charges/orders
+  const idempotencyKeyRef = useRef<string>("");
+  if (!idempotencyKeyRef.current) {
+    try {
+      const uuid = globalThis.crypto?.randomUUID?.();
+      idempotencyKeyRef.current = (uuid as string) || Math.random().toString(36).slice(2);
+    } catch {
+      idempotencyKeyRef.current = Math.random().toString(36).slice(2);
+    }
+  }
 
   useEffect(() => {
     if (user) {
@@ -159,14 +170,14 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
     return json;
   }
 
-  async function validateAddressInline(addr: {
+  const validateAddressInline = useCallback(async (addr: {
     name?: string;
     address1: string;
     city: string;
     state: string;
     postal_code: string;
     country: string;
-  }) {
+  }) => {
     const res = await fetch('/api/shipping/validate-address', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -175,7 +186,7 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || 'Failed to validate address');
     return json as { isValid: boolean; isComplete?: boolean; messages?: string[]; suggested?: typeof addressSuggestion; normalized?: typeof addressSuggestion };
-  }
+  }, []);
 
   // Debounced inline validation for shipping address
   useEffect(() => {
@@ -210,7 +221,16 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
       }
     }, 600);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [formData.shippingAddress, formData.shippingCity, formData.shippingState, formData.shippingZipCode, formData.shippingFirstName, formData.shippingLastName]);
+  }, [
+    formData,
+    formData.shippingAddress,
+    formData.shippingCity,
+    formData.shippingState,
+    formData.shippingZipCode,
+    formData.shippingFirstName,
+    formData.shippingLastName,
+    validateAddressInline,
+  ]);
 
   // Debounced inline validation for billing address (when enabled)
   useEffect(() => {
@@ -249,7 +269,17 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
       }
     }, 600);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [formData.billingSameAsShipping, formData.billingAddress, formData.billingCity, formData.billingState, formData.billingZipCode, formData.billingFirstName, formData.billingLastName]);
+  }, [
+    formData,
+    formData.billingSameAsShipping,
+    formData.billingAddress,
+    formData.billingCity,
+    formData.billingState,
+    formData.billingZipCode,
+    formData.billingFirstName,
+    formData.billingLastName,
+    validateAddressInline,
+  ]);
 
   function applySuggestedAndContinue() {
     if (!addressSuggestion) return;
@@ -315,6 +345,8 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (localSubmitting) return; // immediate guard against rapid double-submits
+    setLocalSubmitting(true);
     setErrors({});
 
     // 1) Validate shipping address automatically via Shippo
@@ -330,10 +362,12 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
         } else {
           toast.error(validation.messages?.[0] || 'The shipping address appears invalid.');
         }
+        setLocalSubmitting(false);
         return; // stop checkout until user reviews
       }
     } catch (err: unknown) {
       toast.error((err as Error)?.message || 'Address validation failed');
+      setLocalSubmitting(false);
       return;
     }
 
@@ -350,22 +384,26 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
         });
         if (!billingValidation.isValid) {
           toast.error(billingValidation.messages?.[0] || 'The billing address appears invalid.');
+          setLocalSubmitting(false);
           return;
         }
       } catch (err: unknown) {
         toast.error((err as Error)?.message || 'Billing address validation failed');
+        setLocalSubmitting(false);
         return;
       }
     }
 
     if (!stripe || !elements) {
       toast.error("Payment system is not ready yet. Please wait a moment.");
+      setLocalSubmitting(false);
       return;
     }
 
     const cardElement = elements.getElement(CardElement);
     if (cardElement == null) {
       toast.error("Could not find payment details form. Please refresh and try again.");
+      setLocalSubmitting(false);
       return;
     }
 
@@ -376,6 +414,7 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
 
     if (error) {
       toast.error(error.message || "An unexpected error occurred with your card.");
+      setLocalSubmitting(false);
     } else {
       startTransition(async () => {
         const result = await processCheckout(
@@ -388,7 +427,8 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
             discount,
             total
           },
-          paymentMethod.id
+          paymentMethod.id,
+          idempotencyKeyRef.current
         );
 
         if (result.errors) {
@@ -396,6 +436,7 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
             toast.error(result.errors._form[0]);
           }
           setErrors(result.errors);
+          setLocalSubmitting(false);
         } else if (result.success && result.orderId) {
           toast.success("Order placed successfully!");
           clearCart();
@@ -905,7 +946,7 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
                       type="submit"
                       size="lg"
                       className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold"
-                      disabled={isPending || !stripe}
+                      disabled={localSubmitting || isPending || !stripe}
                     >
                       {isPending ? (
                         <>
@@ -1024,7 +1065,7 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
                         form="checkout-form"
                         size="lg"
                         className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold"
-                        disabled={isPending || !stripe}
+                        disabled={localSubmitting || isPending || !stripe}
                       >
                         {isPending ? (
                           <>
