@@ -465,6 +465,19 @@ export default function OrderDetailClientPage({ order: initialOrder }: { order: 
                   Payment Intent: {order.stripe_payment_intent_id.substring(0, 12)}…
                 </p>
               )}
+              {order.stripe_payment_intent_id && (
+                <div className="mt-3">
+                  <Button asChild size="sm" variant="outline">
+                    <a
+                      href={`https://dashboard.stripe.com/payments/${order.stripe_payment_intent_id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      View on Stripe
+                    </a>
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
