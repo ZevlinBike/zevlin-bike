@@ -111,8 +111,9 @@ export default function DiscountForm({ discount, autoOpen = false }: { discount?
     const next: FormErrors = {};
     const codeTrim = code.trim();
     if (!codeTrim) next.code = "Code is required";
-    if (codeTrim && !/^[A-Z0-9_-]+$/.test(codeTrim))
-      next.code = "Use A–Z, 0–9, _ or -";
+    // Allow letters, numbers, spaces, underscores, and hyphens
+    if (codeTrim && !/^[A-Za-z0-9 _-]+$/.test(codeTrim))
+      next.code = "Use letters, numbers, spaces, _ or -";
 
     if (!discountType) next.type = "Select a type";
 
@@ -120,7 +121,12 @@ export default function DiscountForm({ discount, autoOpen = false }: { discount?
     if (!value) next.value = "Enter a value";
     else if (Number.isNaN(num)) next.value = "Value must be a number";
     else if (discountType === "percentage" && (num <= 0 || num > 100))
-      next.value = "Percentage must be 1–100";
+      next.value = "Percentage must be 0.01–100";
+    else if (
+      discountType === "percentage" &&
+      /\.\d{3,}$/.test(String(value))
+    )
+      next.value = "Max 2 decimal places";
     else if (discountType === "fixed" && num <= 0)
       next.value = "Amount must be greater than 0";
 
@@ -151,7 +157,7 @@ export default function DiscountForm({ discount, autoOpen = false }: { discount?
     if (!validate()) return;
 
     const formData = new FormData();
-    formData.set("code", code.trim().toUpperCase());
+    formData.set("code", code.trim());
     formData.set("type", discountType);
     formData.set("value", String(value));
     formData.set("active", active ? "on" : "");
@@ -206,9 +212,9 @@ export default function DiscountForm({ discount, autoOpen = false }: { discount?
               id="code"
               name="code"
               value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
-              placeholder="e.g., SUMMER20"
-              className="tracking-wide uppercase"
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="e.g., Summer 20"
+              className="tracking-wide"
               autoComplete="off"
             />
             {errors.code && (
@@ -260,11 +266,11 @@ export default function DiscountForm({ discount, autoOpen = false }: { discount?
                   name="value"
                   inputMode="decimal"
                   type="number"
-                  step={discountType === "percentage" ? 1 : 0.01}
-                  min={discountType === "percentage" ? 1 : 0.01}
+                  step={discountType === "percentage" ? 0.01 : 0.01}
+                  min={discountType === "percentage" ? 0.01 : 0.01}
                   max={discountType === "percentage" ? 100 : undefined}
                   className="pl-7"
-                  placeholder={discountType === "percentage" ? "20" : "25.00"}
+                  placeholder={discountType === "percentage" ? "12.50" : "25.00"}
                   value={value}
                   onChange={(e) => setValue(e.target.value)}
                 />

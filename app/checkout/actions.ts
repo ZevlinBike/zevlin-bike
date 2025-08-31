@@ -359,19 +359,29 @@ export async function verifyDiscountCode(code: string) {
   'use server';
 
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('discounts')
-    .select('*')
-    .eq('code', code)
-    .single();
+  // Normalize the input code: trim, remove spaces, and lowercase
+  const normalizedInput = code.trim().replace(/\s+/g, '').toLowerCase();
 
-  if (error || !data) {
+  // Fetch discounts and match in JS to support space-insensitive and case-insensitive codes
+  const { data: allDiscounts, error } = await supabase
+    .from('discounts')
+    .select('*');
+
+  if (error || !allDiscounts) {
     return { error: 'Invalid discount code.' };
   }
 
-  if (!data.active) {
+  const match = allDiscounts.find((d) =>
+    typeof d.code === 'string' && d.code.trim().replace(/\s+/g, '').toLowerCase() === normalizedInput
+  );
+
+  if (!match) {
+    return { error: 'Invalid discount code.' };
+  }
+
+  if (!match.active) {
     return { error: 'This discount code is no longer active.' };
   }
 
-  return { data };
+  return { data: match };
 }

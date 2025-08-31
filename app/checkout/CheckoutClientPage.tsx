@@ -270,7 +270,7 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
   }
 
   const handlePromoCode = async () => {
-    const result = await verifyDiscountCode(promoCode.toUpperCase());
+    const result = await verifyDiscountCode(promoCode);
 
     if (result.error) {
       toast.error(result.error);
