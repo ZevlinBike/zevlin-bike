@@ -64,6 +64,8 @@ export type AddressValidation = {
   isValid: boolean;
   messages?: string[];
   suggested?: Partial<Address>;
+  isComplete?: boolean;
+  normalized?: Partial<Address>;
 };
 
 
@@ -92,6 +94,7 @@ export async function validateAddress(addr: Address): Promise<AddressValidation>
     }
     const vr = data?.validation_results || data?.validation || {};
     const isValid = Boolean(vr?.is_valid ?? vr?.isValid ?? data?.is_valid);
+    const isComplete = Boolean(data?.is_complete ?? data?.isComplete ?? undefined);
     const suggestions = Array.isArray(vr?.messages)
       ? vr.messages
       : Array.isArray(data?.messages)
@@ -100,15 +103,26 @@ export async function validateAddress(addr: Address): Promise<AddressValidation>
     const messages = suggestions
       .map((m: { text: string, message: string }) => m?.text || m?.message)
       .filter(Boolean);
-    const suggested = data?.is_complete ? undefined : {
+    // Normalized/corrected version from Shippo (always compute)
+    const normalized: Partial<Address> = {
       address1: data?.street1,
       address2: data?.street2,
       city: data?.city,
       state: data?.state,
       postal_code: data?.zip,
-      country: data?.country,
+      country: data?.country || addr.country,
     };
-    return { isValid, messages, suggested };
+
+    // Only surface a suggestion when incomplete and different
+    let suggested: AddressValidation["suggested"] = undefined;
+    if (!data?.is_complete) {
+      if (differsFromInput(normalized, addr)) {
+        suggested = normalized;
+      }
+    }
+
+    const normalizedOut = differsFromInput(normalized, addr) ? normalized : undefined;
+    return { isValid, messages, suggested, isComplete, normalized: normalizedOut };
   } catch (err) {
     return { isValid: false, messages: [normalizeError(err, "Address validation failed").message] };
   }
@@ -297,4 +311,18 @@ function normalizeError(err: unknown, message: string) {
     err instanceof Error ? err.message : "Unknown error";
   const e = new Error(`${message}: ${detail ?? "Unknown error"}`);
   return e;
+}
+
+function normalizeStr(s?: string | null) {
+  return (s ?? "").toString().trim().toLowerCase();
+}
+
+function differsFromInput(candidate: Partial<Address>, input: Address) {
+  return (
+    normalizeStr(candidate.address1) !== normalizeStr(input.address1) ||
+    normalizeStr(candidate.city) !== normalizeStr(input.city) ||
+    normalizeStr(candidate.state) !== normalizeStr(input.state) ||
+    normalizeStr(candidate.postal_code) !== normalizeStr(input.postal_code) ||
+    normalizeStr(candidate.country) !== normalizeStr(input.country)
+  );
 }

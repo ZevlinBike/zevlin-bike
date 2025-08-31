@@ -20,7 +20,7 @@ export async function updateOrderStatus(
   // Verify the user owns the order they are trying to update
   const { data: order, error: fetchError } = await supabase
     .from("orders")
-    .select("id, customer_id")
+    .select("id, customer_id, payment_status, stripe_payment_intent_id")
     .eq("id", orderId)
     .single();
 
@@ -38,24 +38,24 @@ export async function updateOrderStatus(
     return { error: "You are not authorized to update this order." };
   }
 
-  // For cancellations only: update order_status to cancelled
-  // Refunds should go through the refund request flow; block direct refund status updates here
+  // This path no longer auto-cancels or auto-refunds.
+  // For customer-initiated cancellations, we now create a refund request
+  // that an admin must review and approve.
   if (status === "refunded") {
     return { error: "Refunds must be requested and approved by an admin." };
   }
 
-  const { error } = await supabase
-    .from("orders")
-    .update({ order_status: 'cancelled' })
-    .eq("id", orderId);
-
-  if (error) {
-    console.error("Error updating order status:", error);
-    return { error: "Could not update order status." };
+  // Create a pending refund request for the full amount instead of cancelling immediately
+  try {
+    const result = await requestRefund(orderId, 'Customer requested order cancellation');
+    if (result?.error) return result;
+  } catch (e) {
+    console.error('Failed to create cancellation (refund) request:', e);
+    return { error: 'Could not submit cancellation request.' };
   }
 
-  revalidatePath("/orders");
-
+  // Let the caller refresh their view; no direct order mutation here.
+  revalidatePath('/orders');
   return { success: true };
 }
 

@@ -32,7 +32,7 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
-import { requestRefund, updateOrderStatus } from "./actions";
+import { requestRefund } from "./actions";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -42,13 +42,17 @@ const OrderRow = ({ order }: { order: OrderWithLineItems }) => {
   const [reason, setReason] = useState("");
 
   const handleCancel = async () => {
-    if (!window.confirm("Are you sure you want to cancel this order?")) return;
-    const result = await updateOrderStatus(order.id, 'cancelled');
+    if (hasPendingOrApprovedRefund) {
+      toast.info('A refund/cancellation request is already pending for this order.');
+      return;
+    }
+    if (!window.confirm("Request cancellation? An admin will review it.")) return;
+    const result = await requestRefund(order.id, 'Customer requested order cancellation');
     if (result.success) {
-      toast.success('Order has been cancelled.');
+      toast.success("Cancellation request submitted. We'll email you once reviewed.");
       router.refresh();
     } else {
-      toast.error(result.error || 'An unexpected error occurred.');
+      toast.error(result.error || 'Failed to submit cancellation request.');
     }
   };
 
@@ -176,10 +180,11 @@ const OrderRow = ({ order }: { order: OrderWithLineItems }) => {
                           variant="destructive"
                           size="sm"
                           onClick={handleCancel}
+                          disabled={hasPendingOrApprovedRefund}
                           className="flex items-center gap-2"
                         >
                           <XCircle className="w-4 h-4" />
-                          Cancel Order
+                          {hasPendingOrApprovedRefund ? 'Cancellation Pending' : 'Request Cancellation'}
                         </Button>
                       )}
                       {order.status === "fulfilled" && (

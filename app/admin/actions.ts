@@ -11,18 +11,19 @@ export async function getDashboardStats() {
   // Revenue and orders today
   const { data: todayOrders, error: todayOrdersError } = await supabase
     .from("orders")
-    .select("total_cents, payment_status")
+    .select("total_cents, payment_status, order_status")
     .gte("created_at", todayIso);
 
   if (todayOrdersError) {
     console.error("Error fetching today's orders:", todayOrdersError);
   }
 
-  const revenueToday = (todayOrders || [])
-    .filter(o => o.payment_status === 'paid')
-    .reduce((sum, order) => sum + order.total_cents, 0) / 100;
+  const validTodayOrders = (todayOrders || [])
+    .filter(o => o.payment_status === 'paid' && o.order_status !== 'cancelled' && o.order_status !== 'refunded');
 
-  const ordersToday = (todayOrders || []).length;
+  const revenueToday = validTodayOrders.reduce((sum, order) => sum + order.total_cents, 0) / 100;
+
+  const ordersToday = validTodayOrders.length;
 
   // Avg order value
   const avgOrderValue = ordersToday > 0 ? revenueToday / ordersToday : 0;

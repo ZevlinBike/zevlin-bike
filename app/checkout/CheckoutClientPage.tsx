@@ -7,7 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCartStore } from "@/store/cartStore";
 import MainLayout from "@/app/components/layouts/MainLayout";
-import { Loader2, CreditCard, Truck, User, LogIn, UserPlus } from "lucide-react";
+import { Loader2, CreditCard, Truck, User, LogIn, UserPlus, CheckCircle2, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { processCheckout, verifyDiscountCode } from "./actions";
 import { login } from "@/app/auth/login/actions";
@@ -17,6 +17,8 @@ import { Customer } from "@/lib/schema";
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -53,6 +55,21 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
 
   const [isPending, startTransition] = useTransition();
   const [errors, setErrors] = useState<Record<string, string[] | undefined>>({});
+  const [addressSuggestOpen, setAddressSuggestOpen] = useState(false);
+  const [addressSuggestion, setAddressSuggestion] = useState<{
+    address1?: string;
+    address2?: string | null;
+    city?: string;
+    state?: string;
+    postal_code?: string;
+    country?: string;
+  } | null>(null);
+  const [shippingStatus, setShippingStatus] = useState<
+    { state: 'idle' | 'validating' | 'valid' | 'invalid'; message?: string; suggested?: typeof addressSuggestion; normalized?: typeof addressSuggestion }
+  >({ state: 'idle' });
+  const [billingStatus, setBillingStatus] = useState<
+    { state: 'idle' | 'validating' | 'valid' | 'invalid'; message?: string; suggested?: typeof addressSuggestion; normalized?: typeof addressSuggestion }
+  >({ state: 'idle' });
 
   const [formData, setFormData] = useState<CheckoutForm>({
     email: user?.email || (customer?.email || ""),
@@ -100,11 +117,15 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
   const total = subtotal + shipping + tax - discount;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    const { name } = e.target;
+    let { value } = e.target;
+    if (name === 'shippingState' || name === 'billingState') {
+      value = value.replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 2);
+    }
+    if (name === 'shippingZipCode' || name === 'billingZipCode') {
+      value = value.replace(/\D/g, '').slice(0, 5);
+    }
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleToggleBillingSame = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -112,31 +133,139 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
     setFormData(prev => ({ ...prev, billingSameAsShipping: checked }));
   };
 
-  async function validateShippingAddress() {
-    try {
-      const res = await fetch('/api/shipping/validate-address', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          address: {
-            name: `${formData.shippingFirstName} ${formData.shippingLastName}`.trim(),
-            address1: formData.shippingAddress,
-            city: formData.shippingCity,
-            state: formData.shippingState,
-            postal_code: formData.shippingZipCode,
-            country: 'US',
-          }
-        })
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Failed to validate address');
-      if (json.isValid) {
-        toast.success('Shipping address looks good');
-      } else {
-        toast.error(json.messages?.[0] || 'Address appears invalid');
+  async function validateShippingAddress(): Promise<{
+    isValid: boolean;
+    isComplete?: boolean;
+    messages?: string[];
+    suggested?: typeof addressSuggestion | undefined;
+    normalized?: typeof addressSuggestion | undefined;
+  }> {
+    const res = await fetch('/api/shipping/validate-address', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        address: {
+          name: `${formData.shippingFirstName} ${formData.shippingLastName}`.trim(),
+          address1: formData.shippingAddress,
+          city: formData.shippingCity,
+          state: formData.shippingState,
+          postal_code: formData.shippingZipCode,
+          country: 'US',
+        }
+      })
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to validate address');
+    return json;
+  }
+
+  async function validateAddressInline(addr: {
+    name?: string;
+    address1: string;
+    city: string;
+    state: string;
+    postal_code: string;
+    country: string;
+  }) {
+    const res = await fetch('/api/shipping/validate-address', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ address: addr }),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to validate address');
+    return json as { isValid: boolean; isComplete?: boolean; messages?: string[]; suggested?: typeof addressSuggestion; normalized?: typeof addressSuggestion };
+  }
+
+  // Debounced inline validation for shipping address
+  useEffect(() => {
+    const { shippingAddress, shippingCity, shippingState, shippingZipCode, shippingFirstName, shippingLastName } = formData;
+    if (!shippingAddress || !shippingCity || !shippingState || !shippingZipCode) {
+      setShippingStatus(s => ({ ...s, state: 'idle', message: undefined, suggested: undefined }));
+      return;
+    }
+    let cancelled = false;
+    setShippingStatus({ state: 'validating' });
+    const t = setTimeout(async () => {
+      try {
+        const res = await validateAddressInline({
+          name: `${shippingFirstName} ${shippingLastName}`.trim(),
+          address1: shippingAddress,
+          city: shippingCity,
+          state: shippingState,
+          postal_code: shippingZipCode,
+          country: 'US',
+        });
+        if (cancelled) return;
+        const good = res.isValid && (res.isComplete !== false) && (!res.messages || res.messages.length === 0);
+        setShippingStatus({
+          state: good ? 'valid' : 'invalid',
+          message: res.messages?.[0],
+          suggested: res.suggested,
+          normalized: res.normalized,
+        });
+      } catch (e) {
+        if (cancelled) return;
+        setShippingStatus({ state: 'invalid', message: (e as Error).message });
       }
-    } catch (e: unknown) {
-      toast.error((e as Error).message || 'Validation failed');
+    }, 600);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [formData.shippingAddress, formData.shippingCity, formData.shippingState, formData.shippingZipCode, formData.shippingFirstName, formData.shippingLastName]);
+
+  // Debounced inline validation for billing address (when enabled)
+  useEffect(() => {
+    if (formData.billingSameAsShipping) {
+      setBillingStatus(s => ({ ...s, state: 'idle', message: undefined, suggested: undefined }));
+      return;
+    }
+    const { billingAddress, billingCity, billingState, billingZipCode, billingFirstName, billingLastName } = formData;
+    if (!billingAddress || !billingCity || !billingState || !billingZipCode) {
+      setBillingStatus(s => ({ ...s, state: 'idle', message: undefined, suggested: undefined }));
+      return;
+    }
+    let cancelled = false;
+    setBillingStatus({ state: 'validating' });
+    const t = setTimeout(async () => {
+      try {
+        const res = await validateAddressInline({
+          name: `${billingFirstName || ''} ${billingLastName || ''}`.trim(),
+          address1: billingAddress!,
+          city: billingCity!,
+          state: billingState!,
+          postal_code: billingZipCode!,
+          country: 'US',
+        });
+        if (cancelled) return;
+        const good = res.isValid && (res.isComplete !== false) && (!res.messages || res.messages.length === 0);
+        setBillingStatus({
+          state: good ? 'valid' : 'invalid',
+          message: res.messages?.[0],
+          suggested: res.suggested,
+          normalized: res.normalized,
+        });
+      } catch (e) {
+        if (cancelled) return;
+        setBillingStatus({ state: 'invalid', message: (e as Error).message });
+      }
+    }, 600);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [formData.billingSameAsShipping, formData.billingAddress, formData.billingCity, formData.billingState, formData.billingZipCode, formData.billingFirstName, formData.billingLastName]);
+
+  function applySuggestedAndContinue() {
+    if (!addressSuggestion) return;
+    setFormData(prev => ({
+      ...prev,
+      shippingAddress: addressSuggestion.address1 || prev.shippingAddress,
+      shippingCity: addressSuggestion.city || prev.shippingCity,
+      shippingState: addressSuggestion.state || prev.shippingState,
+      shippingZipCode: addressSuggestion.postal_code || prev.shippingZipCode,
+    }));
+    setAddressSuggestOpen(false);
+    // After applying suggestion, submit again
+    const form = document.getElementById('checkout-form') as HTMLFormElement | null;
+    if (form) {
+      // Trigger submit programmatically
+      form.requestSubmit();
     }
   }
 
@@ -187,6 +316,47 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
+
+    // 1) Validate shipping address automatically via Shippo
+    try {
+      const validation = await validateShippingAddress();
+      const good = validation.isValid && (validation.isComplete !== false) && (!validation.messages || validation.messages.length === 0);
+      if (!good) {
+        const candidate = validation.suggested || validation.normalized;
+        if (candidate) {
+          setAddressSuggestion(candidate);
+          setAddressSuggestOpen(true);
+          toast.message('We found a more accurate address.');
+        } else {
+          toast.error(validation.messages?.[0] || 'The shipping address appears invalid.');
+        }
+        return; // stop checkout until user reviews
+      }
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || 'Address validation failed');
+      return;
+    }
+
+    // 1b) If billing is not same, validate billing address too
+    if (!formData.billingSameAsShipping) {
+      try {
+        const billingValidation = await validateAddressInline({
+          name: `${formData.billingFirstName || ''} ${formData.billingLastName || ''}`.trim(),
+          address1: formData.billingAddress || '',
+          city: formData.billingCity || '',
+          state: formData.billingState || '',
+          postal_code: formData.billingZipCode || '',
+          country: 'US',
+        });
+        if (!billingValidation.isValid) {
+          toast.error(billingValidation.messages?.[0] || 'The billing address appears invalid.');
+          return;
+        }
+      } catch (err: unknown) {
+        toast.error((err as Error)?.message || 'Billing address validation failed');
+        return;
+      }
+    }
 
     if (!stripe || !elements) {
       toast.error("Payment system is not ready yet. Please wait a moment.");
@@ -474,11 +644,6 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
                           placeholder="123 Main St"
                         />
                         {errors.shippingAddress && <p className="text-red-500 text-sm mt-1">{errors.shippingAddress[0]}</p>}
-                        <div className="mt-2">
-                          <Button type="button" variant="outline" size="sm" onClick={validateShippingAddress}>
-                            Validate Address
-                          </Button>
-                        </div>
                       </div>
                       
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -524,6 +689,43 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
                           />
                           {errors.shippingZipCode && <p className="text-red-500 text-sm mt-1">{errors.shippingZipCode[0]}</p>}
                         </div>
+                      </div>
+                      <div className="text-sm flex items-center gap-2">
+                        {shippingStatus.state === 'validating' && (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>Validating address…</span>
+                          </>
+                        )}
+                        {shippingStatus.state === 'valid' && (
+                          <>
+                            <CheckCircle2 className="w-4 h-4 text-green-600" />
+                            <span className="text-green-700 dark:text-green-400">Address looks good</span>
+                          </>
+                        )}
+                        {shippingStatus.state === 'invalid' && (
+                          <>
+                            <AlertTriangle className="w-4 h-4 text-amber-600" />
+                            <span className="text-amber-700 dark:text-amber-400">{shippingStatus.message || 'Address may be inaccurate'}</span>
+                            {(shippingStatus.suggested || shippingStatus.normalized) && (
+                              <Button type="button" variant="link" size="sm" className="px-1" onClick={() => {
+                                const src = shippingStatus.suggested || shippingStatus.normalized;
+                                if (!src) return;
+                                setAddressSuggestion(src || null);
+                                setFormData(prev => ({
+                                  ...prev,
+                                  shippingAddress: src.address1 || prev.shippingAddress,
+                                  shippingCity: src.city || prev.shippingCity,
+                                  shippingState: src.state || prev.shippingState,
+                                  shippingZipCode: src.postal_code || prev.shippingZipCode,
+                                }));
+                                toast.success('Applied corrected address');
+                              }}>
+                                Apply correction
+                              </Button>
+                            )}
+                          </>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -633,6 +835,40 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
                               />
                               {errors.billingZipCode && <p className="text-red-500 text-sm mt-1">{errors.billingZipCode[0]}</p>}
                             </div>
+                          </div>
+                          <div className="text-sm flex items-center gap-2">
+                            {billingStatus.state === 'validating' && (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <span>Validating billing address…</span>
+                              </>
+                            )}
+                            {billingStatus.state === 'valid' && (
+                              <>
+                                <CheckCircle2 className="w-4 h-4 text-green-600" />
+                                <span className="text-green-700 dark:text-green-400">Billing address looks good</span>
+                              </>
+                            )}
+                            {billingStatus.state === 'invalid' && (
+                              <>
+                                <AlertTriangle className="w-4 h-4 text-amber-600" />
+                                <span className="text-amber-700 dark:text-amber-400">{billingStatus.message || 'Billing address may be inaccurate'}</span>
+                                {billingStatus.suggested && (
+                                  <Button type="button" variant="link" size="sm" className="px-1" onClick={() => {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      billingAddress: billingStatus.suggested?.address1 || prev.billingAddress,
+                                      billingCity: billingStatus.suggested?.city || prev.billingCity,
+                                      billingState: billingStatus.suggested?.state || prev.billingState,
+                                      billingZipCode: billingStatus.suggested?.postal_code || prev.billingZipCode,
+                                    }));
+                                    toast.success('Applied suggested billing address');
+                                  }}>
+                                    Use suggested
+                                  </Button>
+                                )}
+                              </>
+                            )}
                           </div>
                         </>
                       )}
@@ -807,6 +1043,44 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
           )}
         </div>
       </div>
+
+      {/* Suggested Address Dialog */}
+      <Dialog open={addressSuggestOpen} onOpenChange={setAddressSuggestOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>We found a suggested address</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Shippo suggested a more accurate address. You can use it or keep what you entered.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="rounded border p-3">
+                <Label className="text-xs text-muted-foreground">Entered</Label>
+                <div className="mt-1 text-sm">
+                  <div>{`${formData.shippingFirstName} ${formData.shippingLastName}`}</div>
+                  <div>{formData.shippingAddress}</div>
+                  <div>{`${formData.shippingCity}, ${formData.shippingState} ${formData.shippingZipCode}`}</div>
+                  <div>US</div>
+                </div>
+              </div>
+              <div className="rounded border p-3">
+                <Label className="text-xs text-muted-foreground">Suggested</Label>
+                <div className="mt-1 text-sm">
+                  <div>{`${formData.shippingFirstName} ${formData.shippingLastName}`}</div>
+                  <div>{addressSuggestion?.address1 || formData.shippingAddress}</div>
+                  <div>{`${addressSuggestion?.city || formData.shippingCity}, ${addressSuggestion?.state || formData.shippingState} ${addressSuggestion?.postal_code || formData.shippingZipCode}`}</div>
+                  <div>{addressSuggestion?.country || 'US'}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setAddressSuggestOpen(false)}>Keep Entered</Button>
+            <Button onClick={applySuggestedAndContinue}>Use Suggested & Continue</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }
