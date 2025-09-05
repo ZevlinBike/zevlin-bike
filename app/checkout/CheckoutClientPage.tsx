@@ -123,7 +123,7 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
   }, [user, customer, router]);
 
   const subtotal = getTotalPrice() / 100;
-  const shipping = subtotal >= 49 ? 0 : cartItems.length > 0 ? 5.0 : 0;
+  const shipping = subtotal >= 49 ? 0 : cartItems.length > 0 ? 5.95 : 0;
   const tax = (subtotal - discount) * 0.08;
   const total = subtotal + shipping + tax - discount;
 
