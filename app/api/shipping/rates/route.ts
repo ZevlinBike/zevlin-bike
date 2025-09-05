@@ -5,7 +5,8 @@ import { getRates, type Address, type Parcel, type RateOption } from "@/lib/ship
 
 const BodySchema = z.object({
   orderId: z.string().uuid(),
-  packageId: z.string().uuid(),
+  // Make packageId optional; when absent, use default package
+  packageId: z.string().uuid().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -110,17 +111,28 @@ export async function POST(req: NextRequest) {
             country: (order.billing_country as string) || "US",
           };
 
-      // Determine package: use the one specified in the request
-      const { data: pkg } = await supabase
-        .from("shipping_packages")
-        .select("name,length_cm,width_cm,height_cm,weight_g")
-        .eq("id", body.packageId)
-        .limit(1)
-        .single();
+      // Determine package: use specified ID or fall back to default
+      let pkg: { name: string; length_cm: number; width_cm: number; height_cm: number; weight_g: number } | null = null;
+      if (body.packageId) {
+        const { data } = await supabase
+          .from("shipping_packages")
+          .select("name,length_cm,width_cm,height_cm,weight_g")
+          .eq("id", body.packageId)
+          .maybeSingle();
+        pkg = data;
+      }
+      if (!pkg) {
+        const { data } = await supabase
+          .from("shipping_packages")
+          .select("name,length_cm,width_cm,height_cm,weight_g")
+          .eq("is_default", true)
+          .maybeSingle();
+        pkg = data;
+      }
 
       if (!pkg) {
         return NextResponse.json(
-          { error: "The selected shipping package could not be found." },
+          { error: "No shipping package configured. Create one in admin settings." },
           { status: 400 }
         );
       }
