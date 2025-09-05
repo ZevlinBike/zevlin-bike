@@ -3,6 +3,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { RefundStatus } from "@/lib/schema";
+import Stripe from "stripe";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 export type RefundRow = {
   id: string;
@@ -66,30 +69,66 @@ export async function approveRefund(refundId: string) {
     .eq('auth_user_id', user.id)
     .single();
 
-  // Get refund with order + customer
+  // Get refund with order + customer (and order payment intent)
   const { data: refund, error: fetchError } = await supabase
     .from('refunds')
-    .select('*, customer:customers!refunds_customer_id_fkey(first_name,last_name,email), orders(id,total_cents)')
+    .select('*, customer:customers!refunds_customer_id_fkey(first_name,last_name,email), orders(id,total_cents,stripe_payment_intent_id)')
     .eq('id', refundId)
     .single();
 
   if (fetchError || !refund) return { error: 'Refund not found' };
 
-  // Update refund row
+  // Guard: ensure we have a payment intent to refund
+  const paymentIntentId = (Array.isArray(refund.orders) ? refund.orders?.[0]?.stripe_payment_intent_id : refund.orders?.stripe_payment_intent_id) as string | null | undefined;
+  if (!paymentIntentId) {
+    return { error: 'Order is missing a Stripe payment intent; cannot process refund.' };
+  }
+
+  // Determine refund amount (in cents)
+  const amountCents = refund.amount_cents ?? (Array.isArray(refund.orders) ? refund.orders?.[0]?.total_cents : refund.orders?.total_cents) ?? 0;
+  if (amountCents <= 0) {
+    return { error: 'Invalid refund amount.' };
+  }
+
+  // Create refund in Stripe
+  let stripeRefundId: string | undefined;
+  try {
+    const created = await stripe.refunds.create({
+      payment_intent: paymentIntentId,
+      amount: amountCents,
+    });
+    if (created.status !== 'succeeded') {
+      return { error: `Stripe refund did not succeed: ${created.status}` };
+    }
+    stripeRefundId = created.id;
+  } catch (err) {
+    console.error('Stripe refund error:', err);
+    const message = err instanceof Error ? err.message : 'Failed to create Stripe refund';
+    return { error: message };
+  }
+
+  // Update refund row as approved and store Stripe refund id
   const { error: updateError } = await supabase
     .from('refunds')
-    .update({ status: 'approved', decided_at: new Date().toISOString(), reviewed_by_customer_id: adminCustomer?.id || null })
+    .update({
+      status: 'approved',
+      decided_at: new Date().toISOString(),
+      reviewed_by_customer_id: adminCustomer?.id || null,
+      stripe_refund_id: stripeRefundId || null,
+    })
     .eq('id', refundId);
 
   if (updateError) {
-    console.error('Failed to approve refund:', updateError);
-    return { error: 'Failed to approve refund' };
+    console.error('Failed to approve refund (DB update):', updateError);
+    return { error: 'Refund processed in Stripe, but failed to update record.' };
   }
 
-  // Set order payment_status to refunded
+  // Update order payment status (full vs partial)
+  const orderTotal = (Array.isArray(refund.orders) ? refund.orders?.[0]?.total_cents : refund.orders?.total_cents) ?? 0;
+  const newPaymentStatus = amountCents >= orderTotal ? 'refunded' : 'partially_refunded';
   const { error: orderError } = await supabase
     .from('orders')
-    .update({ payment_status: 'refunded' })
+    .update({ payment_status: newPaymentStatus })
     .eq('id', refund.order_id);
 
   if (orderError) {
