@@ -15,7 +15,7 @@ import { useRouter } from "next/navigation";
 import { User as UserType } from "@supabase/supabase-js";
 import { Customer } from "@/lib/schema";
 import { loadStripe, type PaymentIntentResult } from '@stripe/stripe-js';
-import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { Elements, PaymentElement, ExpressCheckoutElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -171,7 +171,7 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
   }, [formData, cartItems, subtotal, shipping, tax, discount, total, paymentIntentId]);
 
   // Child component to host Elements + PaymentElement and perform confirm
-  const PaymentSection = () => {
+  const PaymentSection = ({ clientSecret }: { clientSecret: string }) => {
     const stripe = useStripe();
     const elements = useElements();
 
@@ -209,7 +209,64 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
       return () => { paymentRef.current = null; };
     }, [stripe, elements]);
 
-    return <PaymentElement options={{ layout: 'tabs', paymentMethodOrder: ['apple_pay', 'google_pay', 'link', 'card'] }} />;
+    return (
+      <>
+        {/* Express Checkout wallet buttons (Apple/Google Pay). */}
+        <ExpressCheckoutElement
+          options={{
+            // Use default auto-detection for wallets; keep dark theme styling.
+            buttonTheme: { applePay: 'black', googlePay: 'black' },
+          }}
+          onConfirm={async (event) => {
+            if (!stripe) return;
+            try {
+              const { formData: fd, cartItems: ci, subtotal: st, shipping: sh, tax: tx, discount: dc, total: tt, paymentIntentId: pid } = latestRef.current;
+              // Save snapshot for redirect flows
+              try {
+                const snapshot = {
+                  formData: { ...fd, billingSameAsShipping: !!fd.billingSameAsShipping },
+                  cartItems: ci,
+                  costs: { subtotal: st, shipping: sh, tax: tx, discount: dc, total: tt },
+                  idempotencyKey: idempotencyKeyRef.current,
+                  paymentIntentId: pid,
+                };
+                localStorage.setItem('zevlin:checkout:snapshot', JSON.stringify(snapshot));
+              } catch {}
+
+              const returnUrl = `${window.location.origin}/checkout/complete`;
+              const confirmRes = await stripe.confirmPayment({
+                elements: elements!,
+                confirmParams: { return_url: returnUrl },
+                redirect: 'if_required',
+              });
+              if ('error' in confirmRes && confirmRes.error) {
+                event.paymentFailed?.({ reason: 'fail', message: confirmRes.error.message });
+                return;
+              }
+              // If no redirect occurred and PI is already succeeded, finalize now
+              const piRes = await stripe.retrievePaymentIntent(clientSecret);
+              if (piRes.paymentIntent && piRes.paymentIntent.status === 'succeeded') {
+                const finalize = await finalizeOrder(
+                  piRes.paymentIntent.id,
+                  { ...fd, billingSameAsShipping: !!fd.billingSameAsShipping },
+                  ci,
+                  { subtotal: st, shipping: sh, tax: tx, discount: dc, total: tt },
+                );
+                if (finalize?.success && finalize.orderId) {
+                  // Clear cart and route
+                  try { localStorage.removeItem('zevlin:checkout:snapshot'); } catch {}
+                  // We cannot access clearCart here directly; submission handler will also handle success
+                }
+              }
+            } catch {
+              // Swallow; ExpressCheckout handles UI
+            }
+          }}
+        />
+        <div className="my-4" />
+        <PaymentElement options={{ layout: 'tabs', paymentMethodOrder: ['apple_pay', 'google_pay', 'link', 'card'] }} />
+      </>
+    );
   };
 
   const handleToggleBillingSame = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -982,7 +1039,7 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
                         <div className="text-sm text-muted-foreground">Loading payment methods…</div>
                       ) : (
                         <Elements stripe={stripePromise} options={{ clientSecret }}>
-                          <PaymentSection />
+                          <PaymentSection clientSecret={clientSecret} />
                         </Elements>
                       )}
                     </CardContent>

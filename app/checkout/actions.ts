@@ -57,7 +57,7 @@ export async function processCheckout(
   paymentMethodId: string,
   idempotencyKey?: string
 ) {
-  console.log("Starting checkout process...");
+  // Starting checkout process
   
   const validatedFields = checkoutFormSchema.safeParse(formData);
   const validatedCosts = costsSchema.safeParse(costs);
@@ -232,7 +232,6 @@ export async function processCheckout(
           .eq('stripe_payment_intent_id', paymentIntent.id)
           .single();
         if (existingOrder?.id) {
-          console.warn('Duplicate checkout detected. Returning existing order for PI', paymentIntent.id);
           return { success: true, orderId: existingOrder.id };
         }
       }
@@ -348,7 +347,7 @@ export async function processCheckout(
       // Do not block the checkout process if emails fail
     }
 
-    console.log("Checkout process complete. Order ID:", orderId);
+    // Checkout process complete
     return { success: true, orderId: orderId };
 
   } catch (error: unknown) {
