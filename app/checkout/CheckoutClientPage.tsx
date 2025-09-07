@@ -14,7 +14,7 @@ import { login } from "@/app/auth/login/actions";
 import { useRouter } from "next/navigation";
 import { User as UserType } from "@supabase/supabase-js";
 import { Customer } from "@/lib/schema";
-import { loadStripe } from '@stripe/stripe-js';
+import { loadStripe, type PaymentIntentResult } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -116,12 +116,7 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
     let cancelled = false;
     const run = async () => {
       if (!hydrated || cartItems.length === 0) return;
-      const res = await createPaymentIntent(
-        { ...formData, billingSameAsShipping: !!formData.billingSameAsShipping },
-        cartItems,
-        { subtotal, shipping, tax, discount, total },
-        idempotencyKeyRef.current,
-      );
+      const res = await createPaymentIntent({ subtotal, shipping, tax, discount, total }, idempotencyKeyRef.current);
       if (cancelled) return;
       if (res && 'clientSecret' in res && res.clientSecret) {
         setClientSecret(res.clientSecret);
@@ -132,7 +127,7 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
     };
     run();
     return () => { cancelled = true; };
-  }, [hydrated, cartItems, subtotal, shipping, tax, discount, total, formData]);
+  }, [hydrated, cartItems.length, subtotal, shipping, tax, discount, total]);
 
   useEffect(() => {
     if (user) {
@@ -169,8 +164,14 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
   type PaymentRef = { confirm: () => Promise<{ paymentIntentId?: string; error?: string } | undefined> };
   const paymentRef = useRef<PaymentRef | null>(null);
 
+  // Keep latest values for confirm without re-registering handler
+  const latestRef = useRef({ formData, cartItems, subtotal, shipping, tax, discount, total, paymentIntentId });
+  useEffect(() => {
+    latestRef.current = { formData, cartItems, subtotal, shipping, tax, discount, total, paymentIntentId };
+  }, [formData, cartItems, subtotal, shipping, tax, discount, total, paymentIntentId]);
+
   // Child component to host Elements + PaymentElement and perform confirm
-  const PaymentSection = ({ clientSecret }: { clientSecret: string }) => {
+  const PaymentSection = () => {
     const stripe = useStripe();
     const elements = useElements();
 
@@ -180,31 +181,33 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
           if (!stripe || !elements) return { error: 'Payment system not ready.' };
           // Save snapshot for redirect flows
           try {
+            const { formData: fd, cartItems: ci, subtotal: st, shipping: sh, tax: tx, discount: dc, total: tt, paymentIntentId: pid } = latestRef.current;
             const snapshot = {
-              formData: { ...formData, billingSameAsShipping: !!formData.billingSameAsShipping },
-              cartItems,
-              costs: { subtotal, shipping, tax, discount, total },
+              formData: { ...fd, billingSameAsShipping: !!fd.billingSameAsShipping },
+              cartItems: ci,
+              costs: { subtotal: st, shipping: sh, tax: tx, discount: dc, total: tt },
               idempotencyKey: idempotencyKeyRef.current,
-              paymentIntentId,
+              paymentIntentId: pid,
             };
             localStorage.setItem('zevlin:checkout:snapshot', JSON.stringify(snapshot));
           } catch {}
 
           const returnUrl = `${window.location.origin}/checkout/complete`;
-          const { error, paymentIntent } = await stripe.confirmPayment({
+          const result = await stripe.confirmPayment({
             elements,
             confirmParams: { return_url: returnUrl },
             redirect: 'always',
           });
-          if (error) return { error: error.message || 'Payment failed.' };
-          if (paymentIntent && paymentIntent.status === 'succeeded') {
-            return { paymentIntentId: paymentIntent.id };
+          if ('error' in result && result.error) return { error: result.error.message || 'Payment failed.' };
+          const piResult = result as PaymentIntentResult;
+          if (piResult.paymentIntent && piResult.paymentIntent.status === 'succeeded') {
+            return { paymentIntentId: piResult.paymentIntent.id };
           }
           return {};
         }
       };
       return () => { paymentRef.current = null; };
-    }, [stripe, elements, formData, cartItems, subtotal, shipping, tax, discount, total, paymentIntentId]);
+    }, [stripe, elements]);
 
     return <PaymentElement options={{ layout: 'tabs' }} />;
   };
@@ -482,7 +485,6 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
         { ...formData, billingSameAsShipping: !!formData.billingSameAsShipping },
         cartItems,
         { subtotal, shipping, tax, discount, total },
-        idempotencyKeyRef.current,
       );
       if (finalize.errors) {
         if ("_form" in finalize.errors && finalize.errors._form) {
@@ -980,7 +982,7 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
                         <div className="text-sm text-muted-foreground">Loading payment methods…</div>
                       ) : (
                         <Elements stripe={stripePromise} options={{ clientSecret }}>
-                          <PaymentSection clientSecret={clientSecret} />
+                          <PaymentSection />
                         </Elements>
                       )}
                     </CardContent>

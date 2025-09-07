@@ -32,13 +32,13 @@ export default function CheckoutCompletePage() {
           snap.formData,
           snap.cartItems,
           snap.costs,
-          snap.idempotencyKey,
         );
         if (res?.success && res.orderId) {
           clearCart();
           router.replace(`/order/${res.orderId}`);
         } else if (res?.errors) {
-          const msg = (res.errors._form && res.errors._form[0]) || 'We could not finalize your order.';
+          const errs = res.errors as Record<string, string[]>;
+          const msg = errs._form?.[0] || Object.values(errs)[0]?.[0] || 'We could not finalize your order.';
           setMessage(msg);
         } else {
           setMessage('We could not finalize your order.');
@@ -65,4 +65,3 @@ export default function CheckoutCompletePage() {
     </MainLayout>
   );
 }
-

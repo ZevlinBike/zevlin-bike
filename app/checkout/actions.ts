@@ -378,8 +378,6 @@ export async function processCheckout(
 
 // Create a PaymentIntent for Stripe Payment Element (no immediate confirmation)
 export async function createPaymentIntent(
-  formData: unknown,
-  cartItems: CartItem[],
   costs: unknown,
   idempotencyKey?: string,
 ) {
@@ -417,7 +415,6 @@ export async function finalizeOrder(
   formData: unknown,
   cartItems: CartItem[],
   costs: unknown,
-  idempotencyKey?: string,
 ) {
   'use server';
 
