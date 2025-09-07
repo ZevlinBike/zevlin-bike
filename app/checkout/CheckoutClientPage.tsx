@@ -209,7 +209,7 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
       return () => { paymentRef.current = null; };
     }, [stripe, elements]);
 
-    return <PaymentElement options={{ layout: 'tabs' }} />;
+    return <PaymentElement options={{ layout: 'tabs', paymentMethodOrder: ['apple_pay', 'google_pay', 'link', 'card'] }} />;
   };
 
   const handleToggleBillingSame = (e: React.ChangeEvent<HTMLInputElement>) => {

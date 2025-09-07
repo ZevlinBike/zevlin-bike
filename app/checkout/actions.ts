@@ -395,9 +395,9 @@ export async function createPaymentIntent(
       {
         amount: totalInCents,
         currency: 'usd',
-        // Limit to card so only cards + wallets (Apple/Google Pay) appear.
-        // PayPal is intentionally excluded for US in this setup.
-        payment_method_types: ['card'],
+        // Use automatic payment methods so wallets (Apple/Google Pay) can appear in Payment Element.
+        // If you don't want other redirect methods, disable them in the Stripe Dashboard for your account.
+        automatic_payment_methods: { enabled: true },
       },
       idempotencyKey ? { idempotencyKey } : undefined,
     );
