@@ -376,6 +376,233 @@ export async function processCheckout(
   }
 }
 
+// Create a PaymentIntent for Stripe Payment Element (no immediate confirmation)
+export async function createPaymentIntent(
+  formData: unknown,
+  cartItems: CartItem[],
+  costs: unknown,
+  idempotencyKey?: string,
+) {
+  'use server';
+
+  const validatedCosts = costsSchema.safeParse(costs);
+  if (!validatedCosts.success) {
+    return { error: 'Invalid cost calculation.' };
+  }
+  const { data: costData } = validatedCosts;
+
+  try {
+    const totalInCents = Math.round(costData.total * 100);
+    const paymentIntent = await stripe.paymentIntents.create(
+      {
+        amount: totalInCents,
+        currency: 'usd',
+        // Limit to card so only cards + wallets (Apple/Google Pay) appear.
+        // PayPal is intentionally excluded for US in this setup.
+        payment_method_types: ['card'],
+      },
+      idempotencyKey ? { idempotencyKey } : undefined,
+    );
+
+    return { clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id };
+  } catch (e) {
+    console.error('Failed to create PaymentIntent:', e);
+    return { error: 'Failed to initialize payment. Please try again.' };
+  }
+}
+
+// Finalize the order after PaymentIntent succeeded via Payment Element
+export async function finalizeOrder(
+  paymentIntentId: string,
+  formData: unknown,
+  cartItems: CartItem[],
+  costs: unknown,
+  idempotencyKey?: string,
+) {
+  'use server';
+
+  const validatedFields = checkoutFormSchema.safeParse(formData);
+  const validatedCosts = costsSchema.safeParse(costs);
+  if (!validatedFields.success) {
+    return { errors: validatedFields.error.flatten().fieldErrors };
+  }
+  if (!validatedCosts.success) {
+    return { errors: { _form: ["Invalid cost calculation."] } };
+  }
+  const { data: checkoutData } = validatedFields;
+  const { data: costData } = validatedCosts;
+
+  try {
+    // Ensure the PaymentIntent actually succeeded
+    const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+    if (pi.status !== 'succeeded') {
+      return { errors: { _form: ["Payment is not completed yet."] } };
+    }
+
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // Find or create customer, similar to processCheckout
+    let customerId: string;
+    if (user) {
+      const { data: customer, error } = await supabase
+        .from("customers")
+        .select("id, first_name, last_name")
+        .eq("auth_user_id", user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      if (customer) {
+        customerId = customer.id;
+      } else {
+        const { data: newCustomer, error: newCustomerError } = await supabase
+          .from("customers")
+          .insert({
+            first_name: checkoutData.shippingFirstName,
+            last_name: checkoutData.shippingLastName,
+            email: checkoutData.email,
+            phone: checkoutData.phone,
+            auth_user_id: user.id,
+          })
+          .select("id")
+          .single();
+        if (newCustomerError) throw newCustomerError;
+        customerId = newCustomer!.id;
+      }
+    } else {
+      const { data: existingCustomer, error } = await supabase
+        .from("customers")
+        .select("id")
+        .or(`email.eq.${checkoutData.email},phone.eq.${checkoutData.phone}`)
+        .single();
+      if (error && error.code !== 'PGRST116') throw error;
+      if (existingCustomer) {
+        return { errors: { _form: ["A customer with this email or phone number already exists. Please log in to continue."] } };
+      } else {
+        const { data: newCustomer, error: newCustomerError } = await supabase
+          .from("customers")
+          .insert({
+            first_name: checkoutData.shippingFirstName,
+            last_name: checkoutData.shippingLastName,
+            email: checkoutData.email,
+            phone: checkoutData.phone,
+          })
+          .select("id")
+          .single();
+        if (newCustomerError) throw newCustomerError;
+        customerId = newCustomer!.id;
+      }
+    }
+
+    // Create the order, same as processCheckout but without creating a new PI
+    const totalInCents = Math.round(costData.total * 100);
+    const { data: order, error: orderError } = await supabase
+      .from("orders")
+      .insert({
+        customer_id: customerId,
+        status: 'paid',
+        payment_status: 'paid',
+        order_status: 'pending_fulfillment',
+        shipping_status: 'not_shipped',
+        subtotal_cents: Math.round(costData.subtotal * 100),
+        shipping_cost_cents: Math.round(costData.shipping * 100),
+        tax_cents: Math.round(costData.tax * 100),
+        discount_cents: Math.round(costData.discount * 100),
+        total_cents: totalInCents,
+        stripe_payment_intent_id: paymentIntentId,
+        billing_name: `${
+          checkoutData.billingSameAsShipping
+            ? checkoutData.shippingFirstName + ' ' + checkoutData.shippingLastName
+            : `${checkoutData.billingFirstName} ${checkoutData.billingLastName}`
+        }`,
+        billing_address_line1: checkoutData.billingSameAsShipping
+          ? checkoutData.shippingAddress
+          : checkoutData.billingAddress!,
+        billing_city: checkoutData.billingSameAsShipping
+          ? checkoutData.shippingCity
+          : checkoutData.billingCity!,
+        billing_state: checkoutData.billingSameAsShipping
+          ? checkoutData.shippingState
+          : checkoutData.billingState!,
+        billing_postal_code: checkoutData.billingSameAsShipping
+          ? checkoutData.shippingZipCode
+          : checkoutData.billingZipCode!,
+        billing_country: 'US',
+      })
+      .select("id")
+      .single();
+
+    if (orderError) {
+      const isUniqueViolation = orderError.code === '23505' ||
+        (typeof orderError.message === 'string' && orderError.message.includes('stripe_payment_intent_id'));
+      if (isUniqueViolation) {
+        const { data: existingOrder } = await supabase
+          .from('orders')
+          .select('id')
+          .eq('stripe_payment_intent_id', paymentIntentId)
+          .single();
+        if (existingOrder?.id) {
+          return { success: true, orderId: existingOrder.id };
+        }
+      }
+      throw orderError;
+    }
+
+    const orderId = order!.id;
+
+    const lineItems = cartItems.map(item => ({
+      order_id: orderId,
+      product_id: item.id,
+      quantity: item.quantity,
+      unit_price_cents: item.price_cents,
+    }));
+    const { error: lineItemsError } = await supabase.from("line_items").insert(lineItems);
+    if (lineItemsError) throw lineItemsError;
+
+    const { error: shippingDetailsError } = await supabase.from("shipping_details").insert({
+      order_id: orderId,
+      name: `${checkoutData.shippingFirstName} ${checkoutData.shippingLastName}`,
+      address_line1: checkoutData.shippingAddress,
+      city: checkoutData.shippingCity,
+      state: checkoutData.shippingState,
+      postal_code: checkoutData.shippingZipCode,
+      country: 'US',
+    });
+    if (shippingDetailsError) throw shippingDetailsError;
+
+    // Decrement stock (best-effort)
+    const { error: decrementError } = await supabase.rpc('decrement_stock', { order_id_param: orderId });
+    if (decrementError) {
+      console.error(`Failed to decrement stock for order ${orderId}:`, decrementError);
+    }
+
+    // Emails (best-effort)
+    try {
+      const customerEmailHtml = `
+        <h1>Thank you for your order!</h1>
+        <p>Your order ID is ${orderId}.</p>
+        <p>We'll notify you when your order ships.</p>
+      `;
+      await sendTransactionalEmail(
+        { email: checkoutData.email, name: `${checkoutData.shippingFirstName} ${checkoutData.shippingLastName}` },
+        `Your Zevlin Bike Order #${orderId} is Confirmed`,
+        customerEmailHtml
+      );
+    } catch (emailError) {
+      console.error(`Failed to send emails for order ${orderId}:`, emailError);
+    }
+
+    return { success: true, orderId };
+  } catch (error: unknown) {
+    console.error('Finalize order failed:', error);
+    let errorMessage = 'An unexpected error occurred.';
+    if (error instanceof Stripe.errors.StripeError) {
+      errorMessage = error.message;
+    }
+    return { errors: { _form: [errorMessage] } };
+  }
+}
+
 export async function verifyDiscountCode(code: string) {
   'use server';
 

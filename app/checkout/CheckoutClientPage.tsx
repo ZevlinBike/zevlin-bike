@@ -9,13 +9,13 @@ import { useCartStore } from "@/store/cartStore";
 import MainLayout from "@/app/components/layouts/MainLayout";
 import { Loader2, CreditCard, Truck, User, LogIn, UserPlus, CheckCircle2, AlertTriangle } from "lucide-react";
 import Link from "next/link";
-import { processCheckout, verifyDiscountCode } from "./actions";
+import { verifyDiscountCode, createPaymentIntent, finalizeOrder } from "./actions";
 import { login } from "@/app/auth/login/actions";
 import { useRouter } from "next/navigation";
 import { User as UserType } from "@supabase/supabase-js";
 import { Customer } from "@/lib/schema";
 import { loadStripe } from '@stripe/stripe-js';
-import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -43,8 +43,6 @@ interface CheckoutForm {
 }
 
 const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Customer | null }) => {
-  const stripe = useStripe();
-  const elements = useElements();
   const router = useRouter();
   const {
     items: cartItems,
@@ -93,7 +91,15 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
   const [promoCode, setPromoCode] = useState("");
   const [appliedPromo, setAppliedPromo] = useState("");
   const [discount, setDiscount] = useState(0);
+  // Derived totals (must be declared before effects use them)
+  const subtotal = getTotalPrice() / 100;
+  const shipping = subtotal >= 49 ? 0 : cartItems.length > 0 ? 5.95 : 0;
+  const tax = (subtotal - discount) * 0.08;
+  const total = subtotal + shipping + tax - discount;
   const [localSubmitting, setLocalSubmitting] = useState(false);
+  // Payment Element state
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   // Stable idempotency key per page load to avoid double charges/orders
   const idempotencyKeyRef = useRef<string>("");
   if (!idempotencyKeyRef.current) {
@@ -104,6 +110,29 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
       idempotencyKeyRef.current = Math.random().toString(36).slice(2);
     }
   }
+
+  // Initialize PaymentIntent for Payment Element
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      if (!hydrated || cartItems.length === 0) return;
+      const res = await createPaymentIntent(
+        { ...formData, billingSameAsShipping: !!formData.billingSameAsShipping },
+        cartItems,
+        { subtotal, shipping, tax, discount, total },
+        idempotencyKeyRef.current,
+      );
+      if (cancelled) return;
+      if (res && 'clientSecret' in res && res.clientSecret) {
+        setClientSecret(res.clientSecret);
+        setPaymentIntentId(res.paymentIntentId || null);
+      } else if (res && 'error' in res && res.error) {
+        toast.error(res.error);
+      }
+    };
+    run();
+    return () => { cancelled = true; };
+  }, [hydrated, cartItems, subtotal, shipping, tax, discount, total, formData]);
 
   useEffect(() => {
     if (user) {
@@ -122,10 +151,7 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
     }
   }, [user, customer, router]);
 
-  const subtotal = getTotalPrice() / 100;
-  const shipping = subtotal >= 49 ? 0 : cartItems.length > 0 ? 5.95 : 0;
-  const tax = (subtotal - discount) * 0.08;
-  const total = subtotal + shipping + tax - discount;
+  
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name } = e.target;
@@ -137,6 +163,50 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
       value = value.replace(/\D/g, '').slice(0, 5);
     }
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Imperative bridge to PaymentElement confirm
+  type PaymentRef = { confirm: () => Promise<{ paymentIntentId?: string; error?: string } | undefined> };
+  const paymentRef = useRef<PaymentRef | null>(null);
+
+  // Child component to host Elements + PaymentElement and perform confirm
+  const PaymentSection = ({ clientSecret }: { clientSecret: string }) => {
+    const stripe = useStripe();
+    const elements = useElements();
+
+    useEffect(() => {
+      paymentRef.current = {
+        confirm: async () => {
+          if (!stripe || !elements) return { error: 'Payment system not ready.' };
+          // Save snapshot for redirect flows
+          try {
+            const snapshot = {
+              formData: { ...formData, billingSameAsShipping: !!formData.billingSameAsShipping },
+              cartItems,
+              costs: { subtotal, shipping, tax, discount, total },
+              idempotencyKey: idempotencyKeyRef.current,
+              paymentIntentId,
+            };
+            localStorage.setItem('zevlin:checkout:snapshot', JSON.stringify(snapshot));
+          } catch {}
+
+          const returnUrl = `${window.location.origin}/checkout/complete`;
+          const { error, paymentIntent } = await stripe.confirmPayment({
+            elements,
+            confirmParams: { return_url: returnUrl },
+            redirect: 'always',
+          });
+          if (error) return { error: error.message || 'Payment failed.' };
+          if (paymentIntent && paymentIntent.status === 'succeeded') {
+            return { paymentIntentId: paymentIntent.id };
+          }
+          return {};
+        }
+      };
+      return () => { paymentRef.current = null; };
+    }, [stripe, elements, formData, cartItems, subtotal, shipping, tax, discount, total, paymentIntentId]);
+
+    return <PaymentElement options={{ layout: 'tabs' }} />;
   };
 
   const handleToggleBillingSame = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -394,55 +464,37 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
       }
     }
 
-    if (!stripe || !elements) {
-      toast.error("Payment system is not ready yet. Please wait a moment.");
+    // Confirmation is handled by PaymentSection
+    if (!paymentRef.current) {
+      toast.error('Payment is not ready yet.');
       setLocalSubmitting(false);
       return;
     }
-
-    const cardElement = elements.getElement(CardElement);
-    if (cardElement == null) {
-      toast.error("Could not find payment details form. Please refresh and try again.");
+    const result = await paymentRef.current.confirm();
+    if (result?.error) {
+      toast.error(result.error);
       setLocalSubmitting(false);
       return;
     }
-
-    const { error, paymentMethod } = await stripe.createPaymentMethod({
-      type: 'card',
-      card: cardElement,
-    });
-
-    if (error) {
-      toast.error(error.message || "An unexpected error occurred with your card.");
-      setLocalSubmitting(false);
-    } else {
-      startTransition(async () => {
-        const result = await processCheckout(
-          formData, 
-          cartItems, 
-          {
-            subtotal,
-            shipping,
-            tax,
-            discount,
-            total
-          },
-          paymentMethod.id,
-          idempotencyKeyRef.current
-        );
-
-        if (result.errors) {
-          if ("_form" in result.errors && result.errors._form) {
-            toast.error(result.errors._form[0]);
-          }
-          setErrors(result.errors);
-          setLocalSubmitting(false);
-        } else if (result.success && result.orderId) {
-          toast.success("Order placed successfully!");
-          clearCart();
-          router.push(`/order/${result.orderId}`);
+    if (result?.paymentIntentId) {
+      const finalize = await finalizeOrder(
+        result.paymentIntentId,
+        { ...formData, billingSameAsShipping: !!formData.billingSameAsShipping },
+        cartItems,
+        { subtotal, shipping, tax, discount, total },
+        idempotencyKeyRef.current,
+      );
+      if (finalize.errors) {
+        if ("_form" in finalize.errors && finalize.errors._form) {
+          toast.error(finalize.errors._form[0]);
         }
-      });
+        setErrors(finalize.errors);
+        setLocalSubmitting(false);
+      } else if (finalize.success && finalize.orderId) {
+        toast.success('Order placed successfully!');
+        clearCart();
+        router.push(`/order/${finalize.orderId}`);
+      }
     }
   };
 
@@ -924,20 +976,13 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <CardElement options={{
-                        style: {
-                          base: {
-                            fontSize: '16px',
-                            color: '#424770',
-                            '::placeholder': {
-                              color: '#aab7c4',
-                            },
-                          },
-                          invalid: {
-                            color: '#9e2146',
-                          },
-                        },
-                      }}/>
+                      {!clientSecret ? (
+                        <div className="text-sm text-muted-foreground">Loading payment methods…</div>
+                      ) : (
+                        <Elements stripe={stripePromise} options={{ clientSecret }}>
+                          <PaymentSection clientSecret={clientSecret} />
+                        </Elements>
+                      )}
                     </CardContent>
                   </Card>
 
@@ -946,7 +991,7 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
                       type="submit"
                       size="lg"
                       className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold"
-                      disabled={localSubmitting || isPending || !stripe}
+                      disabled={localSubmitting || isPending || !clientSecret}
                     >
                       {isPending ? (
                         <>
@@ -1065,7 +1110,7 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
                         form="checkout-form"
                         size="lg"
                         className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold"
-                        disabled={localSubmitting || isPending || !stripe}
+                        disabled={localSubmitting || isPending || !clientSecret}
                       >
                         {isPending ? (
                           <>
@@ -1127,9 +1172,5 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
 }
 
 export default function CheckoutClientPage({ user, customer }: { user: UserType | null, customer: Customer | null }) {
-  return (
-    <Elements stripe={stripePromise}>
-      <CheckoutForm user={user} customer={customer} />
-    </Elements>
-  );
+  return <CheckoutForm user={user} customer={customer} />;
 }
