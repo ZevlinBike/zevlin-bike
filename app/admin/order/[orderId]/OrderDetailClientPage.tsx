@@ -10,9 +10,12 @@ import {
 } from "@/components/ui/table";
 
 import { PrintModal } from "@/app/admin/orders/components/PrintModal";
+import { CombinedPrintModal } from "@/app/admin/orders/components/CombinedPrintModal";
 import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Printer } from "lucide-react";
+import { Truck, Clock, DollarSign, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { clsx } from "clsx";
 
@@ -190,7 +193,29 @@ export default function OrderDetailClientPage({ order: initialOrder }: { order: 
             <StatusPill status={order.payment_status} />
             <StatusPill status={order.order_status} />
             <StatusPill status={order.shipping_status} />
-            <PrintModal orderId={order.id} />
+            {(() => {
+              const labeled = shipments.filter((s) => !!s.label_url);
+              let latestLabelUrl: string | null = null;
+              if (labeled.length > 0) {
+                latestLabelUrl = labeled
+                  .slice()
+                  .sort((a, b) => {
+                    const ta = a.created_at ? Date.parse(a.created_at) : 0;
+                    const tb = b.created_at ? Date.parse(b.created_at) : 0;
+                    return tb - ta;
+                  })[0].label_url as string;
+              }
+              const trigger = (
+                <Button variant="outline" size="icon" title="Print">
+                  <Printer className="h-4 w-4" />
+                </Button>
+              );
+              return latestLabelUrl ? (
+                <CombinedPrintModal orderId={order.id} labelUrl={latestLabelUrl} trigger={trigger} />
+              ) : (
+                <PrintModal orderId={order.id} trigger={trigger} />
+              );
+            })()}
           </div>
         </div>
       </div>
@@ -313,47 +338,66 @@ export default function OrderDetailClientPage({ order: initialOrder }: { order: 
               <CardTitle>Shipping</CardTitle>
               <CardDescription>Rates, labels, and tracking.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4 overflow-x-auto">
-              <div className="flex items-center justify-between gap-3">
-                <div className="text-sm text-gray-600 dark:text-gray-400">
+            <CardContent className="space-y-5 overflow-x-auto">
+              {/* Toolbar */}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                  <Truck className="h-4 w-4" />
                   {shipments.length > 0 ? (
-                    <span>{shipments.length} shipment{shipments.length > 1 ? "s" : ""} found</span>
+                    <span className="tabular-nums">{shipments.length} shipment{shipments.length > 1 ? "s" : ""}</span>
                   ) : (
                     <span>No shipments yet</span>
                   )}
                 </div>
-                <Button size="sm" onClick={fetchRates} disabled={loadingRates}>
+                <Button size="sm" onClick={fetchRates} disabled={loadingRates} className="gap-2">
+                  <DollarSign className="h-4 w-4" />
                   {loadingRates ? "Getting rates…" : "Get Rates"}
                 </Button>
               </div>
 
               {/* Rates list */}
               {rates && rates.length > 0 && (
-                <div className="space-y-2">
-                  {rates.map((r) => (
-                    <div key={r.rateObjectId} className="flex items-center justify-between rounded border p-2">
-                      <div className="text-sm">
-                        <div className="font-medium">
-                          {r.carrier} · {r.service}
+                <div className="space-y-3">
+                  <div className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Rates</div>
+                  <div className="grid gap-2">
+                    {rates.map((r) => (
+                      <div key={r.rateObjectId} className="flex items-center justify-between rounded-md border p-3 hover:bg-gray-50 dark:hover:bg-neutral-900/40 transition-colors">
+                        <div className="text-sm">
+                          <div className="font-medium">
+                            {r.carrier} · {r.service}
+                          </div>
+                          <div className="text-gray-600 dark:text-gray-400 flex items-center gap-3">
+                            <span className="inline-flex items-center gap-1">
+                              <DollarSign className="h-3.5 w-3.5" />
+                              {money(r.amountCents)}
+                            </span>
+                            {r.estimatedDays ? (
+                              <span className="inline-flex items-center gap-1">
+                                <Clock className="h-3.5 w-3.5" /> ~{r.estimatedDays} day{r.estimatedDays === 1 ? "" : "s"}
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
-                        <div className="text-gray-600 dark:text-gray-400">
-                          {money(r.amountCents)}
-                          {r.estimatedDays ? ` · ~${r.estimatedDays} day(s)` : ""}
-                        </div>
+                        <Button size="sm" onClick={() => buyLabel(r)} disabled={buying === r.rateObjectId}>
+                          {buying === r.rateObjectId ? "Buying…" : "Buy Label"}
+                        </Button>
                       </div>
-                      <Button size="sm" onClick={() => buyLabel(r)} disabled={buying === r.rateObjectId}>
-                        {buying === r.rateObjectId ? "Buying…" : "Buy Label"}
-                      </Button>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               )}
 
               {/* Shipments list */}
-              <div className="space-y-2">
+              <div className="space-y-3">
+                <div className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Shipments</div>
+                {shipments.length === 0 && (
+                  <div className="rounded-md border p-6 text-sm text-gray-600 dark:text-gray-400 text-center">
+                    No shipments yet. Get live rates to create a label.
+                  </div>
+                )}
                 {shipments.map((s) => (
-                  <div key={s.id} className="rounded border p-2">
-                    <div className="flex items-center justify-between">
+                  <div key={s.id} className="rounded-md border p-3 bg-white dark:bg-neutral-950">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="text-sm">
                         <div className="font-medium flex items-center gap-2">
                           <Badge variant="secondary" className="capitalize">{s.status}</Badge>
@@ -361,21 +405,40 @@ export default function OrderDetailClientPage({ order: initialOrder }: { order: 
                             {(s.carrier || "").toUpperCase()} {s.service ? `· ${s.service}` : ""}
                           </span>
                         </div>
-                        <div className="text-gray-600 dark:text-gray-400 mt-0.5">
+                        <div className="text-gray-600 dark:text-gray-400 mt-0.5 flex items-center gap-2">
                           {s.tracking_number ? (
-                            <a className="underline whitespace-nowrap" href={s.tracking_url ?? undefined} target="_blank" rel="noreferrer">
+                            <a className="underline inline-flex items-center gap-1 whitespace-nowrap" href={s.tracking_url ?? undefined} target="_blank" rel="noreferrer">
                               {s.tracking_number}
+                              <ExternalLink className="h-3.5 w-3.5" />
                             </a>
                           ) : (
                             <span>No tracking</span>
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         {s.label_url && (
-                          <a className="text-sm underline" href={s.label_url} target="_blank" rel="noreferrer">
-                            Download Label
-                          </a>
+                          <>
+                            <a
+                              className="inline-flex items-center gap-1 text-sm underline"
+                              href={s.label_url}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              Download Label
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </a>
+                            <span className="mx-1 text-gray-300">|</span>
+                            <PrintModal
+                              orderId={order.id}
+                              trigger={<Button size="sm" variant="outline">Packing Slip</Button>}
+                            />
+                            <CombinedPrintModal
+                              orderId={order.id}
+                              labelUrl={s.label_url}
+                              trigger={<Button size="sm">Print Both</Button>}
+                            />
+                          </>
                         )}
                         {s.status === "purchased" && (
                           <Button size="sm" variant="outline" onClick={() => voidLabelById(s.id)} disabled={voidingId === s.id}>
