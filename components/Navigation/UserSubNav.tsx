@@ -4,6 +4,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
+import { useEffect, useState } from "react";
+import { hasAdminRole } from "@/lib/auth/client";
 
 function displayNameFromEmail(email: string) {
   const name = email.split("@")[0] ?? email;
@@ -13,6 +15,14 @@ function displayNameFromEmail(email: string) {
 
 export default function UserSubNav({ user }: { user: User }) {
   const router = useRouter();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const admin = await hasAdminRole();
+      setIsAdmin(admin);
+    })();
+  }, []);
 
   const handleSignOut = async () => {
     const supabase = createClient();
@@ -59,6 +69,25 @@ export default function UserSubNav({ user }: { user: User }) {
 
         {/* Right: compact actions */}
         <div className="flex items-center gap-1.5">
+          {isAdmin && (
+            <Link
+              href="/admin"
+              className="
+                group
+                inline-flex items-center gap-1
+                text-[11px] sm:text-xs
+                text-white/80 hover:text-white
+                rounded-md
+                ring-1 ring-white/10 hover:ring-white/20
+                transition
+                px-2
+                focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40
+              "
+              title="Admin"
+            >
+              admin
+            </Link>
+          )}
           <Link
             href="/orders"
             className="
@@ -104,4 +133,3 @@ export default function UserSubNav({ user }: { user: User }) {
     </div>
   );
 }
-
