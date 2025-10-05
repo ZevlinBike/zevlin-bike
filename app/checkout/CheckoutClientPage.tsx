@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect, useRef, useCallback } from "react";
+import { useState, useTransition, useEffect, useRef, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -9,13 +9,20 @@ import { useCartStore } from "@/store/cartStore";
 import MainLayout from "@/app/components/layouts/MainLayout";
 import { Loader2, CreditCard, Truck, User, LogIn, UserPlus, CheckCircle2, AlertTriangle } from "lucide-react";
 import Link from "next/link";
-import { verifyDiscountCode, createPaymentIntent, finalizeOrder } from "./actions";
+import { verifyDiscountCode, createPaymentIntent, finalizeOrder, upsertAuthCart } from "./actions";
 import { login } from "@/app/auth/login/actions";
 import { useRouter } from "next/navigation";
 import { User as UserType } from "@supabase/supabase-js";
 import { Customer } from "@/lib/schema";
 import { loadStripe, type PaymentIntentResult } from '@stripe/stripe-js';
-import { Elements, PaymentElement, ExpressCheckoutElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import type { StripePaymentElementOptions } from '@stripe/stripe-js';
+import type { CartItem } from "@/store/cartStore";
+
+// Bridge for PaymentElement confirm, shared across components
+type PaymentRef = {
+  confirm: () => Promise<{ paymentIntentId?: string; error?: string } | undefined>;
+};
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -97,9 +104,35 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
   const tax = (subtotal - discount) * 0.08;
   const total = subtotal + shipping + tax - discount;
   const [localSubmitting, setLocalSubmitting] = useState(false);
+  // Wizard step controller: 1 Contact, 2 Shipping, 3 Billing, 4 Payment
+  const [step, setStep] = useState<number>(1);
   // Payment Element state
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+
+  // Restore saved progress (best-effort) so accidental refreshes don't wipe info
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      const raw = localStorage.getItem('zevlin:checkout:progress');
+      if (raw) {
+        const parsed = JSON.parse(raw) as { form?: Partial<CheckoutForm>; step?: number };
+        if (parsed.form) {
+          setFormData(prev => ({ ...prev, ...parsed.form }));
+        }
+        if (parsed.step && parsed.step >= 1 && parsed.step <= 4) {
+          setStep(parsed.step);
+        }
+      }
+    } catch {}
+  }, [hydrated]);
+
+  // Persist progress locally after any change
+  useEffect(() => {
+    try {
+      localStorage.setItem('zevlin:checkout:progress', JSON.stringify({ form: formData, step }));
+    } catch {}
+  }, [formData, step]);
   // Stable idempotency key per page load to avoid double charges/orders
   const idempotencyKeyRef = useRef<string>("");
   if (!idempotencyKeyRef.current) {
@@ -111,11 +144,11 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
     }
   }
 
-  // Initialize PaymentIntent for Payment Element
+  // Initialize PaymentIntent for Payment Element when entering Step 4
   useEffect(() => {
     let cancelled = false;
     const run = async () => {
-      if (!hydrated || cartItems.length === 0) return;
+      if (!hydrated || cartItems.length === 0 || step !== 4 || clientSecret) return;
       const res = await createPaymentIntent({ subtotal, shipping, tax, discount, total }, idempotencyKeyRef.current);
       if (cancelled) return;
       if (res && 'clientSecret' in res && res.clientSecret) {
@@ -127,7 +160,25 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
     };
     run();
     return () => { cancelled = true; };
-  }, [hydrated, cartItems.length, subtotal, shipping, tax, discount, total]);
+  }, [hydrated, cartItems.length, step, clientSecret, subtotal, shipping, tax, discount, total]);
+
+  // Unified step setter that resets PaymentIntent when leaving Payment step
+  const goToStep = useCallback((next: number) => {
+    setStep(next);
+    if (next < 4) {
+      setClientSecret(null);
+      setPaymentIntentId(null);
+      setPaymentComplete(false);
+    }
+  }, []);
+
+  // Persist authenticated user's cart server-side for traceability
+  useEffect(() => {
+    if (!hydrated || !user) return;
+    (async () => {
+      try { await upsertAuthCart(cartItems); } catch {}
+    })();
+  }, [hydrated, user, cartItems]);
 
   useEffect(() => {
     if (user) {
@@ -161,113 +212,32 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
   };
 
   // Imperative bridge to PaymentElement confirm
-  type PaymentRef = { confirm: () => Promise<{ paymentIntentId?: string; error?: string } | undefined> };
   const paymentRef = useRef<PaymentRef | null>(null);
 
   // Keep latest values for confirm without re-registering handler
-  const latestRef = useRef({ formData, cartItems, subtotal, shipping, tax, discount, total, paymentIntentId });
+  const latestRef = useRef<LatestSnapshot>({ formData, cartItems, subtotal, shipping, tax, discount, total, paymentIntentId });
   useEffect(() => {
     latestRef.current = { formData, cartItems, subtotal, shipping, tax, discount, total, paymentIntentId };
   }, [formData, cartItems, subtotal, shipping, tax, discount, total, paymentIntentId]);
 
   // Child component to host Elements + PaymentElement and perform confirm
-  const PaymentSection = ({ clientSecret }: { clientSecret: string }) => {
-    const stripe = useStripe();
-    const elements = useElements();
+  const [paymentComplete, setPaymentComplete] = useState(false);
+  const elementsOptions = useMemo(() => (clientSecret ? { clientSecret } : null), [clientSecret]);
 
-    useEffect(() => {
-      paymentRef.current = {
-        confirm: async () => {
-          if (!stripe || !elements) return { error: 'Payment system not ready.' };
-          // Save snapshot for redirect flows
-          try {
-            const { formData: fd, cartItems: ci, subtotal: st, shipping: sh, tax: tx, discount: dc, total: tt, paymentIntentId: pid } = latestRef.current;
-            const snapshot = {
-              formData: { ...fd, billingSameAsShipping: !!fd.billingSameAsShipping },
-              cartItems: ci,
-              costs: { subtotal: st, shipping: sh, tax: tx, discount: dc, total: tt },
-              idempotencyKey: idempotencyKeyRef.current,
-              paymentIntentId: pid,
-            };
-            localStorage.setItem('zevlin:checkout:snapshot', JSON.stringify(snapshot));
-          } catch {}
-
-          const returnUrl = `${window.location.origin}/checkout/complete`;
-          const result = await stripe.confirmPayment({
-            elements,
-            confirmParams: { return_url: returnUrl },
-            redirect: 'always',
-          });
-          if ('error' in result && result.error) return { error: result.error.message || 'Payment failed.' };
-          const piResult = result as PaymentIntentResult;
-          if (piResult.paymentIntent && piResult.paymentIntent.status === 'succeeded') {
-            return { paymentIntentId: piResult.paymentIntent.id };
-          }
-          return {};
-        }
-      };
-      return () => { paymentRef.current = null; };
-    }, [stripe, elements]);
-
-    return (
-      <>
-        {/* Express Checkout wallet buttons (Apple/Google Pay). */}
-        <ExpressCheckoutElement
-          options={{
-            // Use default auto-detection for wallets; keep dark theme styling.
-            buttonTheme: { applePay: 'black', googlePay: 'black' },
-          }}
-          onConfirm={async (event) => {
-            if (!stripe) return;
-            try {
-              const { formData: fd, cartItems: ci, subtotal: st, shipping: sh, tax: tx, discount: dc, total: tt, paymentIntentId: pid } = latestRef.current;
-              // Save snapshot for redirect flows
-              try {
-                const snapshot = {
-                  formData: { ...fd, billingSameAsShipping: !!fd.billingSameAsShipping },
-                  cartItems: ci,
-                  costs: { subtotal: st, shipping: sh, tax: tx, discount: dc, total: tt },
-                  idempotencyKey: idempotencyKeyRef.current,
-                  paymentIntentId: pid,
-                };
-                localStorage.setItem('zevlin:checkout:snapshot', JSON.stringify(snapshot));
-              } catch {}
-
-              const returnUrl = `${window.location.origin}/checkout/complete`;
-              const confirmRes = await stripe.confirmPayment({
-                elements: elements!,
-                confirmParams: { return_url: returnUrl },
-                redirect: 'if_required',
-              });
-              if ('error' in confirmRes && confirmRes.error) {
-                event.paymentFailed?.({ reason: 'fail', message: confirmRes.error.message });
-                return;
-              }
-              // If no redirect occurred and PI is already succeeded, finalize now
-              const piRes = await stripe.retrievePaymentIntent(clientSecret);
-              if (piRes.paymentIntent && piRes.paymentIntent.status === 'succeeded') {
-                const finalize = await finalizeOrder(
-                  piRes.paymentIntent.id,
-                  { ...fd, billingSameAsShipping: !!fd.billingSameAsShipping },
-                  ci,
-                  { subtotal: st, shipping: sh, tax: tx, discount: dc, total: tt },
-                );
-                if (finalize?.success && finalize.orderId) {
-                  // Clear cart and route
-                  try { localStorage.removeItem('zevlin:checkout:snapshot'); } catch {}
-                  // We cannot access clearCart here directly; submission handler will also handle success
-                }
-              }
-            } catch {
-              // Swallow; ExpressCheckout handles UI
-            }
-          }}
-        />
-        <div className="my-4" />
-        <PaymentElement options={{ layout: 'tabs', paymentMethodOrder: ['apple_pay', 'google_pay', 'link', 'card'] }} />
-      </>
-    );
-  };
+  // As a last line of defense, intercept any stray form submissions on this page
+  // (some embedded widgets may attempt to submit a parent form). This prevents
+  // full-page navigations that could wipe state.
+  useEffect(() => {
+    const handler = (ev: Event) => {
+      const t = ev.target as HTMLElement | null;
+      if (t && t.tagName === 'FORM') {
+        ev.preventDefault();
+        ev.stopPropagation();
+      }
+    };
+    document.addEventListener('submit', handler, true);
+    return () => document.removeEventListener('submit', handler, true);
+  }, []);
 
   const handleToggleBillingSame = (e: React.ChangeEvent<HTMLInputElement>) => {
     const checked = e.target.checked;
@@ -411,7 +381,7 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
     validateAddressInline,
   ]);
 
-  function applySuggestedAndContinue() {
+  async function applySuggestedAndContinue() {
     if (!addressSuggestion) return;
     setFormData(prev => ({
       ...prev,
@@ -422,11 +392,7 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
     }));
     setAddressSuggestOpen(false);
     // After applying suggestion, submit again
-    const form = document.getElementById('checkout-form') as HTMLFormElement | null;
-    if (form) {
-      // Trigger submit programmatically
-      form.requestSubmit();
-    }
+    await placeOrder();
   }
 
   const handlePromoCode = async () => {
@@ -473,8 +439,7 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
     });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const placeOrder = async () => {
     if (localSubmitting) return; // immediate guard against rapid double-submits
     setLocalSubmitting(true);
     setErrors({});
@@ -530,6 +495,12 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
       setLocalSubmitting(false);
       return;
     }
+    // Ensure payment fields are complete before attempting confirm
+    if (!paymentComplete) {
+      toast.error('Please complete your payment details.');
+      setLocalSubmitting(false);
+      return;
+    }
     const result = await paymentRef.current.confirm();
     if (result?.error) {
       toast.error(result.error);
@@ -551,6 +522,7 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
         setLocalSubmitting(false);
       } else if (finalize.success && finalize.orderId) {
         toast.success('Order placed successfully!');
+        try { localStorage.removeItem('zevlin:checkout:progress'); } catch {}
         clearCart();
         router.push(`/order/${finalize.orderId}`);
       }
@@ -607,9 +579,25 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
     <MainLayout>
       <div className="pt-40 min-h-screen text-gray-900 bg-white dark:text-white dark:bg-neutral-900 pb-20">
         <div className="container px-4 mx-auto sm:px-6 lg:px-8">
-          <h1 className="mb-8 text-3xl font-extrabold tracking-tight sm:text-4xl">
+          <h1 className="mb-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
             Checkout
           </h1>
+          <div className="mb-8 flex items-center gap-3 text-sm">
+            {[
+              { n: 1, label: 'Contact' },
+              { n: 2, label: 'Shipping' },
+              { n: 3, label: 'Billing' },
+              { n: 4, label: 'Payment' },
+            ].map((s) => (
+              <div key={s.n} className={`flex items-center gap-2 ${step === s.n ? 'text-blue-600' : step > s.n ? 'text-green-600' : 'text-gray-400'}`}>
+                <div className={`h-6 w-6 rounded-full flex items-center justify-center border ${step >= s.n ? 'border-current' : 'border-gray-300'}`}>
+                  <span className="text-xs font-semibold">{s.n}</span>
+                </div>
+                <span className="font-medium">{s.label}</span>
+                {s.n < 4 && <div className="h-px w-6 bg-gray-300" />}
+              </div>
+            ))}
+          </div>
           
           {!user && <div className="mb-8">
             <Card>
@@ -701,7 +689,13 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
           ) : (
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
               <div className="lg:col-span-2">
-                <form onSubmit={handleSubmit} id="checkout-form" className="space-y-6">
+                {/*
+                  Prevent native form submissions from navigating (e.g., Enter inside Stripe Element)
+                  by setting a no-op action. We still handle submit via React.
+                */}
+                {/* Replace form with div to avoid any native submissions caused by Stripe Elements */}
+                <div id="checkout-form" className="space-y-6">
+                  {step === 1 && (
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
@@ -722,6 +716,7 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
                             required
                             value={formData.email}
                             onChange={handleInputChange}
+                            disabled={step > 1}
                             placeholder="your@email.com"
                           />
                           {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email[0]}</p>}
@@ -736,14 +731,26 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
                             type="tel"
                             value={formData.phone}
                             onChange={handleInputChange}
+                            disabled={step > 1}
                             placeholder="(555) 123-4567"
                           />
                            {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone[0]}</p>}
                         </div>
                       </div>
+                      <div className="flex justify-end">
+                        <Button type="button" onClick={() => {
+                          if (!formData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+                            toast.error('Please enter a valid email.');
+                            return;
+                          }
+                          setStep(2);
+                        }}>Continue</Button>
+                      </div>
                     </CardContent>
                   </Card>
+                  )}
 
+                  {step === 2 && (
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
@@ -763,6 +770,7 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
                             required
                             value={formData.shippingFirstName}
                             onChange={handleInputChange}
+                            disabled={step > 2}
                             placeholder="John"
                           />
                           {errors.shippingFirstName && <p className="text-red-500 text-sm mt-1">{errors.shippingFirstName[0]}</p>}
@@ -777,6 +785,7 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
                             required
                             value={formData.shippingLastName}
                             onChange={handleInputChange}
+                            disabled={step > 2}
                             placeholder="Doe"
                           />
                           {errors.shippingLastName && <p className="text-red-500 text-sm mt-1">{errors.shippingLastName[0]}</p>}
@@ -793,6 +802,7 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
                           required
                           value={formData.shippingAddress}
                           onChange={handleInputChange}
+                          disabled={step > 2}
                           placeholder="123 Main St"
                         />
                         {errors.shippingAddress && <p className="text-red-500 text-sm mt-1">{errors.shippingAddress[0]}</p>}
@@ -809,6 +819,7 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
                             required
                             value={formData.shippingCity}
                             onChange={handleInputChange}
+                            disabled={step > 2}
                             placeholder="New York"
                           />
                           {errors.shippingCity && <p className="text-red-500 text-sm mt-1">{errors.shippingCity[0]}</p>}
@@ -823,6 +834,7 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
                             required
                             value={formData.shippingState}
                             onChange={handleInputChange}
+                            disabled={step > 2}
                             placeholder="NY"
                           />
                           {errors.shippingState && <p className="text-red-500 text-sm mt-1">{errors.shippingState[0]}</p>}
@@ -837,6 +849,7 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
                             required
                             value={formData.shippingZipCode}
                             onChange={handleInputChange}
+                            disabled={step > 2}
                             placeholder="10001"
                           />
                           {errors.shippingZipCode && <p className="text-red-500 text-sm mt-1">{errors.shippingZipCode[0]}</p>}
@@ -879,9 +892,34 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
                           </>
                         )}
                       </div>
+                      <div className="flex items-center justify-between mt-2">
+                          <Button type="button" variant="outline" onClick={() => goToStep(1)}>Back</Button>
+                          <Button type="button" onClick={async () => {
+                            try {
+                              const validation = await validateShippingAddress();
+                              const good = validation.isValid && (validation.isComplete !== false) && (!validation.messages || validation.messages.length === 0);
+                              if (!good) {
+                                const candidate = validation.suggested || validation.normalized;
+                                if (candidate) {
+                                  setAddressSuggestion(candidate);
+                                  setAddressSuggestOpen(true);
+                                  toast.message('We found a more accurate address.');
+                                } else {
+                                  toast.error(validation.messages?.[0] || 'The shipping address appears invalid.');
+                                }
+                                return;
+                              }
+                              setStep(3);
+                            } catch (e) {
+                              toast.error((e as Error)?.message || 'Address validation failed');
+                            }
+                          }}>Continue</Button>
+                      </div>
                     </CardContent>
                   </Card>
+                  )}
 
+                  {step === 3 && (
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
@@ -1024,9 +1062,88 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
                           </div>
                         </>
                       )}
+                      <div className="flex items-center justify-between mt-4">
+                          <Button type="button" variant="outline" onClick={() => goToStep(2)}>Back</Button>
+                          <Button type="button" onClick={async () => {
+                            if (!formData.billingSameAsShipping) {
+                              try {
+                                const res = await validateAddressInline({
+                                  name: `${formData.billingFirstName || ''} ${formData.billingLastName || ''}`.trim(),
+                                  address1: formData.billingAddress || '',
+                                  city: formData.billingCity || '',
+                                  state: formData.billingState || '',
+                                  postal_code: formData.billingZipCode || '',
+                                  country: 'US',
+                                });
+                                const good = res.isValid && (res.isComplete !== false) && (!res.messages || res.messages.length === 0);
+                                if (!good) {
+                                  toast.error(res.messages?.[0] || 'The billing address appears invalid.');
+                                  return;
+                                }
+                              } catch (e) {
+                                toast.error((e as Error)?.message || 'Billing address validation failed');
+                                return;
+                              }
+                            }
+                            setStep(4);
+                          }}>Continue to Payment</Button>
+                      </div>
                     </CardContent>
                   </Card>
+                  )}
 
+                  {step === 4 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        Review & Confirm
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3 text-sm">
+                      <div className="flex justify-start">
+                        <Button type="button" variant="outline" size="sm" onClick={() => goToStep(3)}>Back</Button>
+                      </div>
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="font-medium">Contact</div>
+                          <div className="text-gray-600 dark:text-gray-400">{formData.email}</div>
+                          {formData.phone && <div className="text-gray-600 dark:text-gray-400">{formData.phone}</div>}
+                        </div>
+                        <Button variant="link" size="sm" onClick={() => goToStep(1)}>Edit</Button>
+                      </div>
+                      <Separator />
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="font-medium">Shipping</div>
+                          <div className="text-gray-600 dark:text-gray-400">{formData.shippingFirstName} {formData.shippingLastName}</div>
+                          <div className="text-gray-600 dark:text-gray-400">{formData.shippingAddress}</div>
+                          <div className="text-gray-600 dark:text-gray-400">{formData.shippingCity}, {formData.shippingState} {formData.shippingZipCode}</div>
+                          <div className="text-gray-600 dark:text-gray-400">US</div>
+                        </div>
+                        <Button variant="link" size="sm" onClick={() => goToStep(2)}>Edit</Button>
+                      </div>
+                      <Separator />
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="font-medium">Billing</div>
+                          {formData.billingSameAsShipping ? (
+                            <div className="text-gray-600 dark:text-gray-400">Same as shipping</div>
+                          ) : (
+                            <>
+                              <div className="text-gray-600 dark:text-gray-400">{formData.billingFirstName} {formData.billingLastName}</div>
+                              <div className="text-gray-600 dark:text-gray-400">{formData.billingAddress}</div>
+                              <div className="text-gray-600 dark:text-gray-400">{formData.billingCity}, {formData.billingState} {formData.billingZipCode}</div>
+                              <div className="text-gray-600 dark:text-gray-400">US</div>
+                            </>
+                          )}
+                        </div>
+                        <Button variant="link" size="sm" onClick={() => goToStep(3)}>Edit</Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  )}
+
+                  {step === 4 && (
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
@@ -1035,22 +1152,33 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      {!clientSecret ? (
+                      {step < 4 ? (
+                        <div className="text-sm text-muted-foreground">Complete earlier steps to continue to payment.</div>
+                      ) : !clientSecret ? (
                         <div className="text-sm text-muted-foreground">Loading payment methods…</div>
                       ) : (
-                        <Elements stripe={stripePromise} options={{ clientSecret }}>
-                          <PaymentSection clientSecret={clientSecret} />
+                        <Elements stripe={stripePromise} options={elementsOptions!}>
+                          <PaymentSectionExtracted
+                            clientSecret={clientSecret}
+                            paymentRef={paymentRef}
+                            latestRef={latestRef}
+                            idempotencyKeyRef={idempotencyKeyRef}
+                            onPaymentCompleteChange={setPaymentComplete}
+                          />
                         </Elements>
                       )}
                     </CardContent>
                   </Card>
+                  )}
 
+                  {step === 4 && (
                   <div className="lg:hidden">
                     <Button
-                      type="submit"
+                      type="button"
                       size="lg"
+                      onClick={placeOrder}
                       className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold"
-                      disabled={localSubmitting || isPending || !clientSecret}
+                      disabled={localSubmitting || isPending || !clientSecret || step < 4}
                     >
                       {isPending ? (
                         <>
@@ -1062,7 +1190,8 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
                       )}
                     </Button>
                   </div>
-                </form>
+                  )}
+                </div>
               </div>
 
               <div className="lg:col-span-1">
@@ -1121,13 +1250,14 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
                               placeholder="Enter code"
                               value={promoCode}
                               onChange={(e) => setPromoCode(e.target.value)}
+                              disabled={step === 4 && !!clientSecret}
                               className="flex-1"
                             />
                             <Button
                               type="button"
                               variant="outline"
                               onClick={handlePromoCode}
-                              disabled={!promoCode.trim()}
+                              disabled={!promoCode.trim() || (step === 4 && !!clientSecret)}
                               className="whitespace-nowrap"
                             >
                               Apply
@@ -1163,13 +1293,14 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
                       </div>
                     </div>
 
+                    {step === 4 && (
                     <div className="hidden lg:block">
                        <Button
-                        type="submit"
-                        form="checkout-form"
+                        type="button"
+                        onClick={placeOrder}
                         size="lg"
                         className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold"
-                        disabled={localSubmitting || isPending || !clientSecret}
+                        disabled={localSubmitting || isPending || !clientSecret || step < 4}
                       >
                         {isPending ? (
                           <>
@@ -1181,6 +1312,7 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
                         )}
                       </Button>
                     </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -1232,4 +1364,86 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
 
 export default function CheckoutClientPage({ user, customer }: { user: UserType | null, customer: Customer | null }) {
   return <CheckoutForm user={user} customer={customer} />;
+}
+
+type LatestSnapshot = {
+  formData: CheckoutForm;
+  cartItems: CartItem[];
+  subtotal: number;
+  shipping: number;
+  tax: number;
+  discount: number;
+  total: number;
+  paymentIntentId: string | null;
+};
+
+interface PaymentSectionProps {
+  clientSecret: string;
+  paymentRef: React.MutableRefObject<PaymentRef | null>;
+  latestRef: React.MutableRefObject<LatestSnapshot>;
+  idempotencyKeyRef: React.MutableRefObject<string>;
+  onPaymentCompleteChange: (complete: boolean) => void;
+}
+
+function PaymentSectionExtracted({ clientSecret, paymentRef, latestRef, idempotencyKeyRef, onPaymentCompleteChange }: PaymentSectionProps) {
+  const stripe = useStripe();
+  const elements = useElements();
+
+  // Stable options to avoid re-mounting the PaymentElement
+  const paymentElementOptions = useMemo<StripePaymentElementOptions>(() => ({
+    layout: 'tabs',
+    paymentMethodOrder: ['apple_pay', 'google_pay', 'link', 'amazon_pay', 'card'],
+  }), []);
+
+  useEffect(() => {
+    paymentRef.current = {
+      confirm: async () => {
+        if (!stripe || !elements) return { error: 'Payment system not ready.' };
+        // Save snapshot for redirect flows
+        try {
+          const { formData: fd, cartItems: ci, subtotal: st, shipping: sh, tax: tx, discount: dc, total: tt, paymentIntentId: pid } = latestRef.current;
+          const snapshot = {
+            formData: { ...fd, billingSameAsShipping: !!fd.billingSameAsShipping },
+            cartItems: ci,
+            costs: { subtotal: st, shipping: sh, tax: tx, discount: dc, total: tt },
+            idempotencyKey: idempotencyKeyRef.current,
+            paymentIntentId: pid,
+          };
+          localStorage.setItem('zevlin:checkout:snapshot', JSON.stringify(snapshot));
+        } catch {}
+
+        const returnUrl = `${window.location.origin}/checkout/complete`;
+        const result = await stripe.confirmPayment({
+          elements,
+          confirmParams: { return_url: returnUrl },
+          redirect: 'if_required',
+        });
+        if ('error' in result && result.error) return { error: result.error.message || 'Payment failed.' };
+        const piResult = result as PaymentIntentResult;
+        if (piResult.paymentIntent) {
+          const status = piResult.paymentIntent.status;
+          if (status === 'succeeded' || status === 'processing' || status === 'requires_capture') {
+            return { paymentIntentId: piResult.paymentIntent.id };
+          }
+        } else if (clientSecret) {
+          const fetched = await stripe.retrievePaymentIntent(clientSecret);
+          if (fetched.paymentIntent) {
+            const status = fetched.paymentIntent.status;
+            if (status === 'succeeded' || status === 'processing' || status === 'requires_capture') {
+              return { paymentIntentId: fetched.paymentIntent.id };
+            }
+          }
+        }
+        return {};
+      }
+    };
+    return () => { paymentRef.current = null; };
+  }, [stripe, elements, clientSecret, paymentRef, latestRef, idempotencyKeyRef]);
+
+  return (
+    <PaymentElement
+      options={paymentElementOptions}
+      onChange={(e) => onPaymentCompleteChange(!!e.complete)}
+    />
+  );
 }

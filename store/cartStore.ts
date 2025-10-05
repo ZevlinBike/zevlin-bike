@@ -1,6 +1,8 @@
 import { Product, ProductImage } from "@/lib/schema";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+// Best-effort server persistence for authenticated users
+import { upsertAuthCart } from "@/app/checkout/actions";
 
 export interface CartItem extends Product {
   quantity: number;
@@ -31,13 +33,16 @@ export const useCartStore = create<CartState>()(
             (item) => item.id === product.id,
           );
           if (existingItem) {
-            return {
+            const next = {
               items: state.items.map((item) =>
                 item.id === product.id
                   ? { ...item, quantity: item.quantity + 1 }
                   : item,
               ),
             };
+            // Persist cart if authenticated (server action no-ops otherwise)
+            try { void upsertAuthCart(next.items as any); } catch {}
+            return next;
           }
           const images = Array.isArray(product.product_images)
             ? product.product_images
@@ -53,20 +58,26 @@ export const useCartStore = create<CartState>()(
             featured_image: featuredImage,
           };
 
-          return {
-            items: [...state.items, newItem],
-          };
+          const next = { items: [...state.items, newItem] };
+          try { void upsertAuthCart(next.items as any); } catch {}
+          return next;
         }),
       removeFromCart: (id) =>
-        set((state) => ({
-          items: state.items.filter((item) => item.id !== id),
-        })),
+        set((state) => {
+          const next = { items: state.items.filter((item) => item.id !== id) };
+          try { void upsertAuthCart(next.items as any); } catch {}
+          return next;
+        }),
       updateQuantity: (id, quantity) =>
-        set((state) => ({
-          items: state.items
-            .map((item) => (item.id === id ? { ...item, quantity } : item))
-            .filter((item) => item.quantity > 0),
-        })),
+        set((state) => {
+          const next = {
+            items: state.items
+              .map((item) => (item.id === id ? { ...item, quantity } : item))
+              .filter((item) => item.quantity > 0),
+          };
+          try { void upsertAuthCart(next.items as any); } catch {}
+          return next;
+        }),
       clearCart: () => set({ items: [] }),
       getTotalItems: () => {
         return get().items.reduce((total, item) => total + item.quantity, 0);

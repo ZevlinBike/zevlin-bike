@@ -15,8 +15,9 @@ const envSchema = z.object({
     .optional()
     .describe("Shared secret to validate Shippo webhooks"),
 
-  // Stripe (read-only usage here; already configured elsewhere)
+  // Stripe
   STRIPE_SECRET_KEY: z.string().min(1).optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
   BREVO_API_KEY: z.string().min(1),
   BREVO_SENDER_EMAIL: z.string().email(),
   BREVO_SENDER_NAME: z.string().min(1),
@@ -33,6 +34,7 @@ const parsed = envSchema.safeParse({
   SHIPPO_WEBHOOK_SECRET: process.env.SHIPPO_WEBHOOK_SECRET,
 
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+  STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
   BREVO_API_KEY: process.env.BREVO_API_KEY,
   BREVO_SENDER_EMAIL: process.env.BREVO_SENDER_EMAIL,
   BREVO_SENDER_NAME: process.env.BREVO_SENDER_NAME,

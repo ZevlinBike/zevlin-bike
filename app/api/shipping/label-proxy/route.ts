@@ -46,8 +46,7 @@ export async function GET(req: NextRequest) {
         "Access-Control-Allow-Origin": "*",
       },
     });
-  } catch (e) {
+  } catch {
     return NextResponse.json({ error: "Failed to fetch label" }, { status: 500 });
   }
 }
-

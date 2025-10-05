@@ -429,10 +429,13 @@ export async function finalizeOrder(
   const { data: costData } = validatedCosts;
 
   try {
-    // Ensure the PaymentIntent actually succeeded
+    // Ensure the PaymentIntent is confirmed. Some wallets (e.g., Link, Amazon Pay)
+    // return with a `processing` status before transitioning to `succeeded` via webhook.
     const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
-    if (pi.status !== 'succeeded') {
-      return { errors: { _form: ["Payment is not completed yet."] } };
+    const isSucceeded = pi.status === 'succeeded';
+    const isProcessing = pi.status === 'processing' || pi.status === 'requires_capture';
+    if (!isSucceeded && !isProcessing) {
+      return { errors: { _form: ["Payment is not completed yet. If you used a wallet, it may still be processing."] } };
     }
 
     const supabase = await createClient();
@@ -496,9 +499,10 @@ export async function finalizeOrder(
       .from("orders")
       .insert({
         customer_id: customerId,
-        status: 'paid',
-        payment_status: 'paid',
-        order_status: 'pending_fulfillment',
+        // If still processing, mark payment/order as pending and advance via webhook later
+        status: isSucceeded ? 'paid' : 'pending',
+        payment_status: isSucceeded ? 'paid' : 'pending',
+        order_status: isSucceeded ? 'pending_fulfillment' : 'pending_payment',
         shipping_status: 'not_shipped',
         subtotal_cents: Math.round(costData.subtotal * 100),
         shipping_cost_cents: Math.round(costData.shipping * 100),
@@ -566,10 +570,12 @@ export async function finalizeOrder(
     });
     if (shippingDetailsError) throw shippingDetailsError;
 
-    // Decrement stock (best-effort)
-    const { error: decrementError } = await supabase.rpc('decrement_stock', { order_id_param: orderId });
-    if (decrementError) {
-      console.error(`Failed to decrement stock for order ${orderId}:`, decrementError);
+    // Decrement stock (best-effort). Only when payment has fully succeeded.
+    if (isSucceeded) {
+      const { error: decrementError } = await supabase.rpc('decrement_stock', { order_id_param: orderId });
+      if (decrementError) {
+        console.error(`Failed to decrement stock for order ${orderId}:`, decrementError);
+      }
     }
 
     // Emails (best-effort)
@@ -577,16 +583,19 @@ export async function finalizeOrder(
       const customerEmailHtml = `
         <h1>Thank you for your order!</h1>
         <p>Your order ID is ${orderId}.</p>
-        <p>We'll notify you when your order ships.</p>
+        <p>${isSucceeded ? "We'll notify you when your order ships." : "We received your order and are confirming your payment. You'll get an email once it's complete."}</p>
       `;
       await sendTransactionalEmail(
         { email: checkoutData.email, name: `${checkoutData.shippingFirstName} ${checkoutData.shippingLastName}` },
-        `Your Zevlin Bike Order #${orderId} is Confirmed`,
+        isSucceeded ? `Your Zevlin Bike Order #${orderId} is Confirmed` : `We’re processing your Order #${orderId}`,
         customerEmailHtml
       );
     } catch (emailError) {
       console.error(`Failed to send emails for order ${orderId}:`, emailError);
     }
+
+    // Archive customer's cart (best-effort)
+    try { await archiveCartForOrder(orderId); } catch {}
 
     return { success: true, orderId };
   } catch (error: unknown) {
@@ -596,6 +605,282 @@ export async function finalizeOrder(
       errorMessage = error.message;
     }
     return { errors: { _form: [errorMessage] } };
+  }
+}
+
+// Upsert a pending order snapshot tied to a PaymentIntent, before confirmation
+export async function upsertPendingOrder(
+  paymentIntentId: string,
+  formData: unknown,
+  cartItems: CartItem[],
+  costs: unknown,
+) {
+  'use server';
+
+  const validatedFields = checkoutFormSchema.safeParse(formData);
+  const validatedCosts = costsSchema.safeParse(costs);
+  if (!validatedFields.success || !validatedCosts.success) {
+    return { error: 'Invalid order data.' };
+  }
+  const { data: checkoutData } = validatedFields;
+  const { data: costData } = validatedCosts;
+
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // Find or create customer
+    let customerId: string;
+    if (user) {
+      const { data: customer, error } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('auth_user_id', user.id)
+        .single();
+      if (error && error.code !== 'PGRST116') throw error;
+      if (customer) {
+        customerId = customer.id;
+      } else {
+        const { data: newCustomer, error: newCustomerError } = await supabase
+          .from('customers')
+          .insert({
+            first_name: checkoutData.shippingFirstName,
+            last_name: checkoutData.shippingLastName,
+            email: checkoutData.email,
+            phone: checkoutData.phone,
+            auth_user_id: user?.id,
+          })
+          .select('id')
+          .single();
+        if (newCustomerError) throw newCustomerError;
+        customerId = newCustomer!.id;
+      }
+    } else {
+      // Guest snapshot customer record (if not exists)
+      const { data: existingCustomer, error } = await supabase
+        .from('customers')
+        .select('id')
+        .or(`email.eq.${checkoutData.email},phone.eq.${checkoutData.phone}`)
+        .single();
+      if (error && error.code !== 'PGRST116') throw error;
+      if (existingCustomer) {
+        customerId = existingCustomer.id;
+      } else {
+        const { data: newCustomer, error: newCustomerError } = await supabase
+          .from('customers')
+          .insert({
+            first_name: checkoutData.shippingFirstName,
+            last_name: checkoutData.shippingLastName,
+            email: checkoutData.email,
+            phone: checkoutData.phone,
+          })
+          .select('id')
+          .single();
+        if (newCustomerError) throw newCustomerError;
+        customerId = newCustomer!.id;
+      }
+    }
+
+    const totalInCents = Math.round(costData.total * 100);
+    // Upsert order shell
+    const { data: existing } = await supabase
+      .from('orders')
+      .select('id')
+      .eq('stripe_payment_intent_id', paymentIntentId)
+      .maybeSingle();
+
+    let orderId: string;
+    if (existing?.id) {
+      orderId = existing.id;
+      await supabase
+        .from('orders')
+        .update({
+          customer_id: customerId,
+          status: 'pending',
+          payment_status: 'pending',
+          order_status: 'pending_payment',
+          shipping_status: 'not_shipped',
+          subtotal_cents: Math.round(costData.subtotal * 100),
+          shipping_cost_cents: Math.round(costData.shipping * 100),
+          tax_cents: Math.round(costData.tax * 100),
+          discount_cents: Math.round(costData.discount * 100),
+          total_cents: totalInCents,
+          billing_name: `${
+            checkoutData.billingSameAsShipping
+              ? checkoutData.shippingFirstName + ' ' + checkoutData.shippingLastName
+              : `${checkoutData.billingFirstName} ${checkoutData.billingLastName}`
+          }`,
+          billing_address_line1: checkoutData.billingSameAsShipping
+            ? checkoutData.shippingAddress
+            : checkoutData.billingAddress!,
+          billing_city: checkoutData.billingSameAsShipping
+            ? checkoutData.shippingCity
+            : checkoutData.billingCity!,
+          billing_state: checkoutData.billingSameAsShipping
+            ? checkoutData.shippingState
+            : checkoutData.billingState!,
+          billing_postal_code: checkoutData.billingSameAsShipping
+            ? checkoutData.shippingZipCode
+            : checkoutData.billingZipCode!,
+          billing_country: 'US',
+        })
+        .eq('id', orderId);
+    } else {
+      const { data: inserted, error: insErr } = await supabase
+        .from('orders')
+        .insert({
+          customer_id: customerId,
+          status: 'pending',
+          payment_status: 'pending',
+          order_status: 'pending_payment',
+          shipping_status: 'not_shipped',
+          subtotal_cents: Math.round(costData.subtotal * 100),
+          shipping_cost_cents: Math.round(costData.shipping * 100),
+          tax_cents: Math.round(costData.tax * 100),
+          discount_cents: Math.round(costData.discount * 100),
+          total_cents: totalInCents,
+          stripe_payment_intent_id: paymentIntentId,
+          billing_name: `${
+            checkoutData.billingSameAsShipping
+              ? checkoutData.shippingFirstName + ' ' + checkoutData.shippingLastName
+              : `${checkoutData.billingFirstName} ${checkoutData.billingLastName}`
+          }`,
+          billing_address_line1: checkoutData.billingSameAsShipping
+            ? checkoutData.shippingAddress
+            : checkoutData.billingAddress!,
+          billing_city: checkoutData.billingSameAsShipping
+            ? checkoutData.shippingCity
+            : checkoutData.billingCity!,
+          billing_state: checkoutData.billingSameAsShipping
+            ? checkoutData.shippingState
+            : checkoutData.billingState!,
+          billing_postal_code: checkoutData.billingSameAsShipping
+            ? checkoutData.shippingZipCode
+            : checkoutData.billingZipCode!,
+          billing_country: 'US',
+        })
+        .select('id')
+        .single();
+      if (insErr) throw insErr;
+      orderId = inserted!.id;
+    }
+
+    // Replace line items snapshot
+    await supabase.from('line_items').delete().eq('order_id', orderId);
+    const lineItems = cartItems.map((item) => ({
+      order_id: orderId,
+      product_id: item.id,
+      quantity: item.quantity,
+      unit_price_cents: item.price_cents,
+    }));
+    if (lineItems.length) {
+      await supabase.from('line_items').insert(lineItems);
+    }
+
+    // Upsert shipping details
+    await supabase.from('shipping_details').delete().eq('order_id', orderId);
+    await supabase.from('shipping_details').insert({
+      order_id: orderId,
+      name: `${checkoutData.shippingFirstName} ${checkoutData.shippingLastName}`,
+      address_line1: checkoutData.shippingAddress,
+      city: checkoutData.shippingCity,
+      state: checkoutData.shippingState,
+      postal_code: checkoutData.shippingZipCode,
+      country: 'US',
+    });
+
+    return { ok: true, orderId };
+  } catch (e) {
+    console.error('upsertPendingOrder failed:', e);
+    return { error: 'Failed to snapshot order.' };
+  }
+}
+
+// Persist the authenticated user's cart server-side for traceability
+export async function upsertAuthCart(cartItems: CartItem[]) {
+  'use server';
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { skipped: true };
+    const { data: customer, error } = await supabase
+      .from('customers')
+      .select('id')
+      .eq('auth_user_id', user.id)
+      .single();
+    if (error || !customer) return { skipped: true };
+
+    // Create or fetch a single cart for the customer
+    const { data: existing } = await supabase
+      .from('carts')
+      .select('id')
+      .eq('customer_id', customer.id)
+      .maybeSingle();
+
+    let cartId: string;
+    if (existing?.id) {
+      cartId = existing.id;
+      await supabase.from('carts').update({}).eq('id', cartId); // touch updated_at
+      await supabase.from('cart_items').delete().eq('cart_id', cartId);
+    } else {
+      const { data: created, error: cErr } = await supabase
+        .from('carts')
+        .insert({ customer_id: customer.id })
+        .select('id')
+        .single();
+      if (cErr) throw cErr;
+      cartId = created!.id;
+    }
+
+    const rows = cartItems.map((ci) => ({
+      cart_id: cartId,
+      product_id: ci.id,
+      quantity: ci.quantity,
+      unit_price_cents: ci.price_cents,
+    }));
+    if (rows.length) {
+      await supabase.from('cart_items').insert(rows);
+    }
+    return { ok: true, cartId };
+  } catch (e) {
+    console.error('upsertAuthCart failed:', e);
+    return { error: 'Failed to persist cart.' };
+  }
+}
+
+// Archive and clear a customer's cart when an order is placed
+export async function archiveCartForOrder(orderId: string) {
+  'use server';
+  try {
+    const supabase = await createClient();
+    // Find order and customer
+    const { data: order } = await supabase
+      .from('orders')
+      .select('id, customer_id')
+      .eq('id', orderId)
+      .maybeSingle();
+    if (!order?.customer_id) return { skipped: true };
+
+    // Find carts for this customer
+    const { data: carts } = await supabase
+      .from('carts')
+      .select('id')
+      .eq('customer_id', order.customer_id)
+      .eq('status', 'active');
+    const cartIds = (carts || []).map((c) => c.id);
+    if (cartIds.length === 0) return { skipped: true };
+
+    // Delete items and mark carts archived/converted
+    await supabase.from('cart_items').delete().in('cart_id', cartIds);
+    await supabase
+      .from('carts')
+      .update({ status: 'converted', order_id: orderId, archived_at: new Date().toISOString() })
+      .in('id', cartIds);
+
+    return { ok: true };
+  } catch (e) {
+    console.error('archiveCartForOrder failed:', e);
+    return { error: 'Failed to archive cart.' };
   }
 }
 

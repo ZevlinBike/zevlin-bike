@@ -34,6 +34,7 @@ export default function CheckoutCompletePage() {
           snap.costs,
         );
         if (res?.success && res.orderId) {
+          try { localStorage.removeItem('zevlin:checkout:progress'); } catch {}
           clearCart();
           router.replace(`/order/${res.orderId}`);
         } else if (res?.errors) {
