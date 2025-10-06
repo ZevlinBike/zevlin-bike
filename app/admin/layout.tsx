@@ -23,6 +23,7 @@ import {
   Mail,
   RefreshCw
 } from "lucide-react";
+import { Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
@@ -36,6 +37,7 @@ const navigation = [
   { name: "Products", href: "/admin/products", icon: Package },
   { name: "Categories", href: "/admin/categories", icon: Tags },
   { name: "Orders", href: "/admin/orders", icon: ShoppingCart },
+  { name: "Activity", href: "/admin/activity", icon: Activity },
   { name: "Refunds", href: "/admin/refunds", icon: RefreshCw },
   { name: "Customers", href: "/admin/customers", icon: Users },
   { name: "Discounts", href: "/admin/discounts", icon: Ticket },

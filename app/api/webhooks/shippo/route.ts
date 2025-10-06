@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { env } from "@/lib/env";
 import crypto from "crypto";
 
@@ -25,7 +25,8 @@ function getHeader(req: NextRequest, name: string) {
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = await createClient();
+  // Use service-role client so RLS can remain strict on webhook tables
+  const supabase = createServiceClient();
   const secret = env.SHIPPO_WEBHOOK_SECRET;
   const provided =
     getHeader(req, "x-shippo-secret") || getHeader(req, "shippo-secret") || getHeader(req, "authorization");
@@ -117,6 +118,21 @@ export async function POST(req: NextRequest) {
           .from("shipments")
           .update({ status: statusUpdate })
           .eq("id", shipmentId);
+
+        // For delivered updates, reflect on parent order.shipping_status
+        if (statusUpdate === "delivered") {
+          const { data: sh } = await supabase
+            .from("shipments")
+            .select("order_id")
+            .eq("id", shipmentId)
+            .maybeSingle();
+          if (sh?.order_id) {
+            await supabase
+              .from("orders")
+              .update({ shipping_status: "delivered" })
+              .eq("id", sh.order_id);
+          }
+        }
       }
     }
   } catch {

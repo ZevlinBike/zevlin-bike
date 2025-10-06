@@ -174,7 +174,7 @@ export default async function AdminDashboard() {
         <Card className="lg:col-span-2">
           <CardHeader className="flex items-center justify-between">
             <CardTitle>Activity</CardTitle>
-            <Button asChild variant="outline" size="sm"><Link href="/admin/orders">See all</Link></Button>
+            <Button asChild variant="outline" size="sm"><Link href="/admin/activity">See all</Link></Button>
           </CardHeader>
           <CardContent className="space-y-3">
             {activity.map((a, idx) => (

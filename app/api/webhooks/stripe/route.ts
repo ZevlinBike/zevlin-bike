@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { env } from "@/lib/env";
 import Stripe from "stripe";
 import { archiveCartForOrder } from "@/app/checkout/actions";
@@ -12,7 +12,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Stripe webhook secret not configured" }, { status: 501 });
   }
 
-  const supabase = await createClient();
+  // Use service-role client so RLS can remain strict on webhook tables
+  const supabase = createServiceClient();
   const sig = req.headers.get("stripe-signature");
   const raw = await req.text();
 
