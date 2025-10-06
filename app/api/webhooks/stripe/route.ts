@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
       case "payment_intent.succeeded": {
         const pi = event.data.object as Stripe.PaymentIntent;
         const paymentIntentId = pi.id;
-        // Update matching order to paid + pending_fulfillment and decrement stock if not already
+        // First, try to find an existing order by PI
         const { data: order } = await supabase
           .from("orders")
           .select("id, payment_status, order_status")
@@ -64,6 +64,51 @@ export async function POST(req: NextRequest) {
           }
           // Archive customer's cart once order is successful
           try { await archiveCartForOrder(order.id); } catch {}
+        } else if (pi.metadata && typeof pi.metadata['invoice_id'] === 'string') {
+          // Handle invoice-based payment by creating an order now
+          const invoiceId = pi.metadata['invoice_id'] as string;
+          const { data: invoice } = await supabase
+            .from('invoices')
+            .select('id, customer_id, final_total_cents')
+            .eq('id', invoiceId)
+            .maybeSingle();
+          if (invoice?.id) {
+            // Create order shell
+            const { data: created } = await supabase
+              .from('orders')
+              .insert({
+                customer_id: invoice.customer_id || null,
+                status: 'paid',
+                payment_status: 'paid',
+                order_status: 'pending_fulfillment',
+                shipping_status: 'not_shipped',
+                subtotal_cents: invoice.final_total_cents,
+                shipping_cost_cents: 0,
+                tax_cents: 0,
+                discount_cents: 0,
+                total_cents: invoice.final_total_cents,
+                stripe_payment_intent_id: paymentIntentId,
+              })
+              .select('id')
+              .single();
+            if (created?.id) {
+              // Copy invoice items into order line_items (best-effort)
+              const { data: invItems } = await supabase
+                .from('invoice_items')
+                .select('product_id, quantity, unit_price_cents')
+                .eq('invoice_id', invoiceId);
+              if (invItems && invItems.length) {
+                await supabase.from('line_items').insert(invItems.map(ii => ({
+                  order_id: created.id,
+                  product_id: ii.product_id,
+                  quantity: ii.quantity,
+                  unit_price_cents: ii.unit_price_cents,
+                })));
+              }
+              await supabase.from('invoices').update({ status: 'paid', order_id: created.id }).eq('id', invoiceId);
+              try { await archiveCartForOrder(created.id); } catch {}
+            }
+          }
         }
         break;
       }

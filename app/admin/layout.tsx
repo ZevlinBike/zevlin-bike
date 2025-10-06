@@ -21,7 +21,8 @@ import {
   Truck,
   Tags,
   Mail,
-  RefreshCw
+  RefreshCw,
+  Wrench
 } from "lucide-react";
 import { Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -41,9 +42,11 @@ const navigation = [
   { name: "Refunds", href: "/admin/refunds", icon: RefreshCw },
   { name: "Customers", href: "/admin/customers", icon: Users },
   { name: "Discounts", href: "/admin/discounts", icon: Ticket },
+  { name: "Invoices", href: "/admin/invoices", icon: Ticket },
   { name: "Blog", href: "/admin/blog", icon: Newspaper },
   { name: "Announcements", href: "/admin/announcements", icon: Megaphone },
   { name: "Newsletter", href: "/admin/newsletter", icon: Mail },
+  { name: "Functions", href: "/admin/functions", icon: Wrench },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
