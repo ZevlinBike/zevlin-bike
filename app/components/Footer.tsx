@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Logo from "@/components/Logo";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { hasAdminRole } from "@/lib/auth/client";
 
 type FooterCategory = {
   name: string;
@@ -15,6 +16,7 @@ type FooterCategory = {
 
 export default function Footer() {
   const [footerCats, setFooterCats] = useState<FooterCategory[] | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -26,6 +28,13 @@ export default function Footer() {
         .eq("show_in_footer", true)
         .order("sort_order");
       if (!error) setFooterCats(data as FooterCategory[] | null);
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      const admin = await hasAdminRole();
+      setIsAdmin(admin);
     })();
   }, []);
 
@@ -60,7 +69,8 @@ export default function Footer() {
         { name: "Privacy Policy", href: "/privacy" },
       ],
     },
-    { title: "🤫", links: [{ name: "Admin", href: "/admin" }] },
+    // Secret admin link shown only for admins
+    ...(isAdmin ? [{ title: "🤫", links: [{ name: "Admin", href: "/admin" }] }] : []),
     {
       title: "Account",
       links: [
