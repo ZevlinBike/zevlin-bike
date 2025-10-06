@@ -4,11 +4,60 @@ import { env } from "@/lib/env";
 import { sendTransactionalEmail } from "@/lib/brevo";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { validateAddress } from "@/lib/shippo";
 import { CartItem } from "@/store/cartStore";
 import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+
+// Build compact metadata payload for Stripe (values must be strings/numbers/null, <=500 chars)
+type CheckoutFormData = z.infer<typeof checkoutFormSchema>;
+
+function buildPaymentMetadata(params: {
+  customerId: string;
+  authUserId?: string | null;
+  checkoutData?: Partial<CheckoutFormData>;
+  cartItems?: CartItem[];
+  costs?: { subtotal: number; shipping: number; tax: number; discount: number; total: number };
+}): Stripe.MetadataParam {
+  const { customerId, authUserId, checkoutData, cartItems, costs } = params;
+  const safeStr = (v: unknown) => {
+    const s = typeof v === 'string' ? v : JSON.stringify(v);
+    return s.length > 500 ? s.slice(0, 500) : s;
+  };
+
+  // Compact representations to reduce size
+  const cartCompact = cartItems
+    ? cartItems.map((i) => [i.id, i.quantity])
+    : undefined; // [[productId, qty], ...]
+
+  const totalsCompact = costs
+    ? { s: costs.subtotal, sh: costs.shipping, t: costs.tax, d: costs.discount, tot: costs.total }
+    : undefined; // abbreviations to save space
+
+  const shipping = checkoutData
+    ? {
+        n: `${checkoutData.shippingFirstName} ${checkoutData.shippingLastName}`.trim(),
+        c: checkoutData.shippingCity,
+        st: checkoutData.shippingState,
+        z: checkoutData.shippingZipCode,
+      }
+    : undefined;
+
+  const meta: Record<string, string | number | null> = {
+    customer_id: safeStr(customerId ?? ''),
+    auth_user_id: safeStr(authUserId ?? 'guest'),
+    source: 'checkout',
+    ver: 'v1',
+  };
+  if (checkoutData?.email) meta.email = safeStr(checkoutData.email);
+  if (checkoutData?.phone) meta.phone = safeStr(checkoutData.phone);
+  if (shipping) meta.shipping = safeStr(shipping);
+  if (cartCompact) meta.cart = safeStr(cartCompact);
+  if (totalsCompact) meta.totals = safeStr(totalsCompact);
+  return meta;
+}
 
 const checkoutFormSchema = z.object({
   email: z.string().email(),
@@ -74,6 +123,7 @@ export async function processCheckout(
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  const service = !user && process.env.SUPABASE_SERVICE_ROLE_KEY ? createServiceClient() : null;
 
   let customerId: string;
 
@@ -100,7 +150,7 @@ export async function processCheckout(
   try {
     // Step 1: Find or Create Customer before anything else.
     if (user) {
-      const { data: customer, error } = await supabase
+      const { data: customer, error } = await (service ?? supabase)
         .from("customers")
         .select("id, first_name, last_name")
         .eq("auth_user_id", user.id)
@@ -116,7 +166,7 @@ export async function processCheckout(
         // and don't need to update it. We'll use the shipping name for the
         // shipping details only.
       } else {
-        const { data: newCustomer, error: newCustomerError } = await supabase
+        const { data: newCustomer, error: newCustomerError } = await (service ?? supabase)
           .from("customers")
           .insert({
             first_name: checkoutData.shippingFirstName,
@@ -131,33 +181,14 @@ export async function processCheckout(
         customerId = newCustomer!.id;
       }
     } else {
-      // Guest checkout
-      const { data: existingCustomer, error } = await supabase
+      // Guest checkout: do NOT insert into customers to satisfy RLS; reuse existing or proceed as guest
+      const { data: existingCustomer, error } = await (service ?? supabase)
         .from("customers")
         .select("id")
         .or(`email.eq.${checkoutData.email},phone.eq.${checkoutData.phone}`)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
-
-      if (existingCustomer) {
-        return { errors: { _form: ["A customer with this email or phone number already exists. Please log in to continue."] } };
-      } else {
-        const { data: newCustomer, error: newCustomerError } = await supabase
-          .from("customers")
-          .insert({
-            first_name: checkoutData.shippingFirstName,
-            last_name: checkoutData.shippingLastName,
-            email: checkoutData.email,
-            phone: checkoutData.phone,
-          })
-          .select("id")
-          .single();
-        if (newCustomerError) throw newCustomerError;
-        customerId = newCustomer!.id;
-      }
+        .maybeSingle();
+      if (error && error.code !== 'PGRST116') throw error;
+      customerId = existingCustomer?.id ?? undefined as unknown as string; // leave undefined if no existing
     }
 
     // Step 2: Now that we have a customer, create the Payment Intent.
@@ -172,9 +203,13 @@ export async function processCheckout(
           enabled: true,
           allow_redirects: 'never',
         },
-        metadata: {
-          customerId: customerId,
-        },
+        metadata: buildPaymentMetadata({
+          customerId,
+          authUserId: user?.id ?? null,
+          checkoutData,
+          cartItems,
+          costs: costData,
+        }),
       },
       // Prevent duplicate charges if client retries or double-submits
       idempotencyKey ? { idempotencyKey } : undefined
@@ -185,10 +220,10 @@ export async function processCheckout(
     }
 
     // Step 3: Create the order in our database.
-    const { data: order, error: orderError } = await supabase
+    const { data: order, error: orderError } = await (service ?? supabase)
       .from("orders")
       .insert({
-        customer_id: customerId,
+        customer_id: customerId || null,
         status: 'paid',
         payment_status: 'paid',
         order_status: 'pending_fulfillment',
@@ -247,10 +282,10 @@ export async function processCheckout(
       quantity: item.quantity,
       unit_price_cents: item.price_cents,
     }));
-    const { error: lineItemsError } = await supabase.from("line_items").insert(lineItems);
+    const { error: lineItemsError } = await (service ?? supabase).from("line_items").insert(lineItems);
     if (lineItemsError) throw lineItemsError;
 
-    const { error: shippingDetailsError } = await supabase.from("shipping_details").insert({
+    const { error: shippingDetailsError } = await (service ?? supabase).from("shipping_details").insert({
       order_id: orderId,
       name: `${checkoutData.shippingFirstName} ${checkoutData.shippingLastName}`,
       address_line1: checkoutData.shippingAddress,
@@ -397,6 +432,12 @@ export async function createPaymentIntent(
         // Use automatic payment methods so wallets (Apple/Google Pay) can appear in Payment Element.
         // If you don't want other redirect methods, disable them in the Stripe Dashboard for your account.
         automatic_payment_methods: { enabled: true },
+        // Minimal metadata at init; full snapshot added later via upsert/finalize
+        metadata: {
+          source: 'checkout',
+          flow: 'payment_element',
+          ver: 'v1',
+        },
       },
       idempotencyKey ? { idempotencyKey } : undefined,
     );
@@ -440,11 +481,12 @@ export async function finalizeOrder(
 
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
+    const service = !user && process.env.SUPABASE_SERVICE_ROLE_KEY ? createServiceClient() : null;
 
     // Find or create customer, similar to processCheckout
     let customerId: string;
     if (user) {
-      const { data: customer, error } = await supabase
+      const { data: customer, error } = await (service ?? supabase)
         .from("customers")
         .select("id, first_name, last_name")
         .eq("auth_user_id", user.id)
@@ -454,7 +496,7 @@ export async function finalizeOrder(
       if (customer) {
         customerId = customer.id;
       } else {
-        const { data: newCustomer, error: newCustomerError } = await supabase
+        const { data: newCustomer, error: newCustomerError } = await (service ?? supabase)
           .from("customers")
           .insert({
             first_name: checkoutData.shippingFirstName,
@@ -469,36 +511,36 @@ export async function finalizeOrder(
         customerId = newCustomer!.id;
       }
     } else {
-      const { data: existingCustomer, error } = await supabase
+      const { data: existingCustomer, error } = await (service ?? supabase)
         .from("customers")
         .select("id")
         .or(`email.eq.${checkoutData.email},phone.eq.${checkoutData.phone}`)
-        .single();
+        .maybeSingle();
       if (error && error.code !== 'PGRST116') throw error;
-      if (existingCustomer) {
-        return { errors: { _form: ["A customer with this email or phone number already exists. Please log in to continue."] } };
-      } else {
-        const { data: newCustomer, error: newCustomerError } = await supabase
-          .from("customers")
-          .insert({
-            first_name: checkoutData.shippingFirstName,
-            last_name: checkoutData.shippingLastName,
-            email: checkoutData.email,
-            phone: checkoutData.phone,
-          })
-          .select("id")
-          .single();
-        if (newCustomerError) throw newCustomerError;
-        customerId = newCustomer!.id;
-      }
+      customerId = existingCustomer?.id ?? undefined as unknown as string;
+    }
+
+    // Update PI metadata with final snapshot
+    try {
+      await stripe.paymentIntents.update(paymentIntentId, {
+        metadata: buildPaymentMetadata({
+          customerId: customerId!,
+          authUserId: user?.id ?? null,
+          checkoutData,
+          cartItems,
+          costs: costData,
+        }),
+      });
+    } catch (metaErr) {
+      console.error('Failed to update PaymentIntent metadata:', metaErr);
     }
 
     // Create the order, same as processCheckout but without creating a new PI
     const totalInCents = Math.round(costData.total * 100);
-    const { data: order, error: orderError } = await supabase
+    const { data: order, error: orderError } = await (service ?? supabase)
       .from("orders")
       .insert({
-        customer_id: customerId,
+        customer_id: customerId || null,
         // If still processing, mark payment/order as pending and advance via webhook later
         status: isSucceeded ? 'paid' : 'pending',
         payment_status: isSucceeded ? 'paid' : 'pending',
@@ -556,10 +598,10 @@ export async function finalizeOrder(
       quantity: item.quantity,
       unit_price_cents: item.price_cents,
     }));
-    const { error: lineItemsError } = await supabase.from("line_items").insert(lineItems);
+    const { error: lineItemsError } = await (service ?? supabase).from("line_items").insert(lineItems);
     if (lineItemsError) throw lineItemsError;
 
-    const { error: shippingDetailsError } = await supabase.from("shipping_details").insert({
+    const { error: shippingDetailsError } = await (service ?? supabase).from("shipping_details").insert({
       order_id: orderId,
       name: `${checkoutData.shippingFirstName} ${checkoutData.shippingLastName}`,
       address_line1: checkoutData.shippingAddress,
@@ -628,11 +670,12 @@ export async function upsertPendingOrder(
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
+    const service = !user && process.env.SUPABASE_SERVICE_ROLE_KEY ? createServiceClient() : null;
 
     // Find or create customer
     let customerId: string;
     if (user) {
-      const { data: customer, error } = await supabase
+      const { data: customer, error } = await (service ?? supabase)
         .from('customers')
         .select('id')
         .eq('auth_user_id', user.id)
@@ -641,7 +684,7 @@ export async function upsertPendingOrder(
       if (customer) {
         customerId = customer.id;
       } else {
-        const { data: newCustomer, error: newCustomerError } = await supabase
+        const { data: newCustomer, error: newCustomerError } = await (service ?? supabase)
           .from('customers')
           .insert({
             first_name: checkoutData.shippingFirstName,
@@ -656,32 +699,32 @@ export async function upsertPendingOrder(
         customerId = newCustomer!.id;
       }
     } else {
-      // Guest snapshot customer record (if not exists)
-      const { data: existingCustomer, error } = await supabase
+      // Guest snapshot: don't insert into customers; use existing if found
+      const { data: existingCustomer, error } = await (service ?? supabase)
         .from('customers')
         .select('id')
         .or(`email.eq.${checkoutData.email},phone.eq.${checkoutData.phone}`)
-        .single();
+        .maybeSingle();
       if (error && error.code !== 'PGRST116') throw error;
-      if (existingCustomer) {
-        customerId = existingCustomer.id;
-      } else {
-        const { data: newCustomer, error: newCustomerError } = await supabase
-          .from('customers')
-          .insert({
-            first_name: checkoutData.shippingFirstName,
-            last_name: checkoutData.shippingLastName,
-            email: checkoutData.email,
-            phone: checkoutData.phone,
-          })
-          .select('id')
-          .single();
-        if (newCustomerError) throw newCustomerError;
-        customerId = newCustomer!.id;
-      }
+      customerId = existingCustomer?.id ?? undefined as unknown as string;
     }
 
     const totalInCents = Math.round(costData.total * 100);
+
+    // Attach or refresh PI metadata snapshot (best-effort)
+    try {
+      await stripe.paymentIntents.update(paymentIntentId, {
+        metadata: buildPaymentMetadata({
+          customerId,
+          authUserId: user?.id ?? null,
+          checkoutData,
+          cartItems,
+          costs: costData,
+        }),
+      });
+    } catch (metaErr) {
+      console.error('Failed to upsert PaymentIntent metadata:', metaErr);
+    }
     // Upsert order shell
     const { data: existing } = await supabase
       .from('orders')
@@ -695,7 +738,7 @@ export async function upsertPendingOrder(
       await supabase
         .from('orders')
         .update({
-          customer_id: customerId,
+          customer_id: customerId || null,
           status: 'pending',
           payment_status: 'pending',
           order_status: 'pending_payment',
@@ -729,7 +772,7 @@ export async function upsertPendingOrder(
       const { data: inserted, error: insErr } = await supabase
         .from('orders')
         .insert({
-          customer_id: customerId,
+          customer_id: customerId || null,
           status: 'pending',
           payment_status: 'pending',
           order_status: 'pending_payment',
@@ -766,7 +809,7 @@ export async function upsertPendingOrder(
     }
 
     // Replace line items snapshot
-    await supabase.from('line_items').delete().eq('order_id', orderId);
+    await (service ?? supabase).from('line_items').delete().eq('order_id', orderId);
     const lineItems = cartItems.map((item) => ({
       order_id: orderId,
       product_id: item.id,
@@ -774,12 +817,12 @@ export async function upsertPendingOrder(
       unit_price_cents: item.price_cents,
     }));
     if (lineItems.length) {
-      await supabase.from('line_items').insert(lineItems);
+      await (service ?? supabase).from('line_items').insert(lineItems);
     }
 
     // Upsert shipping details
-    await supabase.from('shipping_details').delete().eq('order_id', orderId);
-    await supabase.from('shipping_details').insert({
+    await (service ?? supabase).from('shipping_details').delete().eq('order_id', orderId);
+    await (service ?? supabase).from('shipping_details').insert({
       order_id: orderId,
       name: `${checkoutData.shippingFirstName} ${checkoutData.shippingLastName}`,
       address_line1: checkoutData.shippingAddress,

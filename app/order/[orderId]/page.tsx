@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { notFound } from "next/navigation";
 import MainLayout from "@/app/components/layouts/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,9 +36,12 @@ type OrderDetails = Order & {
   shipments: ShipmentLite[];
 };
 
-async function getOrderDetails(orderId: string): Promise<OrderDetails> {
+async function getOrderDetails(identifier: string): Promise<OrderDetails> {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const service = process.env.SUPABASE_SERVICE_ROLE_KEY ? createServiceClient() : null;
+  const db = service ?? supabase;
+  // Support lookup by either internal order id or Stripe PaymentIntent id
+  const { data, error } = await db
     .from("orders")
     .select(
       `
@@ -51,8 +55,8 @@ async function getOrderDetails(orderId: string): Promise<OrderDetails> {
       shipments (id, status, carrier, service, tracking_number, tracking_url, label_url, created_at)
     `
     )
-    .eq("id", orderId)
-    .single();
+    .or(`id.eq.${identifier},stripe_payment_intent_id.eq.${identifier}`)
+    .maybeSingle();
 
   if (error || !data) {
     console.error("Error fetching order:", error);
