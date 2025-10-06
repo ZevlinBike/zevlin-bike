@@ -224,15 +224,17 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
   const [paymentComplete, setPaymentComplete] = useState(false);
   const elementsOptions = useMemo(() => (clientSecret ? { clientSecret } : null), [clientSecret]);
 
-  // As a last line of defense, intercept any stray form submissions on this page
-  // (some embedded widgets may attempt to submit a parent form). This prevents
-  // full-page navigations that could wipe state.
+  // Intercept native submissions only from within the checkout form area.
+  // This avoids blocking legitimate submits like the login form.
   useEffect(() => {
     const handler = (ev: Event) => {
       const t = ev.target as HTMLElement | null;
       if (t && t.tagName === 'FORM') {
-        ev.preventDefault();
-        ev.stopPropagation();
+        const checkoutContainer = document.getElementById('checkout-form');
+        if (checkoutContainer && checkoutContainer.contains(t)) {
+          ev.preventDefault();
+          ev.stopPropagation();
+        }
       }
     };
     document.addEventListener('submit', handler, true);
