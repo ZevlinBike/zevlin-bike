@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next"
 import "./globals.css";
 import { createClient } from "@/lib/supabase/server";
 import Navigation from "@/components/Navigation";
@@ -46,6 +47,7 @@ export default async function RootLayout({
       >
         <SocialFABs />
         <Analytics />
+        <SpeedInsights />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
