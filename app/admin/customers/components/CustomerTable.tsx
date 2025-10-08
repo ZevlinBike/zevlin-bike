@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Table,
   TableBody,
@@ -12,6 +13,7 @@ import {
 import { Customer } from "@/lib/schema";
 
 export default function CustomerTable({ customers, initialQuery = "" }: { customers: Customer[]; initialQuery?: string }) {
+  const router = useRouter();
   const [q, setQ] = useState(initialQuery);
   useEffect(() => setQ(initialQuery), [initialQuery]);
   const filtered = useMemo(() => {
@@ -44,7 +46,11 @@ export default function CustomerTable({ customers, initialQuery = "" }: { custom
         </TableHeader>
         <TableBody>
           {filtered.map((customer) => (
-            <TableRow key={customer.id}>
+            <TableRow
+              key={customer.id}
+              onClick={() => router.push(`/admin/customers/${customer.id}`)}
+              className="cursor-pointer hover:bg-gray-50 dark:hover:bg-neutral-900/40"
+            >
               <TableCell className="font-medium">{customer.first_name} {customer.last_name}</TableCell>
               <TableCell>{customer.email}</TableCell>
               <TableCell>{customer.phone || 'N/A'}</TableCell>

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import FulfillmentClientPage from "./ui/FulfillmentClientPage";
 
 type ShippingDetails = {
+  name?: string;
   address_line1?: string;
   address_line2?: string;
   city?: string;
@@ -25,6 +26,7 @@ type OrderRow = {
   status: string;
   created_at: string;
   total_cents: number;
+  billing_name?: string | null;
   customers: { first_name?: string | null; last_name?: string | null; email?: string | null } | null;
   shipping_details?: ShippingDetails[];
   line_items?: LineItem[];
@@ -36,9 +38,10 @@ export default async function FulfillmentPage({
 }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const sp = (await searchParams) || {};
   const initialQuery = (sp.q as string) || "";
+  const dataset = ((sp.dataset as string) || 'real') as 'real' | 'training' | 'all';
   const supabase = await createClient();
 
-  const { data: orders } = await supabase
+  let qb = supabase
     .from("orders")
     .select(`
       *,
@@ -51,6 +54,14 @@ export default async function FulfillmentPage({
     .order("created_at", { ascending: false })
     .limit(100);
 
+  if (dataset === 'real') {
+    qb = qb.eq('is_training', false);
+  } else if (dataset === 'training') {
+    qb = qb.eq('is_training', true);
+  }
+
+  const { data: orders } = await qb;
+
   type CustomerName = { first_name?: string | null; last_name?: string | null; email?: string | null };
   type RawOrderRow = Omit<OrderRow, "customers"> & { customers: CustomerName | CustomerName[] | null };
 
@@ -59,5 +70,5 @@ export default async function FulfillmentPage({
     customers: Array.isArray(row.customers) ? row.customers[0] ?? null : row.customers,
   }));
 
-  return <FulfillmentClientPage orders={normalized} initialQuery={initialQuery} />;
+  return <FulfillmentClientPage orders={normalized} initialQuery={initialQuery} initialDataset={dataset} />;
 }

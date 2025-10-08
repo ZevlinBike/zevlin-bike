@@ -40,7 +40,11 @@ export function PackingSlip({ order }: { order: OrderDetails }) {
       <section className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 mb-6">
         <div>
           <h3 className="font-semibold text-sm mb-1 text-gray-800">Shipping Address</h3>
-          <p>{order.customers?.first_name} {order.customers?.last_name}</p>
+          <p>{(() => {
+            const hasCustomerName = (order.customers?.first_name || order.customers?.last_name);
+            if (hasCustomerName) return `${order.customers?.first_name ?? ''} ${order.customers?.last_name ?? ''}`.trim();
+            return order.shipping_details?.[0]?.name || order.billing_name || 'Guest';
+          })()}</p>
           <p>{order.billing_address_line1}</p>
           {order.billing_address_line2 && <p>{order.billing_address_line2}</p>}
           <p>

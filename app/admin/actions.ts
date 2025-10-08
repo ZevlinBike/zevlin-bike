@@ -11,8 +11,9 @@ export async function getDashboardStats() {
   // Revenue and orders today
   const { data: todayOrders, error: todayOrdersError } = await supabase
     .from("orders")
-    .select("total_cents, payment_status, order_status")
-    .gte("created_at", todayIso);
+    .select("total_cents, payment_status, order_status, is_training")
+    .gte("created_at", todayIso)
+    .eq('is_training', false);
 
   if (todayOrdersError) {
     console.error("Error fetching today's orders:", todayOrdersError);
@@ -32,10 +33,21 @@ export async function getDashboardStats() {
   const { count: unfulfilledCount, error: unfulfilledError } = await supabase
     .from("orders")
     .select("*", { count: "exact", head: true })
-    .eq("order_status", "pending_fulfillment");
+    .eq("order_status", "pending_fulfillment")
+    .eq('is_training', false);
 
   if (unfulfilledError) {
     console.error("Error fetching unfulfilled count:", unfulfilledError);
+  }
+
+  // Pending payment orders (real only)
+  const { count: pendingPaymentCount, error: pendingPaymentError } = await supabase
+    .from('orders')
+    .select('id', { count: 'exact', head: true })
+    .eq('order_status', 'pending_payment')
+    .eq('is_training', false);
+  if (pendingPaymentError) {
+    console.error("Error fetching pending payment count:", pendingPaymentError);
   }
 
   // Labels created today
@@ -52,7 +64,8 @@ export async function getDashboardStats() {
   const { count: inTransitCount, error: inTransitError } = await supabase
     .from("orders")
     .select("*", { count: "exact", head: true })
-    .eq("shipping_status", "shipped");
+    .eq("shipping_status", "shipped")
+    .eq('is_training', false);
 
   if (inTransitError) {
     console.error("Error fetching in-transit count:", inTransitError);
@@ -62,7 +75,20 @@ export async function getDashboardStats() {
   const { count: exceptionsCount, error: exceptionsError } = await supabase
     .from("orders")
     .select("*", { count: "exact", head: true })
-    .eq("shipping_status", "lost");
+    .eq("shipping_status", "lost")
+    .eq('is_training', false);
+
+  // Pending refunds (exclude training by joining via order_id when available)
+  let pendingRefundsCount = 0;
+  try {
+    const { count } = await supabase
+      .from('refunds')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'pending');
+    pendingRefundsCount = count ?? 0;
+  } catch (e) {
+    console.warn('Failed to fetch pending refunds count', e);
+  }
 
   if (exceptionsError) {
     console.error("Error fetching exceptions count:", exceptionsError);
@@ -76,6 +102,8 @@ export async function getDashboardStats() {
     labelsTodayCount: labelsTodayCount ?? 0,
     inTransitCount: inTransitCount ?? 0,
     exceptionsCount: exceptionsCount ?? 0,
+    pendingRefundsCount,
+    pendingPaymentCount: pendingPaymentCount ?? 0,
   };
 }
 

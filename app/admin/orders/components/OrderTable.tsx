@@ -15,6 +15,10 @@ import { PrintModal } from "./PrintModal";
 
 type OrderWithCustomer = Order & {
   customers: Pick<Customer, "first_name" | "last_name" | "email"> | null;
+  // Guest display fallbacks
+  billing_name?: string | null;
+  shipping_details?: { name?: string | null }[];
+  is_training?: boolean | null;
   payment_status: string | null;
   order_status: string | null;
   shipping_status: string | null;
@@ -54,8 +58,14 @@ const formatStatus = (status: string | null) => {
 
 export default function OrderTable({
   orders,
+  selected = [],
+  onToggle,
+  onToggleAll,
 }: {
   orders: OrderWithCustomer[];
+  selected?: string[];
+  onToggle?: (id: string) => void;
+  onToggleAll?: (ids: string[]) => void;
 }) {
   const router = useRouter();
 
@@ -68,6 +78,14 @@ export default function OrderTable({
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-10">
+              <input
+                type="checkbox"
+                onChange={() => onToggleAll?.(orders.map(o => o.id))}
+                checked={orders.length > 0 && orders.every((o) => selected?.includes(o.id))}
+                aria-label="Select all"
+              />
+            </TableHead>
             <TableHead>Order ID</TableHead>
             <TableHead>Customer</TableHead>
             <TableHead>Date</TableHead>
@@ -85,15 +103,33 @@ export default function OrderTable({
               onClick={() => handleRowClick(order.id)}
               className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
             >
+              <TableCell onClick={(e) => e.stopPropagation()}>
+                <input
+                  type="checkbox"
+                  checked={selected?.includes(order.id) || false}
+                  onChange={() => onToggle?.(order.id)}
+                  aria-label={`Select ${order.id.substring(0,8)}`}
+                />
+              </TableCell>
               <TableCell className="font-mono text-sm">
                 {order.id.substring(0, 8)}
               </TableCell>
               <TableCell>
-                <div className="font-medium">
-                  {order.customers?.first_name} {order.customers?.last_name}
+                <div className="font-medium flex items-center gap-2">
+                  {(() => {
+                    const hasCustomerName = (order.customers?.first_name || order.customers?.last_name);
+                    if (hasCustomerName) return `${order.customers?.first_name ?? ''} ${order.customers?.last_name ?? ''}`.trim();
+                    return order.shipping_details?.[0]?.name || order.billing_name || 'Guest';
+                  })()}
+                  {!order.customers && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-700 dark:bg-neutral-800 dark:text-gray-300 uppercase tracking-wide">Guest</span>
+                  )}
+                  {order.is_training && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 uppercase tracking-wide">Test</span>
+                  )}
                 </div>
                 <div className="text-xs text-gray-500">
-                  {order.customers?.email}
+                  {order.customers?.email || ''}
                 </div>
               </TableCell>
               <TableCell>

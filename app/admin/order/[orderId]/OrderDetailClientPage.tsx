@@ -463,10 +463,14 @@ export default function OrderDetailClientPage({ order: initialOrder }: { order: 
             <CardContent className="space-y-4">
               <div>
                 <div className="font-medium">
-                  {order.customers?.first_name} {order.customers?.last_name}
+                  {(() => {
+                    const hasCustomerName = (order.customers?.first_name || order.customers?.last_name);
+                    if (hasCustomerName) return `${order.customers?.first_name ?? ''} ${order.customers?.last_name ?? ''}`.trim();
+                    return order.shipping_details?.[0]?.name || order.billing_name || 'Guest';
+                  })()}
                 </div>
                 <div className="text-sm text-gray-600 dark:text-gray-400">
-                  {order.customers?.email}
+                  {order.customers?.email || ''}
                 </div>
               </div>
 
@@ -476,12 +480,16 @@ export default function OrderDetailClientPage({ order: initialOrder }: { order: 
                   <address className="not-italic text-sm text-gray-700 dark:text-gray-300">
                     {(() => {
                       const sd = order.shipping_details?.[0];
+                      const name = (order.customers?.first_name || order.customers?.last_name)
+                        ? `${order.customers?.first_name ?? ''} ${order.customers?.last_name ?? ''}`.trim()
+                        : (sd?.name || order.billing_name || 'Guest');
                       const lines = [
                         sd?.address_line1 ?? order.billing_address_line1,
                         sd?.address_line2 ?? order.billing_address_line2,
                       ].filter(Boolean);
                       return (
                         <>
+                          {name}<br />
                           {lines[0]}
                           {lines[1] && (<><br />{lines[1]}</>)}
                           <br />
@@ -497,8 +505,10 @@ export default function OrderDetailClientPage({ order: initialOrder }: { order: 
                 <div>
                   <div className="mb-1 font-medium text-sm">Billing Address</div>
                   <address className="not-italic text-sm text-gray-700 dark:text-gray-300">
+                    {order.billing_name || ''}
+                    <br />
                     {order.billing_address_line1}
-                    {order.billing_address_line2 && <> <br />{order.billing_address_line2}</>}
+                    {order.billing_address_line2 && (<><br />{order.billing_address_line2}</>)}
                     <br />
                     {order.billing_city}, {order.billing_state} {order.billing_postal_code}
                     <br />

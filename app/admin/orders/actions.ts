@@ -9,6 +9,10 @@ export type OrderWithCustomer = Order & {
     last_name: string;
     email: string;
   } | null;
+  is_training?: boolean | null;
+  // For guest fallback display
+  billing_name?: string | null;
+  shipping_details?: { name?: string | null }[];
   payment_status: string | null;
   order_status: string | null;
   shipping_status: string | null;
@@ -18,17 +22,26 @@ export async function getOrders(
   query: string,
   paymentStatus: string,
   orderStatus: string,
-  shippingStatus: string
+  shippingStatus: string,
+  dataset: 'real' | 'training' | 'all' = 'real'
 ): Promise<OrderWithCustomer[]> {
   const supabase = await createClient();
   let queryBuilder = supabase
     .from("orders")
-    .select("*, customers(first_name, last_name, email)")
+    .select("*, customers(first_name, last_name, email), shipping_details(name)")
     .order("created_at", { ascending: false });
 
   if (query) {
+    // Search across id, customer fields, and guest name fallbacks
     queryBuilder = queryBuilder.or(
-      `id.ilike.%${query}%,customers.first_name.ilike.%${query}%,customers.last_name.ilike.%${query}%,customers.email.ilike.%${query}%`
+      [
+        `id.ilike.%${query}%`,
+        `customers.first_name.ilike.%${query}%`,
+        `customers.last_name.ilike.%${query}%`,
+        `customers.email.ilike.%${query}%`,
+        `billing_name.ilike.%${query}%`,
+        `shipping_details.name.ilike.%${query}%`,
+      ].join(',')
     );
   }
 
@@ -41,6 +54,13 @@ export async function getOrders(
   if (shippingStatus) {
     queryBuilder = queryBuilder.eq("shipping_status", shippingStatus);
   }
+
+  // Dataset filter
+  if (dataset === 'real') {
+    queryBuilder = queryBuilder.eq('is_training', false);
+  } else if (dataset === 'training') {
+    queryBuilder = queryBuilder.eq('is_training', true);
+  } // 'all' means no filter
 
   const { data, error } = await queryBuilder;
 

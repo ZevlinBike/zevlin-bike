@@ -60,6 +60,23 @@ export default async function AdminDashboard() {
 
   return (
     <div className="space-y-6 text-black dark:text-white">
+      {/* Today's Focus: a simple, guided checklist */}
+      <Card className="border-blue-200 dark:border-blue-900/40">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Today’s Focus</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
+            <FocusRow n={1} label="Orders to Fulfill" value={stats.unfulfilledCount} href="/admin/fulfillment?dataset=real" cta="Start" />
+            <FocusRow n={2} label="Pending Payments" value={stats.pendingPaymentCount} href="/admin/orders?order_status=pending_payment&dataset=real" cta="Review" />
+            <FocusRow n={3} label="Pending Refunds" value={stats.pendingRefundsCount} href="/admin/refunds" cta="Handle" />
+            <FocusRow n={4} label="Shipping Issues" value={stats.exceptionsCount} href="/admin/orders?shipping_status=lost&dataset=real" cta="Resolve" />
+            <FocusRow n={5} label="Price Alerts" value={lowStock.length} href="/admin/products" cta="Review" />
+          </div>
+          <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">Work left to right. Each step opens the right screen and guides you through it.</p>
+        </CardContent>
+      </Card>
+
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <div className="flex items-center gap-2">
@@ -141,6 +158,10 @@ export default async function AdminDashboard() {
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2 text-amber-600"><AlertTriangle className="h-4 w-4" /> Exceptions</div>
               <div className="font-semibold">{stats.exceptionsCount}</div>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2 text-amber-700"><AlertTriangle className="h-4 w-4" /> Pending Refunds</div>
+              <div className="font-semibold">{stats.pendingRefundsCount}</div>
             </div>
             <div className="pt-2 flex gap-2">
               <Button asChild size="sm" className="flex-1"><Link href="/admin/fulfillment">Fulfill Orders</Link></Button>
@@ -231,6 +252,21 @@ export default async function AdminDashboard() {
           </Table>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function FocusRow({ n, label, value, href, cta }: { n: number; label: string; value: number; href: string; cta: string }) {
+  return (
+    <div className="flex items-center justify-between rounded-md border p-3 bg-white dark:bg-neutral-950">
+      <div className="flex items-center gap-3">
+        <div className="size-6 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200 flex items-center justify-center text-xs font-bold">{n}</div>
+        <div className="text-sm">
+          <div className="font-medium">{label}</div>
+          <div className="text-xs text-gray-600 dark:text-gray-400">{value} {value === 1 ? 'item' : 'items'}</div>
+        </div>
+      </div>
+      <Button asChild size="sm"><Link href={href}>{cta}</Link></Button>
     </div>
   );
 }
