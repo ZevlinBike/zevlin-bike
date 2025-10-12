@@ -24,6 +24,7 @@ import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
 import GlobalSearch from "./components/GlobalSearch";
+import PendingNav from "./components/PendingNav";
 import Logo from "@/components/Logo";
 
 import type { ElementType } from 'react';
@@ -174,6 +175,8 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 text-black dark:text-white">
+      {/* Global pending navigation indicators */}
+      <PendingNav />
       {/* Mobile sidebar */}
       <AnimatePresence>
         {sidebarOpen && (

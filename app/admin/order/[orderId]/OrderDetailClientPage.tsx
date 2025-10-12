@@ -333,6 +333,12 @@ export default function OrderDetailClientPage({ order: initialOrder }: { order: 
             <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
               {orderDate && <>Placed {orderDate}</>}
             </p>
+            {/* Status chips moved under title for clarity */}
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <StatusPill status={order.payment_status} />
+              <StatusPill status={order.order_status} />
+              <StatusPill status={order.shipping_status} />
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
@@ -344,9 +350,6 @@ export default function OrderDetailClientPage({ order: initialOrder }: { order: 
             >
               {refunding ? "Refunding..." : "Refund"}
             </Button>
-            <StatusPill status={order.payment_status} />
-            <StatusPill status={order.order_status} />
-            <StatusPill status={order.shipping_status} />
             <div className="inline-flex">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

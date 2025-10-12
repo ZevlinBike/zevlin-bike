@@ -102,6 +102,9 @@ export default function OrderTable({
               key={order.id}
               onClick={() => handleRowClick(order.id)}
               className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+              data-navigates="true"
+              role="link"
+              aria-label={`Open order ${order.id.substring(0,8)}`}
             >
               <TableCell onClick={(e) => e.stopPropagation()}>
                 <input
