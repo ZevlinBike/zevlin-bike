@@ -277,6 +277,22 @@ export default function OrderDetailClientPage({ order: initialOrder }: { order: 
     }
   }
 
+  async function updateShippingStatus(status: 'not_shipped' | 'shipped' | 'delivered' | 'returned' | 'lost') {
+    try {
+      const res = await fetch('/api/admin/orders/bulk', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ ids: [order.id], action: 'set_shipping_status', value: status }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to update shipping status');
+      toast.success(`Order marked ${status.replace('_',' ')}`);
+      await loadOrder();
+    } catch (e: unknown) {
+      toast.error((e as Error).message || 'Failed to update shipping status');
+    }
+  }
+
   async function voidLabelById(shipmentId: string) {
     setVoidingId(shipmentId);
     try {
@@ -331,6 +347,20 @@ export default function OrderDetailClientPage({ order: initialOrder }: { order: 
             <StatusPill status={order.payment_status} />
             <StatusPill status={order.order_status} />
             <StatusPill status={order.shipping_status} />
+            <div className="inline-flex">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="outline" className="ml-2">Update Shipping</Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => updateShippingStatus('not_shipped')}>Not Shipped</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updateShippingStatus('shipped')}>Shipped</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updateShippingStatus('delivered')}>Delivered</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updateShippingStatus('returned')}>Returned</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updateShippingStatus('lost')}>Lost</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
             {(() => {
               const labeled = shipments.filter((s) => !!s.label_url);
               let latestLabelUrl: string | null = null;

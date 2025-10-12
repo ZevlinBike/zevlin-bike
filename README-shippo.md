@@ -32,8 +32,8 @@ If you use the Supabase CLI:
 
 ## Webhook setup
 
-- In Shippo, create a webhook pointing to `${APP_URL}/api/webhooks/shippo`.
-- Add a custom header `X-Shippo-Secret: <SHIPPO_WEBHOOK_SECRET>`.
+- In Shippo, create a webhook pointing to `${APP_URL}/api/webhooks/shippo?secret=<SHIPPO_WEBHOOK_SECRET>`.
+- Shippo does not expose custom headers for webhooks in the dashboard, so we pass a shared secret as a URL query param. Our endpoint also accepts `?token=...` for convenience. Header-based secrets are still supported if you have a way to set them.
 
 ## Admin flow
 
@@ -62,7 +62,7 @@ If you use the Supabase CLI:
 2. Ensure at least one paid order exists with a US address.
 3. Admin → Order → Get Rates → See USPS/UPS options (as supported by your Shippo account).
 4. Click Buy Label → Label URL appears; open the PDF.
-5. Webhook: POST a sample event to `${APP_URL}/api/webhooks/shippo` with header `X-Shippo-Secret` set.
+5. Webhook: POST a sample event to `${APP_URL}/api/webhooks/shippo?secret=<SHIPPO_WEBHOOK_SECRET>`.
 6. Verify the shipment status updates and appears on the order page.
 
 ## Adding carriers/services
@@ -72,6 +72,5 @@ If you use the Supabase CLI:
 ## Troubleshooting
 
 - If rates fail: ensure a default package exists and the order address is valid.
-- If webhook 401: verify `SHIPPO_WEBHOOK_SECRET` header and value.
+- If webhook 401: verify the `secret` query matches `SHIPPO_WEBHOOK_SECRET`.
 - If label purchase 409: a label already exists for the order (single-package flow).
-

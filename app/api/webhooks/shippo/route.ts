@@ -28,9 +28,15 @@ export async function POST(req: NextRequest) {
   // Use service-role client so RLS can remain strict on webhook tables
   const supabase = createServiceClient();
   const secret = env.SHIPPO_WEBHOOK_SECRET;
+  const url = new URL(req.url);
   const provided =
-    getHeader(req, "x-shippo-secret") || getHeader(req, "shippo-secret") || getHeader(req, "authorization");
-  if (!provided || provided !== secret) {
+    getHeader(req, "x-shippo-secret") ||
+    getHeader(req, "shippo-secret") ||
+    getHeader(req, "authorization") ||
+    url.searchParams.get("secret") ||
+    url.searchParams.get("token");
+
+  if (!secret || !provided || provided !== secret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

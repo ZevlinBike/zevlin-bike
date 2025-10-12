@@ -47,3 +47,12 @@ These features are desirable but not essential for the initial launch. They can 
 *   **Database & Auth:** [Supabase](https://supabase.io/)
 *   **Styling:** [Tailwind CSS](https://tailwindcss.com/)
 *   **Deployment:** [Vercel](https://vercel.com/)
+
+---
+
+## Shipping & Delivery Updates
+
+- Shippo integration provides live rates, label purchase/void, and automatic delivery status updates via webhook. See `README-shippo.md` for setup and usage.
+- Required env vars (see `.env.local.example`): `SHIPPO_API_TOKEN`, `SHIPPO_WEBHOOK_SECRET`, and `APP_URL`.
+- Configure a webhook in your Shippo dashboard pointing to `/api/webhooks/shippo?secret=<SHIPPO_WEBHOOK_SECRET>`.
+- Not all shipments use Shippo: admins can manually create shipments and update shipping status from Admin → Order detail. A quick “Update Shipping” menu is available on the order header to set `not_shipped`, `shipped`, `delivered`, `returned`, or `lost`.
