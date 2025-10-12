@@ -5,7 +5,7 @@ export default function HeroProduct({ product }: { product: Product }) {
   return (
     <div className="flex relative flex-col items-center text-center group">
       {/* Outer container with glow and spacing */}
-      <div className="relative bg-gradient-to-br rounded-full border shadow-2xl transition-transform duration-500 group-hover:scale-105 w-[220px] h-[220px] border-white/10 from-white/10 to-black/10 backdrop-blur-md sm:w-[240px] sm:h-[240px]">
+      <div className="relative bg-gradient-to-br rounded-full border shadow-2xl transition-transform duration-500 group-hover:scale-105 w-[220px] h-[220px] border-white/20 from-black/40 via-white/70 to-black/30 sm:w-[240px] sm:h-[240px]">
         {/* Glow effect behind product */}
         <div className="absolute inset-0 z-0 bg-gradient-to-br from-blue-600/10 to-purple-600/10 blur-2xl" />
 

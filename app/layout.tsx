@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/app/components/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
 import SocialFABs from "@/components/SocialFABs";
 import { Analytics } from "@vercel/analytics/next"
+import PendingNav from "@/app/components/PendingNav";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -54,6 +55,8 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          {/* Public route pending navigation indicator */}
+          <PendingNav />
           <Navigation user={user} notices={notices}/>
           {children}
           <Toaster />
