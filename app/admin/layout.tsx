@@ -66,6 +66,7 @@ const navGroups: NavGroup[] = [
       { name: "Blog", href: "/admin/blog" },
       { name: "Announcements", href: "/admin/announcements" },
       { name: "Functions", href: "/admin/functions" },
+      { name: "Testing", href: "/admin/testing" },
       { name: "Settings", href: "/admin/settings" },
     ],
   },

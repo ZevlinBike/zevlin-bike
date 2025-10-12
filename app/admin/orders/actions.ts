@@ -73,6 +73,7 @@ export async function getOrders(
 }
 
 import Stripe from "stripe";
+import { env } from "@/lib/env";
 
 export async function getOrderById(orderId: string) {
   const supabase = await createClient();
@@ -97,26 +98,47 @@ export async function getOrderById(orderId: string) {
   }
 
   let card_last4 = null;
-  if (order.stripe_payment_intent_id && process.env.STRIPE_SECRET_KEY) {
-    try {
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+  if (order.stripe_payment_intent_id && (process.env.STRIPE_SECRET_KEY || process.env.STRIPE_TEST_SECRET_KEY)) {
+    const liveKey = process.env.STRIPE_SECRET_KEY || env.STRIPE_SECRET_KEY;
+    const testKey = process.env.STRIPE_TEST_SECRET_KEY || env.STRIPE_TEST_SECRET_KEY;
+    const tryKeys: string[] = [];
+    // Prefer env based on training flag
+    if (order.is_training && testKey) tryKeys.push(testKey);
+    if (!order.is_training && liveKey) tryKeys.push(liveKey);
+    // Fallback: try the other key too if present
+    if (order.is_training && liveKey) tryKeys.push(liveKey);
+    if (!order.is_training && testKey) tryKeys.push(testKey);
 
-      const paymentIntent = await stripe.paymentIntents.retrieve(
-        order.stripe_payment_intent_id,
-        { expand: ["payment_method"] }
-      );
-
-      if (
-        paymentIntent.payment_method &&
-        typeof paymentIntent.payment_method !== "string" &&
-        paymentIntent.payment_method.card
-      ) {
-        card_last4 = paymentIntent.payment_method.card.last4;
+    for (const key of tryKeys) {
+      try {
+        const stripe = new Stripe(key);
+        const paymentIntent = await stripe.paymentIntents.retrieve(
+          order.stripe_payment_intent_id,
+          { expand: ["payment_method"] }
+        );
+        if (
+          paymentIntent.payment_method &&
+          typeof paymentIntent.payment_method !== "string" &&
+          paymentIntent.payment_method.card
+        ) {
+          card_last4 = paymentIntent.payment_method.card.last4;
+        }
+        // success -> stop trying keys
+        break;
+      } catch (stripeError: unknown) {
+        const code =
+          stripeError &&
+          typeof stripeError === 'object' &&
+          'code' in stripeError
+            ? (stripeError as { code?: string }).code
+            : undefined;
+        // Only try next key when it's a missing resource (likely wrong environment); otherwise stop
+        if (code !== 'resource_missing') {
+          console.warn("Stripe lookup failed for payment intent", order.stripe_payment_intent_id, stripeError);
+          break;
+        }
+        // else continue to next key
       }
-    } catch (stripeError) {
-      // Log as a warning to avoid dev overlay while keeping diagnostics
-      console.warn("Stripe lookup failed for payment intent", order.stripe_payment_intent_id, stripeError);
-      // Continue without card_last4
     }
   }
 

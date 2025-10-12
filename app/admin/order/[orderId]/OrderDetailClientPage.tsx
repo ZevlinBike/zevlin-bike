@@ -13,10 +13,14 @@ import { PrintModal } from "@/app/admin/orders/components/PrintModal";
 import { CombinedPrintModal } from "@/app/admin/orders/components/CombinedPrintModal";
 import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Printer } from "lucide-react";
-import { Truck, Clock, DollarSign, ExternalLink } from "lucide-react";
+import { Truck, Clock, DollarSign, ExternalLink, MoreVertical, Trash2, Eraser } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { clsx } from "clsx";
 
 export default function OrderDetailClientPage({ order: initialOrder }: { order: OrderDetails }) {
@@ -42,11 +46,37 @@ export default function OrderDetailClientPage({ order: initialOrder }: { order: 
   };
 
   const [shipments, setShipments] = useState<Shipment[]>([]);
-  const [rates, setRates] = useState<RateOption[] | null>(null);
-  const [loadingRates, setLoadingRates] = useState(false);
-  const [buying, setBuying] = useState<string | null>(null);
   const [voidingId, setVoidingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [clearingId, setClearingId] = useState<string | null>(null);
   const [refunding, setRefunding] = useState(false);
+  // Manual shipment form
+  const [mCarrier, setMCarrier] = useState("");
+  const [mService, setMService] = useState("");
+  const [mTracking, setMTracking] = useState("");
+  const [mUrl, setMUrl] = useState("");
+  const [mSending, setMSending] = useState(false);
+
+  // Rates wizard state
+  type ShippingPackage = {
+    id: string;
+    name: string;
+    length_cm: number;
+    width_cm: number;
+    height_cm: number;
+    weight_g: number;
+    is_default: boolean;
+  };
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [shippingPackages, setShippingPackages] = useState<ShippingPackage[]>([]);
+  const [selectedPackageId, setSelectedPackageId] = useState<string>("");
+  const [orderWeightG, setOrderWeightG] = useState<number | null>(null);
+  const [ratesWizard, setRatesWizard] = useState<RateOption[] | null>(null);
+  const [loadingWizard, setLoadingWizard] = useState(false);
+  const [buyingWizard, setBuyingWizard] = useState<string | null>(null);
+
+  // inches helper currently unused; keep if we later show dims (omit to satisfy lints)
+  function ounces(n: number) { return (n / 28.3495).toFixed(1); }
 
   const loadOrder = useCallback(async () => {
     try {
@@ -95,47 +125,155 @@ export default function OrderDetailClientPage({ order: initialOrder }: { order: 
     loadShipments();
   }, [order.id, loadShipments]);
 
-  async function fetchRates() {
-    setLoadingRates(true);
+  async function openRatesWizard() {
+    setWizardOpen(true);
+    setLoadingWizard(true);
+    setRatesWizard(null);
+    setShippingPackages([]);
+    setSelectedPackageId("");
+    setOrderWeightG(null);
     try {
-      const res = await fetch(`/api/shipping/rates`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ orderId: order.id }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to get rates");
-      setRates(json.rates || []);
-      toast.success("Fetched live shipping rates");
+      const r = await fetch(`/api/shipping/packages`);
+      const pkgs = (await r.json()) as ShippingPackage[] | { error: string };
+      if (!r.ok || Array.isArray(pkgs) === false) throw new Error((pkgs as { error: string }).error || 'Failed to load packages');
+      setShippingPackages(pkgs);
+      const def = pkgs.find(p => p.is_default) || pkgs[0];
+      if (def) {
+        setSelectedPackageId(def.id);
+        await getRatesForPackage(def.id);
+      } else {
+        setLoadingWizard(false);
+      }
     } catch (e: unknown) {
-      toast.error((e as Error).message || "Failed to get rates");
-    } finally {
-      setLoadingRates(false);
+      toast.error((e as Error).message || 'Failed to load packages');
+      setLoadingWizard(false);
     }
   }
 
-  async function buyLabel(rate: RateOption) {
-    setBuying(rate.rateObjectId);
+  async function getRatesForPackage(packageId: string) {
+    setSelectedPackageId(packageId);
+    setLoadingWizard(true);
+    setRatesWizard(null);
+    try {
+      const res = await fetch(`/api/shipping/rates`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ orderId: order.id, packageId }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to load rates');
+      const sorted = Array.isArray(json.rates)
+        ? [...json.rates].sort((a: { amountCents: number }, b: { amountCents: number }) => (a.amountCents || 0) - (b.amountCents || 0))
+        : [];
+      setRatesWizard(sorted);
+      setOrderWeightG(json.totalWeightG || null);
+    } catch (e: unknown) {
+      toast.error((e as Error).message || 'Failed to load rates');
+    } finally {
+      setLoadingWizard(false);
+    }
+  }
+
+  async function buyLabelFromWizard(rate: RateOption) {
+    setBuyingWizard(rate.rateObjectId);
     try {
       const res = await fetch(`/api/shipping/labels`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          // Idempotency for safety on retries
-          "Idempotency-Key": crypto.randomUUID(),
-        },
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'Idempotency-Key': crypto.randomUUID() },
         body: JSON.stringify({ orderId: order.id, rateObjectId: rate.rateObjectId }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to purchase label");
-      toast.success("Label purchased");
-      setRates(null);
+      if (!res.ok) throw new Error(json.error || 'Failed to purchase label');
+      toast.success('Label purchased');
+      setWizardOpen(false);
+      await loadShipments();
+      await loadOrder();
+      if (json.labelUrl) window.open(json.labelUrl, '_blank');
+    } catch (e: unknown) {
+      toast.error((e as Error).message || 'Failed to purchase label');
+    } finally {
+      setBuyingWizard(null);
+    }
+  }
+
+  // Old inline buyLabel removed; wizard handles purchase
+
+  async function createManualShipment() {
+    if (!mCarrier || !mTracking) {
+      toast.error("Carrier and tracking number are required.");
+      return;
+    }
+    setMSending(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${order.id}/shipments`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ carrier: mCarrier, service: mService || undefined, tracking_number: mTracking, tracking_url: mUrl || undefined, status: 'shipped', email: true }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to save manual shipment');
+      toast.success('Manual shipment saved and customer emailed.');
+      setMCarrier(''); setMService(''); setMTracking(''); setMUrl('');
       await loadShipments();
       await loadOrder();
     } catch (e: unknown) {
-      toast.error((e as Error).message || "Failed to purchase label");
+      toast.error((e as Error).message || 'Failed to save manual shipment');
     } finally {
-      setBuying(null);
+      setMSending(false);
+    }
+  }
+
+  async function markDelivered(shipmentId: string) {
+    try {
+      const res = await fetch(`/api/admin/shipments/${shipmentId}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ status: 'delivered', email: true }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to update shipment');
+      toast.success('Shipment marked delivered and customer emailed.');
+      await loadShipments();
+      await loadOrder();
+    } catch (e: unknown) {
+      toast.error((e as Error).message || 'Failed to update shipment');
+    }
+  }
+
+  async function clearTracking(shipmentId: string) {
+    setClearingId(shipmentId);
+    try {
+      const res = await fetch(`/api/admin/shipments/${shipmentId}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ tracking_number: null, tracking_url: null, service: null }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to clear tracking');
+      toast.success('Tracking cleared');
+      await loadShipments();
+      await loadOrder();
+    } catch (e: unknown) {
+      toast.error((e as Error).message || 'Failed to clear tracking');
+    } finally {
+      setClearingId(null);
+    }
+  }
+
+  async function deleteShipment(shipmentId: string) {
+    if (!confirm('Delete this shipment? This cannot be undone.')) return;
+    setDeletingId(shipmentId);
+    try {
+      const res = await fetch(`/api/admin/shipments/${shipmentId}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to delete shipment');
+      toast.success('Shipment deleted');
+      await loadShipments();
+      await loadOrder();
+    } catch (e: unknown) {
+      toast.error((e as Error).message || 'Failed to delete shipment');
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -220,6 +358,129 @@ export default function OrderDetailClientPage({ order: initialOrder }: { order: 
         </div>
       </div>
 
+      {/* Rates Wizard Overlay */}
+      <Dialog open={wizardOpen} onOpenChange={(v) => { if (!v) { setWizardOpen(false); } }}>
+        <DialogContent className="w-screen h-[100dvh] max-w-[100vw] sm:w-[96vw] sm:h-[92vh] sm:max-w-6xl p-0 overflow-hidden bg-white text-black dark:bg-neutral-950 dark:text-white rounded-none sm:rounded-2xl">
+          {/* Sticky header */}
+          <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 border-b bg-white/90 backdrop-blur dark:bg-neutral-950/90">
+            <DialogHeader className="p-0">
+              <DialogTitle className="text-base sm:text-lg font-semibold">Get Rates • Order #{order.id.substring(0,8)}</DialogTitle>
+            </DialogHeader>
+            <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+              {order.shipping_details?.[0]?.postal_code || order.billing_postal_code}
+            </div>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-6 h-[calc(100dvh-56px)] sm:h-[calc(92vh-64px)] overflow-hidden px-4 sm:px-6 pb-4 sm:pb-6">
+            {/* Left: Order summary */}
+            <div className="lg:col-span-2 space-y-4 sm:space-y-6 overflow-y-auto pr-1 sm:pr-2">
+              <div>
+                <div className="text-[11px] sm:text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Ship To</div>
+                <div className="mt-2 sm:mt-3 text-sm leading-relaxed">
+                  {(() => {
+                    const sd = order.shipping_details?.[0];
+                    const name = (order.customers?.first_name || order.customers?.last_name)
+                      ? `${order.customers?.first_name ?? ''} ${order.customers?.last_name ?? ''}`.trim()
+                      : (sd?.name || order.billing_name || 'Guest');
+                    const line1 = sd?.address_line1 ?? order.billing_address_line1;
+                    const line2 = sd?.address_line2 ?? order.billing_address_line2;
+                    const city = (sd?.city ?? order.billing_city);
+                    const state = (sd?.state ?? order.billing_state);
+                    const postal = (sd?.postal_code ?? order.billing_postal_code);
+                    const country = (sd?.country ?? order.billing_country);
+                    return (
+                      <address className="not-italic">
+                        {name}<br />
+                        {line1}{line2 ? (<><br />{line2}</>) : null}<br />
+                        {city}, {state} {postal}<br />
+                        {country}
+                      </address>
+                    );
+                  })()}
+                </div>
+              </div>
+              <div>
+                <div className="text-[11px] sm:text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Items</div>
+                <div className="mt-2 sm:mt-3 border rounded-md overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Product</TableHead>
+                        <TableHead className="text-center">Qty</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {order.line_items.map(li => (
+                        <TableRow key={li.id}>
+                          <TableCell>{li.products?.name ?? 'Product'}</TableCell>
+                          <TableCell className="text-center">{li.quantity}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            </div>
+            {/* Right: Package + Rates */}
+            <div className="lg:col-span-3 space-y-4 sm:space-y-6 overflow-y-auto pr-1 sm:pr-2">
+              <div>
+                <div className="text-[11px] sm:text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Package</div>
+                <div className="mt-2 sm:mt-3">
+                  <select
+                    className="block w-full rounded-md border border-gray-300 bg-white px-3 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-neutral-900 dark:border-neutral-700"
+                    value={selectedPackageId}
+                    onChange={(e) => getRatesForPackage(e.target.value)}
+                    disabled={loadingWizard || shippingPackages.length === 0}
+                  >
+                    {shippingPackages.length > 0 ? (
+                      shippingPackages.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} ({(p.length_cm / 2.54).toFixed(1)}×{(p.width_cm / 2.54).toFixed(1)}×{(p.height_cm / 2.54).toFixed(1)} in · {ounces(p.weight_g)} oz tare)
+                        </option>
+                      ))
+                    ) : (
+                      <option>Loading packages…</option>
+                    )}
+                  </select>
+                  {orderWeightG && (
+                    <div className="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                      Total weight: {(() => { const oz = orderWeightG / 28.3495; return oz < 16 ? `${oz.toFixed(1)} oz` : `${Math.floor(oz/16)} lb ${(oz%16).toFixed(1)} oz`; })()}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div>
+                <div className="text-[11px] sm:text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Rates</div>
+                <div className="mt-2 sm:mt-3 space-y-2 pb-4 sm:pb-6">
+                  {loadingWizard && <div className="text-sm text-gray-500">Fetching live rates…</div>}
+                  {!loadingWizard && !ratesWizard && <div className="text-sm text-gray-500">Select a package to see available rates.</div>}
+                  {ratesWizard && ratesWizard.length === 0 && <div className="text-sm text-gray-500">No rates returned for this address/package.</div>}
+                  {ratesWizard && ratesWizard.map((r) => (
+                    <div key={r.rateObjectId} className="flex items-center justify-between rounded-lg border p-3 sm:p-4 hover:bg-gray-50 dark:hover:bg-neutral-900/40 transition-colors">
+                      <div className="text-sm">
+                        <div className="font-medium text-[15px] sm:text-sm">{r.carrier} · {r.service}</div>
+                        <div className="text-gray-600 dark:text-gray-400 mt-1 flex items-center gap-3">
+                          <span className="inline-flex items-center gap-1">
+                            <DollarSign className="h-3.5 w-3.5" />
+                            {new Intl.NumberFormat(undefined, { style: 'currency', currency: r.currency || 'USD' }).format(r.amountCents / 100)}
+                          </span>
+                          {r.estimatedDays ? (
+                            <span className="inline-flex items-center gap-1">
+                              <Clock className="h-3.5 w-3.5" /> ~{r.estimatedDays} day{r.estimatedDays === 1 ? '' : 's'}
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                      <Button className="px-4 sm:px-3" size="sm" onClick={() => buyLabelFromWizard(r)} disabled={buyingWizard === r.rateObjectId}>
+                        {buyingWizard === r.rateObjectId ? 'Buying…' : 'Buy Label'}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left column */}
         <div className="lg:col-span-2 grid gap-6">
@@ -349,43 +610,41 @@ export default function OrderDetailClientPage({ order: initialOrder }: { order: 
                     <span>No shipments yet</span>
                   )}
                 </div>
-                <Button size="sm" onClick={fetchRates} disabled={loadingRates} className="gap-2">
+                <Button size="sm" onClick={openRatesWizard} className="gap-2">
                   <DollarSign className="h-4 w-4" />
-                  {loadingRates ? "Getting rates…" : "Get Rates"}
+                  Get Rates
                 </Button>
               </div>
 
-              {/* Rates list */}
-              {rates && rates.length > 0 && (
-                <div className="space-y-3">
-                  <div className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Rates</div>
-                  <div className="grid gap-2">
-                    {rates.map((r) => (
-                      <div key={r.rateObjectId} className="flex items-center justify-between rounded-md border p-3 hover:bg-gray-50 dark:hover:bg-neutral-900/40 transition-colors">
-                        <div className="text-sm">
-                          <div className="font-medium">
-                            {r.carrier} · {r.service}
-                          </div>
-                          <div className="text-gray-600 dark:text-gray-400 flex items-center gap-3">
-                            <span className="inline-flex items-center gap-1">
-                              <DollarSign className="h-3.5 w-3.5" />
-                              {money(r.amountCents)}
-                            </span>
-                            {r.estimatedDays ? (
-                              <span className="inline-flex items-center gap-1">
-                                <Clock className="h-3.5 w-3.5" /> ~{r.estimatedDays} day{r.estimatedDays === 1 ? "" : "s"}
-                              </span>
-                            ) : null}
-                          </div>
-                        </div>
-                        <Button size="sm" onClick={() => buyLabel(r)} disabled={buying === r.rateObjectId}>
-                          {buying === r.rateObjectId ? "Buying…" : "Buy Label"}
-                        </Button>
-                      </div>
-                    ))}
+              {/* Rates list moved to overlay wizard */}
+
+              {/* Manual shipment */}
+              <div className="space-y-3">
+                <div className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Manual Shipment</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label>Carrier</Label>
+                    <Input value={mCarrier} onChange={(e) => setMCarrier(e.target.value)} placeholder="UPS/USPS/FedEx" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Service (optional)</Label>
+                    <Input value={mService} onChange={(e) => setMService(e.target.value)} placeholder="Ground, Priority, etc." />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Tracking Number</Label>
+                    <Input value={mTracking} onChange={(e) => setMTracking(e.target.value)} placeholder="1Z… / 9400…" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Tracking URL (optional)</Label>
+                    <Input value={mUrl} onChange={(e) => setMUrl(e.target.value)} placeholder="https://…" />
                   </div>
                 </div>
-              )}
+                <div>
+                  <Button size="sm" onClick={createManualShipment} disabled={mSending}>
+                    {mSending ? 'Saving…' : 'Save & Email Customer'}
+                  </Button>
+                </div>
+              </div>
 
               {/* Shipments list */}
               <div className="space-y-3">
@@ -416,7 +675,7 @@ export default function OrderDetailClientPage({ order: initialOrder }: { order: 
                           )}
                         </div>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                         {s.label_url && (
                           <>
                             <a
@@ -440,11 +699,31 @@ export default function OrderDetailClientPage({ order: initialOrder }: { order: 
                             />
                           </>
                         )}
+                        {!s.label_url && s.status !== 'delivered' && (
+                          <Button size="sm" variant="outline" onClick={() => markDelivered(s.id)}>Mark Delivered + Email</Button>
+                        )}
                         {s.status === "purchased" && (
                           <Button size="sm" variant="outline" onClick={() => voidLabelById(s.id)} disabled={voidingId === s.id}>
                             {voidingId === s.id ? "Voiding…" : "Void Label"}
                           </Button>
                         )}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="Shipment actions">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => clearTracking(s.id)} disabled={clearingId === s.id}>
+                              <Eraser className="h-4 w-4" />
+                              {clearingId === s.id ? 'Clearing…' : 'Remove tracking only'}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem variant="destructive" onClick={() => deleteShipment(s.id)} disabled={deletingId === s.id}>
+                              <Trash2 className="h-4 w-4" />
+                              {deletingId === s.id ? 'Deleting…' : 'Delete shipment'}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </div>
                   </div>
@@ -535,7 +814,7 @@ export default function OrderDetailClientPage({ order: initialOrder }: { order: 
               )}
               {order.stripe_payment_intent_id && (
                 <p className="mt-1 text-xs text-gray-500">
-                  Payment Intent: {order.stripe_payment_intent_id.substring(0, 12)}…
+                  Payment Intent: {order.stripe_payment_intent_id}
                 </p>
               )}
               {order.stripe_payment_intent_id && (
@@ -561,7 +840,7 @@ export default function OrderDetailClientPage({ order: initialOrder }: { order: 
 
 /* --- Small bits --- */
 
-function StatusPill({ status }: { status: string | null }) {
+  function StatusPill({ status }: { status: string | null }) {
   if (!status) return null;
   const label = formatStatus(status);
   return (

@@ -455,6 +455,7 @@ export async function finalizeOrder(
   formData: unknown,
   cartItems: CartItem[],
   costs: unknown,
+  options?: { isTraining?: boolean },
 ) {
   'use server';
 
@@ -552,6 +553,7 @@ export async function finalizeOrder(
         discount_cents: Math.round(costData.discount * 100),
         total_cents: totalInCents,
         stripe_payment_intent_id: paymentIntentId,
+        is_training: options?.isTraining ?? false,
         billing_name: `${
           checkoutData.billingSameAsShipping
             ? checkoutData.shippingFirstName + ' ' + checkoutData.shippingLastName
