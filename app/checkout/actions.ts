@@ -9,7 +9,13 @@ import { validateAddress } from "@/lib/shippo";
 import { CartItem } from "@/store/cartStore";
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+function getStripeClient(opts?: { isTest?: boolean }) {
+  const liveKey = process.env.STRIPE_SECRET_KEY;
+  const testKey = process.env.STRIPE_TEST_SECRET_KEY;
+  const key = opts?.isTest ? (testKey || liveKey) : (liveKey || testKey);
+  if (!key) throw new Error('Stripe secret key is not configured');
+  return new Stripe(key);
+}
 
 // Build compact metadata payload for Stripe (values must be strings/numbers/null, <=500 chars)
 type CheckoutFormData = z.infer<typeof checkoutFormSchema>;
@@ -193,6 +199,7 @@ export async function processCheckout(
 
     // Step 2: Now that we have a customer, create the Payment Intent.
     const totalInCents = Math.round(costData.total * 100);
+    const stripe = getStripeClient();
     const paymentIntent = await stripe.paymentIntents.create(
       {
         amount: totalInCents,
@@ -414,6 +421,7 @@ export async function processCheckout(
 export async function createPaymentIntent(
   costs: unknown,
   idempotencyKey?: string,
+  options?: { isTest?: boolean },
 ) {
   'use server';
 
@@ -424,6 +432,7 @@ export async function createPaymentIntent(
   const { data: costData } = validatedCosts;
 
   try {
+    const stripe = getStripeClient({ isTest: options?.isTest });
     const totalInCents = Math.round(costData.total * 100);
     const paymentIntent = await stripe.paymentIntents.create(
       {
@@ -473,6 +482,7 @@ export async function finalizeOrder(
   try {
     // Ensure the PaymentIntent is confirmed. Some wallets (e.g., Link, Amazon Pay)
     // return with a `processing` status before transitioning to `succeeded` via webhook.
+    const stripe = getStripeClient({ isTest: options?.isTraining });
     const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
     const isSucceeded = pi.status === 'succeeded';
     const isProcessing = pi.status === 'processing' || pi.status === 'requires_capture';
@@ -523,6 +533,7 @@ export async function finalizeOrder(
 
     // Update PI metadata with final snapshot
     try {
+      const stripe = getStripeClient();
       await stripe.paymentIntents.update(paymentIntentId, {
         metadata: buildPaymentMetadata({
           customerId: customerId!,
@@ -715,6 +726,7 @@ export async function upsertPendingOrder(
 
     // Attach or refresh PI metadata snapshot (best-effort)
     try {
+      const stripe = getStripeClient();
       await stripe.paymentIntents.update(paymentIntentId, {
         metadata: buildPaymentMetadata({
           customerId,

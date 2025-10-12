@@ -15,8 +15,10 @@ import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-
 import { loadStripe } from "@stripe/stripe-js";
 import { cn } from "@/lib/utils";
 
-// Stripe setup
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+// Stripe setup: test-only in Admin Testing
+const TEST_PUBLISHABLE = process.env.NEXT_PUBLIC_STRIPE_TEST_PUBLISHABLE_KEY;
+const stripePromise = TEST_PUBLISHABLE ? loadStripe(TEST_PUBLISHABLE) : null;
+const isStripeTest = Boolean(TEST_PUBLISHABLE);
 
 type StatusState = "idle" | "loading" | "ok" | "error";
 
@@ -190,11 +192,17 @@ export default function AdminTestingPage() {
 
   const [promoCode, setPromoCode] = useState("");
   const [appliedPromo, setAppliedPromo] = useState<string | null>(null);
-  const [discount, setDiscount] = useState(0); // dollars
+  const [discountRule, setDiscountRule] = useState<{ type: 'percentage' | 'fixed'; value: number } | null>(null);
   const subtotal = useMemo(() => cart.reduce((s, i) => s + i.price_cents * i.qty, 0) / 100, [cart]);
   const shipping = 0; // shipping cost excluded from test payment; label purchase is separate
-  const tax = useMemo(() => Math.round(Math.max(0, subtotal - discount) * 0.08 * 100) / 100, [subtotal, discount]);
-  const total = useMemo(() => Math.max(0, Math.round(((subtotal - discount) + shipping + tax) * 100) / 100), [subtotal, tax, discount]);
+  const discountAmount = useMemo(() => {
+    if (!discountRule) return 0;
+    const v = Number(discountRule.value) || 0;
+    const amt = discountRule.type === 'percentage' ? (subtotal * v) / 100 : v;
+    return Math.min(subtotal, Math.max(0, Math.round(amt * 100) / 100));
+  }, [discountRule, subtotal]);
+  const tax = useMemo(() => Math.round(Math.max(0, subtotal - discountAmount) * 0.08 * 100) / 100, [subtotal, discountAmount]);
+  const total = useMemo(() => Math.max(0, Math.round(((subtotal - discountAmount) + shipping + tax) * 100) / 100), [subtotal, tax, discountAmount]);
 
   const validateAddress = useCallback(async () => {
     setAddressStatus("loading");
@@ -236,7 +244,7 @@ export default function AdminTestingPage() {
     setPiMsg(undefined);
     setClientSecret(null);
     try {
-      const res = await createPaymentIntent({ subtotal, shipping, tax, discount, total });
+      const res = await createPaymentIntent({ subtotal, shipping, tax, discount: discountAmount, total }, undefined, { isTest: true });
       if ('error' in res) throw new Error(res.error);
       const cs = res.clientSecret ?? undefined;
       const pid = res.paymentIntentId ?? undefined;
@@ -249,7 +257,7 @@ export default function AdminTestingPage() {
       setPiStatus("error");
       setPiMsg((e as Error).message);
     }
-  }, [subtotal, tax, total, discount]);
+  }, [subtotal, tax, total, discountAmount]);
 
   const onPaid = useCallback(async (pid: string) => {
     if (!pid) return;
@@ -268,7 +276,7 @@ export default function AdminTestingPage() {
         billingSameAsShipping: true,
       };
       const cartItems = cart.map((i) => ({ id: i.id, name: i.name, price_cents: i.price_cents, quantity: i.qty }));
-      const costs = { subtotal, shipping, tax, discount, total };
+      const costs = { subtotal, shipping, tax, discount: discountAmount, total };
       // Cast cartItems through unknown to the expected param type without using any
       const res = await finalizeOrder(
         pid,
@@ -288,7 +296,7 @@ export default function AdminTestingPage() {
     } catch {
       setOrderStatus("error");
     }
-  }, [email, phone, firstName, lastName, addr1, city, state, postal, cart, subtotal, tax, total, discount]);
+  }, [email, phone, firstName, lastName, addr1, city, state, postal, cart, subtotal, tax, total, discountAmount]);
 
   const fetchRates = useCallback(async () => {
     if (!orderId) return;
@@ -337,6 +345,15 @@ export default function AdminTestingPage() {
       <div className="mx-auto max-w-6xl p-4 md:p-6">
         <div className="flex items-center gap-3 mb-4">
           <h1 className="text-xl md:text-2xl font-semibold">Checkout & Shipping Tester</h1>
+          <span
+            className={cn(
+              "text-[10px] md:text-xs px-2 py-1 rounded-full border",
+              isStripeTest ? "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-200 dark:border-purple-800" : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-200 dark:border-amber-800"
+            )}
+            title={isStripeTest ? "Using Stripe test key" : "Test publishable key missing; payment disabled"}
+          >
+            Stripe: {isStripeTest ? "Test" : "Disabled"}
+          </span>
           <div className="ml-auto" />
           <Button variant="secondary" size="sm" onClick={() => setShowInstructions((s) => !s)}>
             <Info className="mr-2 h-4 w-4" /> {showInstructions ? "Hide" : "Show"} Instructions
@@ -445,11 +462,8 @@ export default function AdminTestingPage() {
                           const res = await verifyDiscountCode(promoCode);
                           if ('error' in res) { alert(res.error); return; }
                           const d = res.data as { code: string; type: 'percentage' | 'fixed'; value: number | string };
-                          let amt = 0;
-                          if (d.type === 'percentage') amt = (subtotal * Number(d.value)) / 100;
-                          else if (d.type === 'fixed') amt = Number(d.value);
                           setAppliedPromo(d.code);
-                          setDiscount(Math.min(subtotal, Math.max(0, Math.round(amt * 100) / 100)));
+                          setDiscountRule({ type: d.type, value: Number(d.value) });
                           setPromoCode("");
                         }}>Apply</Button>
                       </div>
@@ -457,12 +471,12 @@ export default function AdminTestingPage() {
                     {appliedPromo && (
                       <div className="text-sm">
                         Applied: <span className="font-mono">{appliedPromo}</span>
-                        <Button variant="link" className="ml-2 px-0" onClick={() => { setAppliedPromo(null); setDiscount(0); }}>Remove</Button>
+                        <Button variant="link" className="ml-2 px-0" onClick={() => { setAppliedPromo(null); setDiscountRule(null); }}>Remove</Button>
                       </div>
                     )}
                   </div>
                   <div className="flex justify-between text-sm"><div>Subtotal</div><div>${subtotal.toFixed(2)}</div></div>
-                  <div className="flex justify-between text-sm"><div>Discount</div><div className={discount ? "text-emerald-600" : undefined}>-{discount.toFixed(2)}</div></div>
+                  <div className="flex justify-between text-sm"><div>Discount</div><div className={discountAmount ? "text-emerald-600" : undefined}>-{discountAmount.toFixed(2)}</div></div>
                   <div className="flex justify-between text-sm"><div>Tax (8%)</div><div>${tax.toFixed(2)}</div></div>
                   <div className="flex justify-between font-medium"><div>Total</div><div>${total.toFixed(2)}</div></div>
 
@@ -481,10 +495,13 @@ export default function AdminTestingPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex flex-wrap items-center gap-3">
-                    <Button onClick={createPI} disabled={cart.length === 0 || addressStatus !== "ok"}>
+                    <Button onClick={createPI} disabled={!isStripeTest || cart.length === 0 || addressStatus !== "ok"}>
                       {piStatus === "loading" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}Create Payment Intent
                     </Button>
                     {piMsg && <div className="text-sm text-neutral-500">{piMsg}</div>}
+                    {!isStripeTest && (
+                      <div className="text-xs text-amber-600">Add NEXT_PUBLIC_STRIPE_TEST_PUBLISHABLE_KEY to enable test payments.</div>
+                    )}
                   </div>
                   <div className="flex justify-between pt-2">
                     <Button variant="secondary" onClick={() => setStep("cart")}>Back</Button>
@@ -502,6 +519,8 @@ export default function AdminTestingPage() {
                 <CardContent>
                   {!clientSecret ? (
                     <div className="text-sm text-neutral-500">Create a Payment Intent first.</div>
+                  ) : !isStripeTest || !stripePromise ? (
+                    <div className="text-sm text-amber-600">Stripe test key missing; cannot render Payment Element.</div>
                   ) : (
                     <Elements stripe={stripePromise} options={{ clientSecret }}>
                       <PaymentSection onPaid={setPaymentIntentId} />
