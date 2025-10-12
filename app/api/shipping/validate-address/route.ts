@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { validateAddress, type Address } from "@/lib/shippo";
+import { env } from "@/lib/env";
 
 const BodySchema = z.object({
   address: z.object({
@@ -24,11 +25,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
   try {
-    const result = await validateAddress(body.address as Address);
+    const ref = req.headers.get('referer') || '';
+    const isTesting = ref.includes('/admin/testing');
+    const token = isTesting ? (process.env.SHIPPO_TEST_API_TOKEN || env.SHIPPO_TEST_API_TOKEN || env.SHIPPO_API_TOKEN) : env.SHIPPO_API_TOKEN;
+    const result = await validateAddress(body.address as Address, { token });
     return NextResponse.json(result);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Validation failed";
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
-

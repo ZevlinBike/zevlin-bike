@@ -70,9 +70,9 @@ export type AddressValidation = {
 
 
 
-export async function validateAddress(addr: Address): Promise<AddressValidation> {
+export async function validateAddress(addr: Address, opts?: { token?: string }): Promise<AddressValidation> {
   // Use REST directly to avoid SDK import quirks for this simple validation.
-  const token = env.SHIPPO_API_TOKEN;
+  const token = opts?.token || env.SHIPPO_API_TOKEN;
   if (!token) {
     return { isValid: false, messages: ["SHIPPO_API_TOKEN is not configured"] };
   }
@@ -128,8 +128,8 @@ export async function validateAddress(addr: Address): Promise<AddressValidation>
   }
 }
 
-export async function getRates(input: GetRatesInput): Promise<RateOption[]> {
-  const token = env.SHIPPO_API_TOKEN;
+export async function getRates(input: GetRatesInput, opts?: { token?: string }): Promise<RateOption[]> {
+  const token = opts?.token || env.SHIPPO_API_TOKEN;
   if (!token) {
     throw new Error("SHIPPO_API_TOKEN is not configured");
   }
@@ -165,9 +165,10 @@ export async function getRates(input: GetRatesInput): Promise<RateOption[]> {
 }
 
 export async function purchaseLabel(
-  input: PurchaseLabelInput
+  input: PurchaseLabelInput,
+  opts?: { token?: string }
 ): Promise<PurchaseResult> {
-  const token = env.SHIPPO_API_TOKEN;
+  const token = opts?.token || env.SHIPPO_API_TOKEN;
   if (!token) {
     throw new Error("SHIPPO_API_TOKEN is not configured");
   }
@@ -204,9 +205,9 @@ export async function purchaseLabel(
   }
 }
 
-export async function voidLabel(input: VoidLabelInput): Promise<{ status: string }>
+export async function voidLabel(input: VoidLabelInput, opts?: { token?: string }): Promise<{ status: string }>
 {
-  const token = env.SHIPPO_API_TOKEN;
+  const token = opts?.token || env.SHIPPO_API_TOKEN;
   if (!token) {
     throw new Error("SHIPPO_API_TOKEN is not configured");
   }
@@ -231,8 +232,8 @@ export async function voidLabel(input: VoidLabelInput): Promise<{ status: string
   }
 }
 
-export async function track(input: TrackInput): Promise<unknown> {
-  const token = env.SHIPPO_API_TOKEN;
+export async function track(input: TrackInput, opts?: { token?: string }): Promise<unknown> {
+  const token = opts?.token || env.SHIPPO_API_TOKEN;
   if (!token) {
     throw new Error("SHIPPO_API_TOKEN is not configured");
   }

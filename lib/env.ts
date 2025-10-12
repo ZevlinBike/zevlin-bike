@@ -7,6 +7,7 @@ const envSchema = z.object({
 
   // Shippo + app
   SHIPPO_API_TOKEN: z.string().min(1, "Missing SHIPPO_API_TOKEN"),
+  SHIPPO_TEST_API_TOKEN: z.string().min(1).optional(),
   // Optional for non-webhook flows; webhook route enforces presence
   APP_URL: z.string().url().optional().describe("Base URL for webhook targets"),
   SHIPPO_WEBHOOK_SECRET: z
@@ -31,6 +32,7 @@ const parsed = envSchema.safeParse({
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY,
 
   SHIPPO_API_TOKEN: process.env.SHIPPO_API_TOKEN,
+  SHIPPO_TEST_API_TOKEN: process.env.SHIPPO_TEST_API_TOKEN,
   APP_URL: process.env.APP_URL,
   SHIPPO_WEBHOOK_SECRET: process.env.SHIPPO_WEBHOOK_SECRET,
 

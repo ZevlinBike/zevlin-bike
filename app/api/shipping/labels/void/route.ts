@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { voidLabel } from "@/lib/shippo";
+import { env } from "@/lib/env";
 
 const BodySchema = z.object({
   shipmentId: z.string().uuid(),
@@ -60,7 +61,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    await voidLabel({ transactionId: shipment.label_object_id });
+    const ref = req.headers.get('referer') || '';
+    const isTesting = ref.includes('/admin/testing');
+    const token = isTesting ? (process.env.SHIPPO_TEST_API_TOKEN || env.SHIPPO_TEST_API_TOKEN || env.SHIPPO_API_TOKEN) : env.SHIPPO_API_TOKEN;
+    await voidLabel({ transactionId: shipment.label_object_id }, { token });
     const { error: updateErr } = await supabase
       .from("shipments")
       .update({ status: "voided" })
@@ -81,4 +85,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
-

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { purchaseLabel, type Address, type Parcel } from "@/lib/shippo";
+import { env } from "@/lib/env";
 
 const BodySchema = z.object({
   orderId: z.string().uuid(),
@@ -193,7 +194,10 @@ export async function POST(req: NextRequest) {
     };
 
     // Create label via Shippo
-    const label = await purchaseLabel({ rateId: body.rateObjectId });
+    const ref = req.headers.get('referer') || '';
+    const isTesting = ref.includes('/admin/testing');
+    const token = isTesting ? (process.env.SHIPPO_TEST_API_TOKEN || env.SHIPPO_TEST_API_TOKEN || env.SHIPPO_API_TOKEN) : env.SHIPPO_API_TOKEN;
+    const label = await purchaseLabel({ rateId: body.rateObjectId }, { token });
 
     // Persist shipment
     const insertPayload = {
