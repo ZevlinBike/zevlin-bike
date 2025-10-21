@@ -22,9 +22,9 @@ export default function Hero() {
   }, []);
 
   return (
-    <section className="relative flex min-h-[100svh] flex-col justify-center overflow-hidden pt-32 md:pt-0 ">
+    <section className="relative flex min-h-[100svh] flex-col justify-center overflow-hidden pt-32 md:pt-0 pb-24">
       <HeroBackground />
-      <div className="container relative z-20 mx-auto flex w-full flex-grow  justify-center px-4 lg:px-6 py-8">
+      <div className="container relative z-20 mx-auto flex w-full flex-grow  justify-center px-4 lg:px-6 ">
         <div className="flex w-full flex-wrap items-center justify-center gap-16 text-center sm:text-left md:flex-nowrap">
           <HeroTextSection />
 
