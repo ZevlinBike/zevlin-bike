@@ -1,8 +1,10 @@
 import PayClientPage from "./PayClientPage";
 
-export default async function Page(ctx: { params: Promise<{ orderId: string }>, searchParams: Promise<{ [k: string]: string | string[] | undefined }> }) {
-  const { orderId } = await ctx.params;
-  const sp = await ctx.searchParams;
+type SearchParams = { [k: string]: string | string[] | undefined };
+
+export default async function Page({ params, searchParams }: { params: Promise<{ orderId: string }>; searchParams: Promise<SearchParams> }) {
+  const { orderId } = await params;
+  const sp = await searchParams;
   const cs = typeof sp.cs === 'string' ? sp.cs : '';
   if (!cs) {
     return null;

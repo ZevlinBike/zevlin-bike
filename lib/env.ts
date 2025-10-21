@@ -5,8 +5,8 @@ const envSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY: z.string().min(1),
 
-  // Shippo + app
-  SHIPPO_API_TOKEN: z.string().min(1, "Missing SHIPPO_API_TOKEN"),
+  // Shippo + app (tokens optional here; routes will validate as needed)
+  SHIPPO_API_TOKEN: z.string().min(1).optional(),
   SHIPPO_TEST_API_TOKEN: z.string().min(1).optional(),
   // Optional for non-webhook flows; webhook route enforces presence
   APP_URL: z.string().url().optional().describe("Base URL for webhook targets"),
@@ -23,6 +23,17 @@ const envSchema = z.object({
   BREVO_API_KEY: z.string().min(1),
   BREVO_SENDER_EMAIL: z.string().email(),
   BREVO_SENDER_NAME: z.string().min(1),
+
+  // ShipStation
+  SHIPSTATION_API_KEY: z.string().min(1).optional(),
+  SHIPSTATION_API_SECRET: z.string().min(1).optional(),
+  SHIPSTATION_DEFAULT_CARRIER_CODE: z.string().min(1).optional(),
+  SHIPSTATION_DEFAULT_SERVICE_CODE: z.string().min(1).optional(),
+  SHIPSTATION_DEFAULT_PACKAGE_CODE: z.string().min(1).optional(),
+
+  // ShipEngine
+  SHIPENGINE_API_KEY: z.string().min(1).optional(),
+  SHIPENGINE_CARRIER_IDS: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse({
@@ -42,6 +53,15 @@ const parsed = envSchema.safeParse({
   BREVO_API_KEY: process.env.BREVO_API_KEY,
   BREVO_SENDER_EMAIL: process.env.BREVO_SENDER_EMAIL,
   BREVO_SENDER_NAME: process.env.BREVO_SENDER_NAME,
+
+  SHIPSTATION_API_KEY: process.env.SHIPSTATION_API_KEY,
+  SHIPSTATION_API_SECRET: process.env.SHIPSTATION_API_SECRET,
+  SHIPSTATION_DEFAULT_CARRIER_CODE: process.env.SHIPSTATION_DEFAULT_CARRIER_CODE,
+  SHIPSTATION_DEFAULT_SERVICE_CODE: process.env.SHIPSTATION_DEFAULT_SERVICE_CODE,
+  SHIPSTATION_DEFAULT_PACKAGE_CODE: process.env.SHIPSTATION_DEFAULT_PACKAGE_CODE,
+
+  SHIPENGINE_API_KEY: process.env.SHIPENGINE_API_KEY,
+  SHIPENGINE_CARRIER_IDS: process.env.SHIPENGINE_CARRIER_IDS,
 });
 
 if (!parsed.success) {

@@ -69,7 +69,7 @@ const MobileNav: React.FC<MobileNavProps> = ({ scrolled, open, setOpen }) => {
       <nav
         // Removed dynamic background classes from <nav> for Framer Motion to control
         className={`md:hidden backdrop-blur-md border transition-all duration-300 bg-black ${
-          scrolled ? "border-transparent rounded-lg" : "border-black/20"
+          scrolled ? "border-transparent" : "border-black/20"
         }`}
       >
         <Container
@@ -77,9 +77,9 @@ const MobileNav: React.FC<MobileNavProps> = ({ scrolled, open, setOpen }) => {
             scrolled ? "h-12" : "h-18"
           }`}
         >
-          <Logo
-            className={`${scrolled ? "scale-100" : "scale-125 ml-4"} text-white`}
-          />
+          <Link href="/">
+            <Logo className={`${scrolled ? "scale-100" : "scale-125 ml-4"} text-white`} />
+          </Link>
           <button onClick={() => setOpen((o) => !o)} aria-label="Toggle menu">
             {/* Use AnimatePresence for the icon transition */}
             <AnimatePresence mode="wait" initial={false}>

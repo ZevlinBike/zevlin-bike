@@ -63,7 +63,11 @@ export async function POST(req: NextRequest) {
 
     const ref = req.headers.get('referer') || '';
     const isTesting = ref.includes('/admin/testing');
-    const token = isTesting ? (process.env.SHIPPO_TEST_API_TOKEN || env.SHIPPO_TEST_API_TOKEN || env.SHIPPO_API_TOKEN) : env.SHIPPO_API_TOKEN;
+    const token = (
+      isTesting
+        ? (process.env.SHIPPO_TEST_API_TOKEN || env.SHIPPO_TEST_API_TOKEN)
+        : (process.env.SHIPPO_API_TOKEN || env.SHIPPO_API_TOKEN)
+    ) || process.env.SHIPPO_API_TOKEN || env.SHIPPO_API_TOKEN || process.env.SHIPPO_TEST_API_TOKEN || env.SHIPPO_TEST_API_TOKEN;
     await voidLabel({ transactionId: shipment.label_object_id }, { token });
     const { error: updateErr } = await supabase
       .from("shipments")

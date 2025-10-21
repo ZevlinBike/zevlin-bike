@@ -3,9 +3,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { getRecentOrders, getDashboardStats, getLowStockProducts, getRecentActivity } from "./actions";
+import { getDashboardStats, getToFulfillOrders } from "./actions";
+import ActivityCard from "./components/ActivityCard";
+import RecentOrdersCard from "./components/RecentOrdersCard";
+import FinancialCard from "./components/FinancialCard";
 import {
-  DollarSign, Package, Truck, TrendingUp, Clock, AlertTriangle, Activity, Plus,
+  Package, Truck, TrendingUp, Clock, AlertTriangle, Activity,
 } from "lucide-react";
 
 const getStatusClass = (status: string | null): string => {
@@ -40,218 +43,160 @@ const formatStatus = (status: string | null) => {
 };
 
 export default async function AdminDashboard() {
-  const [recentOrders, stats, lowStock, activity] = await Promise.all([
-    getRecentOrders(),
+  // const sp: SearchParams = (await (searchParams ?? Promise.resolve({}))) as SearchParams;
+
+  const [stats, toFulfill] = await Promise.all([
     getDashboardStats(),
-    getLowStockProducts(),
-    getRecentActivity(),
+    getToFulfillOrders(),
   ]);
 
+  // Operational KPIs (non-financial)
   const kpis = [
-    { label: "Revenue Today", value: `${stats.revenueToday.toFixed(2)}`, icon: DollarSign },
     { label: "Orders Today", value: String(stats.ordersToday), icon: Package },
-    { label: "Avg. Order Value", value: `${stats.avgOrderValue.toFixed(2)}`, icon: TrendingUp },
     { label: "Unfulfilled", value: String(stats.unfulfilledCount), icon: Clock },
     { label: "Labels Today", value: String(stats.labelsTodayCount), icon: Truck },
     { label: "In Transit", value: String(stats.inTransitCount), icon: Activity },
+    { label: "Exceptions", value: String(stats.exceptionsCount), icon: AlertTriangle },
+    { label: "Pending Refunds", value: String(stats.pendingRefundsCount), icon: TrendingUp },
   ];
 
-  const toFulfill = recentOrders.filter(o => o.order_status === 'pending_fulfillment').slice(0, 6);
+  // To-fulfill orders fetched server-side with is_training = false
 
   return (
     <div className="space-y-6 text-black dark:text-white">
       {/* Today's Focus: a simple, guided checklist */}
-      <Card className="border-blue-200 dark:border-blue-900/40">
+      <Card className="border-blue-200 dark:border-blue-900/40 bg-neutral-50 dark:bg-neutral-800">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">Today’s Focus</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
-            <FocusRow n={1} label="Orders to Fulfill" value={stats.unfulfilledCount} href="/admin/fulfillment?dataset=real" cta="Start" />
-            <FocusRow n={2} label="Pending Payments" value={stats.pendingPaymentCount} href="/admin/orders?order_status=pending_payment&dataset=real" cta="Review" />
-            <FocusRow n={3} label="Pending Refunds" value={stats.pendingRefundsCount} href="/admin/refunds" cta="Handle" />
-            <FocusRow n={4} label="Shipping Issues" value={stats.exceptionsCount} href="/admin/orders?shipping_status=lost&dataset=real" cta="Resolve" />
-            <FocusRow n={5} label="Price Alerts" value={lowStock.length} href="/admin/products" cta="Review" />
-          </div>
-          <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">Work left to right. Each step opens the right screen and guides you through it.</p>
+          {(() => {
+            const focusItems = [
+              { label: "Orders to Fulfill", value: stats.unfulfilledCount, href: "/admin/fulfillment?dataset=real", cta: "Start" },
+              { label: "Pending Payments", value: stats.pendingPaymentCount, href: "/admin/orders?order_status=pending_payment&dataset=real", cta: "Review" },
+              { label: "Pending Refunds", value: stats.pendingRefundsCount, href: "/admin/refunds", cta: "Handle" },
+              { label: "Shipping Issues", value: stats.exceptionsCount, href: "/admin/orders?shipping_status=lost&dataset=real", cta: "Resolve" },
+            ];
+            const actionable = focusItems.filter((i) => (Number(i.value) || 0) > 0);
+            if (actionable.length === 0) {
+              return (
+                <div className="rounded-md border p-4 bg-white dark:bg-neutral-950 text-sm text-gray-700 dark:text-gray-300">
+                  You’re all caught up. Nothing needs your attention right now.
+                </div>
+              );
+            }
+            return (
+              <>
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
+                  {actionable.map((item, idx) => (
+                    <FocusRow
+                      key={item.label}
+                      n={idx + 1}
+                      label={item.label}
+                      value={item.value}
+                      href={item.href}
+                      cta={item.cta}
+                    />
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">Work left to right. Each step opens the right screen and guides you through it.</p>
+              </>
+            );
+          })()}
         </CardContent>
       </Card>
 
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <div className="flex items-center gap-2">
-          <Button asChild variant="outline" size="sm"><Link href="/admin/refunds">Refunds</Link></Button>
-          <Button asChild variant="outline" size="sm"><Link href="/admin/settings">Settings</Link></Button>
-          <Button asChild size="sm"><Link href="/admin/functions"><Plus className="h-4 w-4 mr-1" /> Create Invoice</Link></Button>
+      {/* Dashboard title and action buttons removed for cleaner layout */}
+
+      {/* FINANCIALS */}
+      <div className="space-y-3">
+        <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Financials</div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <FinancialCard label="Today’s Revenue" value={stats.revenueToday} />
+          <FinancialCard label="Month-to-Date Revenue" value={stats.revenueMonth} />
+          <FinancialCard label="Year-to-Date Revenue" value={stats.revenueYear} />
         </div>
       </div>
 
-      {/* KPI grid */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-6">
-        {kpis.map(({ label, value, icon: Icon }) => (
-          <Card key={label}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xs font-medium text-gray-600 dark:text-gray-400">{label}</CardTitle>
-              <Icon className="h-4 w-4 text-gray-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-xl font-bold tabular-nums">{value}</div>
-              <div className="mt-2 h-2 rounded bg-gray-100 dark:bg-neutral-800 overflow-hidden">
-                <div className="h-full w-2/3 bg-blue-500/30" />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+      {/* OPERATIONS */}
+      <div className="space-y-3">
+        <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Operations</div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-6">
+          {kpis.map(({ label, value, icon: Icon }) => (
+            <Card key={label} className="shadow-sm hover:shadow transition-shadow border border-gray-200/80 dark:border-neutral-800/80 bg-neutral-50 dark:bg-neutral-800">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-xs font-medium text-gray-600 dark:text-gray-400">{label}</CardTitle>
+                <Icon className="h-4 w-4 text-gray-400" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold tabular-nums">{value}</div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* Fulfillment queue */}
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-3 shadow-sm hover:shadow transition-shadow border border-gray-200/80 dark:border-neutral-800/80 bg-neutral-50 dark:bg-neutral-800">
           <CardHeader className="flex items-center justify-between">
             <CardTitle>To Fulfill</CardTitle>
-            <Button asChild variant="outline" size="sm"><Link href="/admin/fulfillment">View all</Link></Button>
+            <div className="flex items-center gap-1">
+              <Button asChild variant="ghost" size="sm" className="h-7 px-2 text-xs">
+                <Link href="/admin/fulfillment?dataset=real">Start</Link>
+              </Button>
+              <Button asChild variant="outline" size="sm" className="h-7 px-2 text-xs">
+                <Link href="/admin/fulfillment">View all</Link>
+              </Button>
+            </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Order</TableHead>
                   <TableHead>Customer</TableHead>
-                  <TableHead>Payment</TableHead>
-                  <TableHead>Shipping</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {toFulfill.map((o) => (
-                  <TableRow key={o.id}>
-                    <TableCell className="font-mono text-xs">#{o.id.substring(0,8)}</TableCell>
-                    <TableCell>{o.customers?.first_name ?? "Guest"} {o.customers?.last_name ?? ""}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className={getStatusClass(o.payment_status)}>{formatStatus(o.payment_status)}</Badge>
-                    </TableCell>
-                    <TableCell>
+                {toFulfill.map((o, idx) => (
+                  <TableRow key={o.id} className={idx % 2 === 0 ? 'bg-white/40 dark:bg-neutral-900/30' : ''}>
+                    <TableCell className="font-mono text-xs whitespace-nowrap">#{o.id.substring(0,8)}</TableCell>
+                    <TableCell className="whitespace-nowrap">{o.customers?.first_name ?? "Guest"} {o.customers?.last_name ?? ""}</TableCell>
+                    <TableCell className="whitespace-nowrap">{new Date(o.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell className="whitespace-nowrap">
                       <Badge variant="secondary" className={getStatusClass(o.shipping_status)}>{formatStatus(o.shipping_status)}</Badge>
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">${(o.total_cents/100).toFixed(2)}</TableCell>
+                    <TableCell className="text-right tabular-nums whitespace-nowrap">${(o.total_cents/100).toFixed(2)}</TableCell>
+                    <TableCell className="text-right whitespace-nowrap">
+                      <Button asChild variant="ghost" size="sm" className="h-7 px-2 text-xs">
+                        <Link href={`/admin/order/${o.id}`}>Open</Link>
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
+                {toFulfill.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-sm text-gray-500">All caught up. Nothing to fulfill.</TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
-
-        {/* Shipping snapshot */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Shipping Snapshot</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2"><Truck className="h-4 w-4" /> Labels Purchased</div>
-              <div className="font-semibold">{stats.labelsTodayCount}</div>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2"><Activity className="h-4 w-4" /> In Transit</div>
-              <div className="font-semibold">{stats.inTransitCount}</div>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2 text-amber-600"><AlertTriangle className="h-4 w-4" /> Exceptions</div>
-              <div className="font-semibold">{stats.exceptionsCount}</div>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2 text-amber-700"><AlertTriangle className="h-4 w-4" /> Pending Refunds</div>
-              <div className="font-semibold">{stats.pendingRefundsCount}</div>
-            </div>
-            <div className="pt-2 flex gap-2">
-              <Button asChild size="sm" className="flex-1"><Link href="/admin/fulfillment">Fulfill Orders</Link></Button>
-              <Button asChild variant="outline" size="sm" className="flex-1"><Link href="/admin/settings/packages">Packages</Link></Button>
-            </div>
           </CardContent>
         </Card>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* Inventory alerts */}
-        <Card>
-          <CardHeader className="flex items-center justify-between">
-            <CardTitle>Low Price Products</CardTitle>
-            <Button asChild variant="outline" size="sm"><Link href="/admin/products">Manage</Link></Button>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {lowStock.map((i) => (
-              <div key={i.slug} className="flex items-center justify-between text-sm">
-                <div>
-                  <div className="font-medium">{i.name}</div>
-                  <div className="text-gray-500 text-xs">Slug: {i.slug}</div>
-                </div>
-                <Badge variant={i.price_cents < 500 ? 'destructive' : 'secondary'}>${(i.price_cents / 100).toFixed(2)}</Badge>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
         {/* Recent activity */}
-        <Card className="lg:col-span-2">
-          <CardHeader className="flex items-center justify-between">
-            <CardTitle>Activity</CardTitle>
-            <Button asChild variant="outline" size="sm"><Link href="/admin/activity">See all</Link></Button>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {activity.map((a, idx) => (
-              <div key={idx} className="flex items-start gap-3 text-sm">
-                <div className="font-mono text-xs text-gray-500 mt-0.5 w-14">{a.ts}</div>
-                <div>{a.text}</div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+        <ActivityCard />
       </div>
 
-      {/* Recent orders (keep) */}
-      <Card>
-        <CardHeader className="flex items-center justify-between">
-          <CardTitle>Recent Orders</CardTitle>
-          <Button asChild variant="outline" size="sm"><Link href="/admin/orders">View all</Link></Button>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Customer</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Payment</TableHead>
-                <TableHead>Order Status</TableHead>
-                <TableHead>Shipping</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {recentOrders.map((order) => (
-                <TableRow key={order.id}>
-                  <TableCell>
-                    <div className="font-medium">
-                      {order.customers?.first_name || "Guest"}{" "}
-                      {order.customers?.last_name || ""}
-                    </div>
-                  </TableCell>
-                  <TableCell>{new Date(order.created_at).toLocaleDateString()}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className={getStatusClass(order.payment_status)}>{formatStatus(order.payment_status)}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className={getStatusClass(order.order_status)}>{formatStatus(order.order_status)}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className={getStatusClass(order.shipping_status)}>{formatStatus(order.shipping_status)}</Badge>
-                  </TableCell>
-                  <TableCell className="text-right">${(order.total_cents / 100).toFixed(2)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      {/* Recent orders */}
+      <RecentOrdersCard />
     </div>
   );
 }

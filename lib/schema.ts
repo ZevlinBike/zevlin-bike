@@ -222,3 +222,43 @@ export interface Notification {
   updated_at: string; // ISO datetime string
   deleted_at?: string | null; // ISO datetime string
 };
+
+export interface Shipment {
+  id: string; // uuid
+  order_id: string; // uuid
+  carrier?: string | null;
+  service?: string | null;
+  tracking_number?: string | null;
+  tracking_url?: string | null;
+  label_url?: string | null;
+  rate_object_id?: string | null;
+  label_object_id?: string | null;
+  price_amount_cents?: number | null;
+  price_currency?: string | null; // default 'USD'
+  status: 'pending' | string; // default 'pending'
+  to_name?: string | null;
+  to_phone?: string | null;
+  to_email?: string | null;
+  to_address1?: string | null;
+  to_address2?: string | null;
+  to_city?: string | null;
+  to_state?: string | null;
+  to_postal_code?: string | null;
+  to_country?: string | null;
+  from_name?: string | null;
+  from_phone?: string | null;
+  from_email?: string | null;
+  from_address1?: string | null;
+  from_address2?: string | null;
+  from_city?: string | null;
+  from_state?: string | null;
+  from_postal_code?: string | null;
+  from_country?: string | null;
+  package_name?: string | null;
+  weight_g: number;
+  length_cm: number; // numeric
+  width_cm: number; // numeric
+  height_cm: number; // numeric
+  created_at?: string | null; // timestamp with time zone
+  updated_at?: string | null; // timestamp with time zone
+};

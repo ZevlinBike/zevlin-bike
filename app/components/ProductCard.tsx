@@ -8,11 +8,11 @@ import { Fragment, useState } from "react";
 import { motion, useAnimation, AnimatePresence } from "framer-motion";
 import { Product } from "@/lib/schema";
 
-const ProductCard = ({ product }: { product: Product }) => {
+const ProductCard = ({ product, isFocused }: { product: Product, isFocused: boolean }) => {
   const addToCart = useCartStore((state) => state.addToCart);
   const [added, setAdded] = useState(false);
   const controls = useAnimation();
-  const [showModal, setShowModal] = useState(false);
+  const [showModal, setShowModal] = useState(isFocused);
 
   const featuredImage = product.product_images?.find(img => img.is_featured)?.url || product.product_images?.[0]?.url || "/images/placeholder.png";
 
@@ -33,7 +33,7 @@ const ProductCard = ({ product }: { product: Product }) => {
   return (
     <Fragment>
       <Card
-        className="overflow-hidden relative bg-white rounded-xl border border-gray-200 shadow-md transition-all duration-300 dark:bg-gray-800 dark:border-gray-700 hover:border-blue-500 hover:shadow-xl group cursor-pointer p-0"
+        className="overflow-hidden relative bg-white rounded-xl border border-gray-200 shadow-md transition-all duration-300 dark:bg-neutral-800 dark:border-gray-700 hover:border-blue-500 hover:shadow-xl group cursor-pointer p-0"
         onClick={handleCardClick}
       >
         <CardContent className="flex flex-col p-4 h-full">
@@ -54,7 +54,7 @@ const ProductCard = ({ product }: { product: Product }) => {
               In Stock
             </Badge>
           ) : (
-            <Badge className="mb-2 text-xs text-gray-500 border bg-gray-500/10 border-gray-500/20 dark:bg-gray-500/20 dark:border-gray-500/30 w-fit">
+            <Badge className="mb-2 text-xs text-gray-500 border bg-neutral-500/10 border-gray-500/20 dark:bg-neutral-500/20 dark:border-gray-500/30 w-fit">
               Out of Stock
             </Badge>
           )}
@@ -70,7 +70,7 @@ const ProductCard = ({ product }: { product: Product }) => {
                 added
                   ? "bg-green-500"
                   : isOutOfStock
-                  ? "bg-gray-400 dark:bg-gray-600 cursor-not-allowed"
+                  ? "bg-neutral-400 dark:bg-neutral-600 cursor-not-allowed"
                   : "bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600"
               }`}
               onClick={handleAddToCart}
@@ -94,7 +94,7 @@ const ProductCard = ({ product }: { product: Product }) => {
             onClick={handleCloseModal}
           >
             <motion.div
-              className="bg-white dark:bg-gray-900 rounded-xl shadow-xl max-w-md w-full p-6 relative z-10"
+              className="bg-white dark:bg-neutral-900 rounded-xl shadow-xl max-w-md w-full p-6 relative z-10"
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.8, opacity: 0 }}
@@ -124,7 +124,7 @@ const ProductCard = ({ product }: { product: Product }) => {
                     In Stock
                   </Badge>
                 ) : (
-                  <Badge className="mb-2 text-xs text-gray-500 border bg-gray-500/10 border-gray-500/20 dark:bg-gray-500/20 dark:border-gray-500/30 w-fit">
+                  <Badge className="mb-2 text-xs text-gray-500 border bg-neutral-500/10 border-gray-500/20 dark:bg-neutral-500/20 dark:border-gray-500/30 w-fit">
                     Out of Stock
                   </Badge>
                 )}
@@ -139,7 +139,7 @@ const ProductCard = ({ product }: { product: Product }) => {
                     added
                       ? "bg-green-500"
                       : isOutOfStock
-                      ? "bg-gray-400 dark:bg-gray-600 cursor-not-allowed"
+                      ? "bg-neutral-400 dark:bg-neutral-600 cursor-not-allowed"
                       : "bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600"
                   }`}
                   onClick={handleAddToCart}

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Order, Customer, LineItem, Product, ShippingDetails } from "@/lib/schema";
+import { Order, Customer, LineItem, Product, ShippingDetails, Shipment } from "@/lib/schema";
 import Logo from "@/components/Logo";
 
 type LineItemWithProduct = LineItem & {
@@ -17,6 +17,7 @@ export type OrderDetails = Order & {
   order_status: string | null;
   shipping_status: string | null;
   shipping_details?: ShippingDetails[];
+  shipments?: Shipment
 };
 
 export function PackingSlip({ order }: { order: OrderDetails }) {

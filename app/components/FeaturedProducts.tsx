@@ -17,7 +17,7 @@ export default function FeaturedProducts({ products }: { products: Product[] }) 
 
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {products.map((p) => (
-            <ProductCard product={p} key={p.id} />
+            <ProductCard product={p} key={p.id} isFocused={false}/>
           ))}
         </div>
       </div>

@@ -8,6 +8,16 @@ export async function getDashboardStats() {
   today.setHours(0, 0, 0, 0);
   const todayIso = today.toISOString();
 
+  // Month and year boundaries
+  const monthStart = new Date(today);
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+  const monthStartIso = monthStart.toISOString();
+
+  const yearStart = new Date(today.getFullYear(), 0, 1);
+  yearStart.setHours(0, 0, 0, 0);
+  const yearStartIso = yearStart.toISOString();
+
   // Revenue and orders today
   const { data: todayOrders, error: todayOrdersError } = await supabase
     .from("orders")
@@ -94,8 +104,38 @@ export async function getDashboardStats() {
     console.error("Error fetching exceptions count:", exceptionsError);
   }
 
+  // Revenue this month (real, paid, not cancelled/refunded)
+  let revenueMonth = 0;
+  try {
+    const { data: monthOrders } = await supabase
+      .from('orders')
+      .select('total_cents, payment_status, order_status, is_training, created_at')
+      .gte('created_at', monthStartIso)
+      .eq('is_training', false);
+    const valid = (monthOrders || []).filter(o => o.payment_status === 'paid' && o.order_status !== 'cancelled' && o.order_status !== 'refunded');
+    revenueMonth = valid.reduce((sum, o) => sum + (o.total_cents || 0), 0) / 100;
+  } catch (e) {
+    console.warn('Failed to compute monthly revenue', e);
+  }
+
+  // Revenue this year (real, paid, not cancelled/refunded)
+  let revenueYear = 0;
+  try {
+    const { data: yearOrders } = await supabase
+      .from('orders')
+      .select('total_cents, payment_status, order_status, is_training, created_at')
+      .gte('created_at', yearStartIso)
+      .eq('is_training', false);
+    const valid = (yearOrders || []).filter(o => o.payment_status === 'paid' && o.order_status !== 'cancelled' && o.order_status !== 'refunded');
+    revenueYear = valid.reduce((sum, o) => sum + (o.total_cents || 0), 0) / 100;
+  } catch (e) {
+    console.warn('Failed to compute yearly revenue', e);
+  }
+
   return {
     revenueToday,
+    revenueMonth,
+    revenueYear,
     ordersToday,
     avgOrderValue,
     unfulfilledCount: unfulfilledCount ?? 0,
@@ -150,6 +190,41 @@ export async function getRecentOrders(): Promise<RecentOrder[]> {
   return normalized;
 }
 
+export type ToFulfillOrder = {
+  id: string;
+  total_cents: number;
+  order_status: string;
+  shipping_status: string;
+  created_at: string;
+  customers: { first_name: string; last_name: string } | null;
+};
+
+export async function getToFulfillOrders(): Promise<ToFulfillOrder[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('orders')
+    .select(
+      'id,total_cents,order_status,shipping_status,created_at,customers(first_name,last_name)'
+    )
+    .eq('order_status', 'pending_fulfillment')
+    .eq('is_training', false)
+    .order('created_at', { ascending: false })
+    .limit(6);
+
+  if (error) {
+    console.error('Error fetching to-fulfill orders:', error);
+    return [];
+  }
+
+  type C = { first_name: string; last_name: string };
+  type Row = Omit<ToFulfillOrder, 'customers'> & { customers: C | C[] | null };
+  const normalized: ToFulfillOrder[] = (data as unknown as Row[]).map((row) => ({
+    ...row,
+    customers: Array.isArray(row.customers) ? row.customers[0] ?? null : row.customers,
+  }));
+  return normalized;
+}
+
 export type LowStockProduct = {
   slug: string;
   name: string;
@@ -173,9 +248,12 @@ export async function getLowStockProducts(): Promise<LowStockProduct[]> {
   return data;
 }
 
+export type ActivityTagKind = 'payment' | 'order' | 'shipping' | 'test' | 'customer';
+export type ActivityTag = { kind: ActivityTagKind; value: string };
 export type Activity = {
   ts: string;
   text: string;
+  tags?: ActivityTag[];
 };
 
 export async function getRecentActivity(): Promise<Activity[]> {
@@ -183,15 +261,15 @@ export async function getRecentActivity(): Promise<Activity[]> {
 
   const { data: orders, error: ordersError } = await supabase
     .from("orders")
-    .select("id, created_at, total_cents, customers(first_name, last_name)")
+    .select("id, created_at, total_cents, is_training, payment_status, order_status, shipping_status, customers(first_name, last_name)")
     .order("created_at", { ascending: false })
-    .limit(5);
+    .limit(20);
 
   const { data: newCustomers, error: customersError } = await supabase
     .from("customers")
     .select("id, created_at, first_name, last_name")
     .order("created_at", { ascending: false })
-    .limit(5);
+    .limit(20);
 
   if (ordersError || customersError) {
     console.error("Error fetching recent activity:", ordersError || customersError);
@@ -202,6 +280,10 @@ export async function getRecentActivity(): Promise<Activity[]> {
     id: string;
     created_at: string;
     total_cents: number;
+    is_training?: boolean | null;
+    payment_status?: string | null;
+    order_status?: string | null;
+    shipping_status?: string | null;
     customers: { first_name: string; last_name: string; } | null;
     type: 'order';
   };
@@ -227,15 +309,25 @@ export async function getRecentActivity(): Promise<Activity[]> {
 
   combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-  const activity: Activity[] = combined.slice(0, 5).map(item => {
-    const ts = new Date(item.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
+  const activity: Activity[] = combined.slice(0, 10).map(item => {
+    const dt = new Date(item.created_at);
+    const timeStr = dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toUpperCase();
+    const dateStr = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const ts = `${dateStr} ${timeStr}`;
     if (item.type === 'order') {
-      const customerName = item.customers ? `${item.customers.first_name} ${item.customers.last_name}` : 'Guest';
-      const total = `${(item.total_cents / 100).toFixed(2)}`;
-      return { ts, text: `New order from ${customerName} (${total})` };
+      const customerName = item.customers ? `${item.customers.first_name} ${item.customers.last_name}`.trim() : 'Guest';
+      const total = (item.total_cents / 100).toFixed(2);
+      const shortId = item.id.substring(0, 8);
+      const tags: ActivityTag[] = [];
+      if (item.is_training) tags.push({ kind: 'test', value: 'test' });
+      if (item.payment_status) tags.push({ kind: 'payment', value: item.payment_status });
+      if (item.order_status) tags.push({ kind: 'order', value: item.order_status });
+      if (item.shipping_status) tags.push({ kind: 'shipping', value: item.shipping_status });
+      return { ts, text: `Order #${shortId} • ${customerName} • $${total}`, tags };
     } else {
-      const customerName = `${item.first_name} ${item.last_name}`;
-      return { ts, text: `${customerName} signed up.` };
+      const customerName = `${item.first_name} ${item.last_name}`.trim();
+      const tags: ActivityTag[] = [{ kind: 'customer', value: 'new' }];
+      return { ts, text: `${customerName} signed up`, tags };
     }
   });
 

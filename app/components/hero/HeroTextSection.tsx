@@ -5,7 +5,7 @@ const headerFont = Anton({ subsets: ["latin"], weight: ["400"] });
 export default function HeroTextSection() {
   const tagline = "Zevlin. Riding without it is just nuts"
   return (
-    <div className="flex-1 flex flex-col items-center md:items-start max-w-4xl px-4 md:px-0 space-y-8">
+    <div className="flex-1 flex flex-col items-center md:items-start max-w-4xl px-4 md:px-0 space-y-8 ">
       <div className="w-full space-y-4">
         <h1
           style={{ ...headerFont.style }}

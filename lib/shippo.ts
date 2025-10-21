@@ -58,6 +58,8 @@ export type PurchaseResult = {
   currency?: string;
   transactionId: string;
   rateObjectId?: string;
+  status?: string;
+  messages?: string[];
 };
 
 export type AddressValidation = {
@@ -173,6 +175,7 @@ export async function purchaseLabel(
     throw new Error("SHIPPO_API_TOKEN is not configured");
   }
   try {
+    console.log(`[shippo.purchaseLabel] Purchasing label for rate ${input.rateId}`);
     const res = await fetch("https://api.goshippo.com/transactions/", {
       method: "POST",
       headers: {
@@ -180,7 +183,8 @@ export async function purchaseLabel(
         Accept: "application/json",
         Authorization: `ShippoToken ${token}`,
       },
-      body: JSON.stringify({ rate: input.rateId, async: false }),
+      // Use PDF instead of PDF_4x6 as some test carriers populate label_url only for 'PDF'.
+      body: JSON.stringify({ rate: input.rateId, async: false, label_file_type: "PDF" }),
     });
     const tx = await res.json();
 
@@ -188,9 +192,13 @@ export async function purchaseLabel(
       const msg = tx?.messages?.[0]?.text || tx?.detail || tx?.message || "Label purchase not successful";
       throw new Error(msg);
     }
-
+    const msg0 = Array.isArray(tx?.messages) ? (tx.messages as unknown[]).map((m: unknown) => (m as Record<string, unknown>)?.text || (m as Record<string, unknown>)?.message).filter(Boolean).join(" | ") : '';
+    console.log(`[shippo.purchaseLabel] success tx=${tx?.object_id} status=${tx?.status} provider=${tx?.rate?.provider || ''} label_url?=${!!tx?.label_url} download?=${!!tx?.label_download} tracking=${tx?.tracking_number || ''} messages=${msg0}`);
+    const messages: string[] = Array.isArray(tx?.messages)
+      ? (tx.messages as unknown[]).map((m: unknown) => ((m as Record<string, unknown>)?.text as string | undefined) || ((m as Record<string, unknown>)?.message as string | undefined)).filter(Boolean) as string[]
+      : [];
     return {
-      labelUrl: tx?.label_url,
+      labelUrl: extractLabelUrl(tx) || tx?.label_url,
       trackingNumber: tx?.tracking_number,
       trackingUrl: tx?.tracking_url_provider ?? null,
       carrier: tx?.rate?.provider || tx?.carrier || "",
@@ -199,10 +207,59 @@ export async function purchaseLabel(
       currency: tx?.rate?.currency,
       transactionId: tx?.object_id,
       rateObjectId: tx?.rate?.object_id,
+      status: tx?.status,
+      messages,
     } as PurchaseResult;
   } catch (err) {
     throw normalizeError(err, "Failed to purchase shipping label");
   }
+}
+
+export async function getLabelUrl(transactionId: string, opts?: { token?: string }): Promise<string | null> {
+  const primaryToken = opts?.token || env.SHIPPO_API_TOKEN || env.SHIPPO_TEST_API_TOKEN;
+  const secondaryToken = (() => {
+    if (opts?.token) return undefined; // caller forced a token, do not retry
+    const a = env.SHIPPO_API_TOKEN;
+    const b = env.SHIPPO_TEST_API_TOKEN;
+    if (!a && !b) return undefined;
+    // Choose alternate token from whichever was used as primary
+    const used = primaryToken;
+    if (used && a && b) return used === a ? b : a;
+    return undefined;
+  })();
+
+  async function fetchWith(token: string, tag: string): Promise<{ ok: boolean; url: string | null; status: number; err?: unknown }> {
+    try {
+      const res = await fetch(`https://api.goshippo.com/transactions/${transactionId}/`, {
+        headers: { Accept: "application/json", Authorization: `ShippoToken ${token}` },
+        cache: "no-store",
+      });
+      const tx = await res.json();
+      if (!res.ok) {
+        console.log(`[shippo.getLabelUrl] tx=${transactionId} ${tag} status=${res.status} label_url?=false`);
+        return { ok: false, url: null, status: res.status, err: tx };
+      }
+      const url = extractLabelUrl(tx) || (tx?.label_url as string | undefined) || null;
+      console.log(`[shippo.getLabelUrl] tx=${transactionId} ${tag} status=${res.status} label_url?=${!!url} keys=${Object.keys(tx || {}).join(',')}`);
+      return { ok: true, url, status: res.status };
+    } catch (e) {
+      return { ok: false, url: null, status: 0, err: e };
+    }
+  }
+
+  if (!primaryToken) {
+    throw new Error("SHIPPO_API_TOKEN is not configured");
+  }
+
+  const first = await fetchWith(primaryToken, 'primary');
+  if (first.ok) return first.url;
+
+  if (secondaryToken) {
+    const second = await fetchWith(secondaryToken, 'secondary');
+    if (second.ok) return second.url;
+  }
+
+  throw normalizeError(first.err || new Error("Shippo transaction fetch failed"), "Failed to retrieve label URL");
 }
 
 export async function voidLabel(input: VoidLabelInput, opts?: { token?: string }): Promise<{ status: string }>
@@ -326,4 +383,13 @@ function differsFromInput(candidate: Partial<Address>, input: Address) {
     normalizeStr(candidate.postal_code) !== normalizeStr(input.postal_code) ||
     normalizeStr(candidate.country) !== normalizeStr(input.country)
   );
+}
+export function extractLabelUrl(tx: unknown): string | null {
+  if (!tx || typeof tx !== 'object') return null;
+  const obj = tx as Record<string, unknown>;
+  const direct = obj.label_url as string | undefined;
+  const download = obj.label_download as Record<string, unknown> | undefined;
+  const downloadHref = download?.href as string | undefined;
+  const alt = obj.label_pdf_url as string | undefined; // just in case
+  return direct || downloadHref || alt || null;
 }

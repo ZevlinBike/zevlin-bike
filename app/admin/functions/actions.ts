@@ -12,10 +12,30 @@ function isNextRedirectError(e: unknown): e is { digest: string } {
 import Stripe from "stripe";
 import { createServiceClient } from "@/lib/supabase/service";
 
+// Server-side admin check; do not rely solely on middleware/UI
+async function requireAdmin() {
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return { ok: false as const, supabase };
+
+  const { data: customer } = await supabase
+    .from("customers")
+    .select("id")
+    .eq("auth_user_id", auth.user.id)
+    .maybeSingle();
+  if (!customer) return { ok: false as const, supabase };
+
+  const { data: roles } = await supabase.rpc("get_user_roles", {
+    user_id: customer.id,
+  });
+  return { ok: !!(roles && Array.isArray(roles) && roles.includes("admin")), supabase };
+}
+
 // Create a pending order that will be paid later by the customer.
 // Expects minimal inputs: customer email and total amount (USD dollars).
 export async function createPendingOrder(formData: FormData) {
-  const supabase = await createClient();
+  const { ok, supabase } = await requireAdmin();
+  if (!ok) return redirect("/");
 
   try {
     const email = (formData.get("email") as string | null)?.trim();
@@ -111,7 +131,8 @@ export async function createPendingOrder(formData: FormData) {
 
 // Create an invoice with optional itemization and a PaymentIntent; return share link via redirect.
 export async function createInvoice(formData: FormData) {
-  const supabase = await createClient();
+  const { ok, supabase } = await requireAdmin();
+  if (!ok) return redirect("/");
   const service = process.env.SUPABASE_SERVICE_ROLE_KEY ? createServiceClient() : null;
   const db = service ?? supabase;
 

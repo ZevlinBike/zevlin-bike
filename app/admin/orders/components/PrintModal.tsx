@@ -15,8 +15,10 @@ import { PackingSlip, OrderDetails } from "./PackingSlip";
 import { toast } from "sonner";
 import { Printer, X, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 
-export function PrintModal({ orderId, trigger }: { orderId: string; trigger?: React.ReactNode }) {
-  const [open, setOpen] = useState(false);
+export function PrintModal({ orderId, trigger, open: controlledOpen, onOpenChange }: { orderId: string; trigger?: React.ReactNode; open?: boolean; onOpenChange?: (v: boolean) => void }) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const setOpen = onOpenChange ?? setUncontrolledOpen;
   const [orderDetails, setOrderDetails] = useState<OrderDetails | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const componentRef = useRef<HTMLDivElement>(null);
@@ -55,13 +57,11 @@ export function PrintModal({ orderId, trigger }: { orderId: string; trigger?: Re
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger ?? (
-          <Button variant="outline" size="icon" title="Print packing slip">
-            <Printer className="h-4 w-4" />
-          </Button>
-        )}
-      </DialogTrigger>
+      {trigger && (
+        <DialogTrigger asChild>
+          {trigger}
+        </DialogTrigger>
+      )}
 
       {/* Full-bleed on mobile, comfy container on desktop */}
       <DialogContent

@@ -11,7 +11,10 @@ export default async function ProductsPage({
 }) {
   const sp = ((await searchParams) || {}) as Record<string, string | string[] | undefined>;
   const categorySlug = sp.category as string | undefined;
+  const focusSlug = sp.focus as string | undefined;
   const products = await getProducts(categorySlug);
+
+  console.log(focusSlug)
 
   // Load active categories for filters/footer coherence
   const supabase = await createClient();
@@ -27,6 +30,7 @@ export default async function ProductsPage({
           products={products}
           activeCategorySlug={categorySlug}
           categories={(categories || []).map(c => ({ name: c.name, slug: c.slug }))}
+          focusProduct={focusSlug}
         />
         <Newsletter />
       </div>

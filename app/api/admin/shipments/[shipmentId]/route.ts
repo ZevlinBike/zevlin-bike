@@ -35,7 +35,7 @@ export async function PATCH(
   const isAdmin = await requireAdmin(supabase);
   if (!isAdmin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { shipmentId } = await ctx.params || {};
+  const { shipmentId } = await ctx.params;
   if (!shipmentId) return NextResponse.json({ error: 'Missing shipmentId' }, { status: 400 });
 
   let body: z.infer<typeof PatchSchema>;
@@ -127,7 +127,7 @@ export async function DELETE(
   const isAdmin = await requireAdmin(supabase);
   if (!isAdmin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { shipmentId } = await ctx.params || {};
+  const { shipmentId } = await ctx.params;
   if (!shipmentId) return NextResponse.json({ error: 'Missing shipmentId' }, { status: 400 });
 
   try {

@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { createServiceClient } from "@/lib/supabase/service";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import MainLayout from "@/app/components/layouts/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -36,12 +35,19 @@ type OrderDetails = Order & {
   shipments: ShipmentLite[];
 };
 
-async function getOrderDetails(identifier: string): Promise<OrderDetails> {
+async function getOrderDetailsForUser(orderId: string): Promise<OrderDetails> {
   const supabase = await createClient();
-  const service = process.env.SUPABASE_SERVICE_ROLE_KEY ? createServiceClient() : null;
-  const db = service ?? supabase;
-  // Support lookup by either internal order id or Stripe PaymentIntent id
-  const { data, error } = await db
+
+  // Require authentication for viewing order details
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/auth/login");
+  }
+
+  // Fetch the order only if it belongs to the authenticated user
+  const { data, error } = await supabase
     .from("orders")
     .select(
       `
@@ -55,11 +61,11 @@ async function getOrderDetails(identifier: string): Promise<OrderDetails> {
       shipments (id, status, carrier, service, tracking_number, tracking_url, label_url, created_at)
     `
     )
-    .or(`id.eq.${identifier},stripe_payment_intent_id.eq.${identifier}`)
+    .eq("id", orderId)
+    .eq("customers.auth_user_id", user.id)
     .maybeSingle();
 
   if (error || !data) {
-    console.error("Error fetching order:", error);
     notFound();
   }
 
@@ -68,7 +74,7 @@ async function getOrderDetails(identifier: string): Promise<OrderDetails> {
 
 export default async function Page(ctx: { params: Promise<{ orderId: string }> }) {
   const { orderId } = await ctx.params;
-  const order = await getOrderDetails(orderId);
+  const order = await getOrderDetailsForUser(orderId);
   const customer = order.customers;
   const shipping = order.shipping_details?.[0] || null;
   

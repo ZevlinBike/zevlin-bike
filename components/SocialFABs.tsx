@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
+import { motion } from "framer-motion";
 
 type SocialLink = {
   name: "Instagram" | "Facebook";
@@ -41,6 +42,28 @@ export default function SocialFABs() {
   const instagramUrl = process.env.NEXT_PUBLIC_INSTAGRAM_URL || "";
   const facebookUrl = process.env.NEXT_PUBLIC_FACEBOOK_URL || "";
 
+  // Visible near top (<10%) or near bottom (>90%) of the page
+  const [isVisible, setIsVisible] = useState(true);
+
+  useEffect(() => {
+    const calcAndSet = () => {
+      const el = document.documentElement;
+      const max = Math.max(1, el.scrollHeight - el.clientHeight);
+      const pct = (el.scrollTop / max) * 100;
+      const hiddenMid = pct >= 10 && pct <= 90;
+      setIsVisible(!hiddenMid);
+    };
+
+    // Run once on mount
+    calcAndSet();
+    window.addEventListener("scroll", calcAndSet, { passive: true });
+    window.addEventListener("resize", calcAndSet);
+    return () => {
+      window.removeEventListener("scroll", calcAndSet as EventListener);
+      window.removeEventListener("resize", calcAndSet as EventListener);
+    };
+  }, []);
+
   const links: SocialLink[] = useMemo(() => {
     const arr: SocialLink[] = [];
     if (instagramUrl) {
@@ -67,10 +90,18 @@ export default function SocialFABs() {
   if (links.length === 0) return null;
 
   return (
-    <div
+    <motion.div
+      initial={{ x: 100, opacity: 0 }}
+      animate={isVisible ? { x: 0, opacity: 1, scale: 1 } : { opacity: 0, scale: 0.95 }}
+      transition={
+        isVisible
+          ? { type: "spring", stiffness: 320, damping: 22, bounce: 0.3 }
+          : { duration: 0.2, ease: "easeOut" }
+      }
       className={[
-        "fixed right-0 md:scale-100 top-1/2  sm:bottom-6 z-50",
+        "fixed right-0 md:scale-100 top-1/2 sm:bottom-6 z-50",
         "transition-all duration-300",
+        isVisible ? "pointer-events-auto" : "pointer-events-none",
       ].join(" ")}
     >
       <div className="group relative">
@@ -107,6 +138,6 @@ export default function SocialFABs() {
 
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

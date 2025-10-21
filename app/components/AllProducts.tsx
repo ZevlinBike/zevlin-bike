@@ -7,14 +7,18 @@ export default function AllProducts({
   products,
   activeCategorySlug,
   categories,
+  focusProduct
 }: {
   products: Product[];
   activeCategorySlug?: string;
   categories: { name: string; slug: string }[];
+  focusProduct?: string;
 }) {
   const displayTitle = activeCategorySlug
     ? categories.find(c => c.slug === activeCategorySlug)?.name || "Products"
     : "All Products";
+
+    console.log({focusProduct})
 
   return (
     <section id="products" className="py-20">
@@ -30,7 +34,7 @@ export default function AllProducts({
 
         <div className="mb-10 flex flex-wrap items-center justify-center gap-2">
           {[{ name: "All", slug: "" }, ...categories].map((cat) => {
-            const isActive = (cat.slug || "") === (activeCategorySlug || "");
+            const isActive = ((cat.slug || "") === (activeCategorySlug || ""));
             return (
               <Link
                 key={cat.slug || "all"}
@@ -50,7 +54,7 @@ export default function AllProducts({
 
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {products.map((p) => (
-            <ProductCard product={p} key={p.id} />
+            <ProductCard isFocused={p.slug === focusProduct} product={p} key={p.id} />
           ))}
         </div>
 

@@ -183,7 +183,11 @@ export async function POST(req: NextRequest) {
 
       const ref = req.headers.get('referer') || '';
       const isTesting = ref.includes('/admin/testing');
-      const token = isTesting ? (process.env.SHIPPO_TEST_API_TOKEN || env.SHIPPO_TEST_API_TOKEN || env.SHIPPO_API_TOKEN) : env.SHIPPO_API_TOKEN;
+      const token = (
+        isTesting
+          ? (process.env.SHIPPO_TEST_API_TOKEN || env.SHIPPO_TEST_API_TOKEN)
+          : (process.env.SHIPPO_API_TOKEN || env.SHIPPO_API_TOKEN)
+      ) || process.env.SHIPPO_API_TOKEN || env.SHIPPO_API_TOKEN || process.env.SHIPPO_TEST_API_TOKEN || env.SHIPPO_TEST_API_TOKEN;
       const rates: RateOption[] = await getRates({ to, from: ORIGIN, parcel }, { token });
       return NextResponse.json({ rates, totalWeightG });
     }

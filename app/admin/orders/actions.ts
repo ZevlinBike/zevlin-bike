@@ -83,7 +83,8 @@ export async function getOrderById(orderId: string) {
       *,
       customers(*),
       line_items(*, products(name)),
-      shipping_details(*)
+      shipping_details(*),
+      shipments(*) 
     `)
     .eq("id", orderId)
     .single();

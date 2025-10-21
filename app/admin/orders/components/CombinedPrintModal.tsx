@@ -1,6 +1,7 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useReactToPrint } from "react-to-print";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,14 +24,21 @@ type Props = {
   orderId: string;
   labelUrl: string; // Source label URL (Shippo)
   trigger?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (v: boolean) => void;
 };
 
-export function CombinedPrintModal({ orderId, labelUrl, trigger }: Props) {
-  const [open, setOpen] = useState(false);
+export function CombinedPrintModal({ orderId, labelUrl, trigger, open: controlledOpen, onOpenChange }: Props) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const setOpen = onOpenChange ?? setUncontrolledOpen;
   const [order, setOrder] = useState<OrderDetails | null>(null);
   const [loading, setLoading] = useState(false);
   const [rendering, setRendering] = useState(false);
   const [proxyUrl, setProxyUrl] = useState<string | null>(null);
+  const [labelKind, setLabelKind] = useState<"pdf" | "image" | "unknown">("unknown");
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [pdfBytes, setPdfBytes] = useState<Uint8Array | null>(null);
 
   const contentRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -41,11 +49,15 @@ export function CombinedPrintModal({ orderId, labelUrl, trigger }: Props) {
   });
 
   // Prepare proxy URL for CORS-safe fetch
-  const computedProxyUrl = useMemo(() => {
-    const u = new URL("/api/shipping/label-proxy", window.location.origin);
-    u.searchParams.set("url", labelUrl);
-    return u.toString();
-  }, [labelUrl]);
+  // Compute proxy URL only on client after mount to avoid SSR window usage
+  useEffect(() => {
+    if (!open) return;
+    try {
+      const u = new URL("/api/shipping/label-proxy", window.location.origin);
+      u.searchParams.set("url", labelUrl);
+      setProxyUrl(u.toString());
+    } catch {}
+  }, [open, labelUrl]);
 
   useEffect(() => {
     if (!open) return;
@@ -58,19 +70,53 @@ export function CombinedPrintModal({ orderId, labelUrl, trigger }: Props) {
       .finally(() => setLoading(false));
   }, [open, orderId]);
 
-  // Render label PDF first page to canvas via pdf.js
-  useEffect(() => {
-    if (!open) return;
-    setProxyUrl(computedProxyUrl);
-  }, [open, computedProxyUrl]);
-
   useEffect(() => {
     if (!open || !proxyUrl) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        setRendering(true);
+        const res = await fetch(proxyUrl, { cache: "no-store" });
+        if (!res.ok) throw new Error(`Proxy ${res.status}`);
+        const ct = (res.headers.get("content-type") || "").toLowerCase();
+        const buf = await res.arrayBuffer();
+        if (cancelled) return;
+        const bytes = new Uint8Array(buf);
+        const isPdf = bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46; // %PDF
+        const isPng = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
+        const isJpg = bytes[0] === 0xff && bytes[1] === 0xd8;
+        if (isPdf || ct.includes("pdf")) {
+          setLabelKind("pdf");
+          setPdfBytes(bytes);
+          if (blobUrl) { URL.revokeObjectURL(blobUrl); setBlobUrl(null); }
+        } else if (isPng || isJpg || ct.startsWith("image/")) {
+          setLabelKind("image");
+          const url = URL.createObjectURL(new Blob([bytes]));
+          if (blobUrl) URL.revokeObjectURL(blobUrl);
+          setBlobUrl(url);
+          setPdfBytes(null);
+        } else {
+          setLabelKind("unknown");
+          setPdfBytes(null);
+          if (blobUrl) { URL.revokeObjectURL(blobUrl); setBlobUrl(null); }
+        }
+      } catch (e) {
+        console.error(e);
+        setLabelKind("unknown");
+      } finally {
+        if (!cancelled) setRendering(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open, proxyUrl, blobUrl]);
+
+  useEffect(() => {
+    if (!open || labelKind !== "pdf" || !pdfBytes) return;
     let cancelled = false;
     const run = async () => {
       try {
         setRendering(true);
-        const loadingTask = pdfjsLib.getDocument({ url: proxyUrl, withCredentials: false });
+        const loadingTask = pdfjsLib.getDocument({ data: pdfBytes });
         const pdf = await loadingTask.promise;
         const page = await pdf.getPage(1);
         const viewport = page.getViewport({ scale: 2 });
@@ -86,6 +132,7 @@ export function CombinedPrintModal({ orderId, labelUrl, trigger }: Props) {
       } catch (e) {
         console.error(e);
         toast.error("Failed to render label for printing");
+        setLabelKind("unknown");
       } finally {
         if (!cancelled) setRendering(false);
       }
@@ -94,20 +141,23 @@ export function CombinedPrintModal({ orderId, labelUrl, trigger }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [open, proxyUrl]);
+  }, [open, pdfBytes, labelKind]);
 
   const ready = !!order && !loading && !rendering;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger ?? (
+      {trigger && (
+        <DialogTrigger asChild>
+          {trigger}
+        </DialogTrigger>
+      )}
+        {!trigger && controlledOpen === undefined && (
           <Button size="sm" variant="default" className="gap-2">
             <Printer className="h-4 w-4" />
             Print Both
           </Button>
         )}
-      </DialogTrigger>
       <DialogContent className="w-screen h-[100dvh] p-0 sm:w-[92vw] sm:max-w-4xl sm:h-[88vh] overflow-hidden">
         <div className="sticky top-0 z-10 flex items-center justify-between h-12 px-3 border-b bg-white/95 dark:bg-black/90">
           <button
@@ -138,7 +188,19 @@ export function CombinedPrintModal({ orderId, labelUrl, trigger }: Props) {
                   <div className="p-4 print:p-0">
                     <div className="text-sm font-medium mb-2 print:hidden">Shipping Label</div>
                     <div style={{ breakAfter: "page" }}>
-                      <canvas ref={canvasRef} className="w-full h-auto bg-white" />
+                      {labelKind === "pdf" && (
+                        <canvas ref={canvasRef} className="w-full h-auto bg-white" />
+                      )}
+                      {labelKind === "image" && blobUrl && (
+                        <img src={blobUrl} alt="Shipping Label" className="w-full h-auto bg-white" />
+                      )}
+                      {labelKind === "unknown" && (
+                        <div className="p-4 text-sm text-gray-600 print:hidden">
+                          Unable to preview label. You can{' '}
+                          <a className="underline" href={labelUrl} target="_blank" rel="noreferrer">open it in a new tab</a>{' '}
+                          to print.
+                        </div>
+                      )}
                     </div>
                     {rendering && (
                       <p className="mt-2 text-xs text-gray-500 print:hidden">Rendering label…</p>

@@ -36,6 +36,7 @@ export async function POST(req: NextRequest) {
   let body: z.infer<typeof BodySchema>;
   try {
     body = BodySchema.parse(await req.json());
+    console.log(`[labels] START purchase for order`, body?.orderId, `rate`, body?.rateObjectId);
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
@@ -196,8 +197,80 @@ export async function POST(req: NextRequest) {
     // Create label via Shippo
     const ref = req.headers.get('referer') || '';
     const isTesting = ref.includes('/admin/testing');
-    const token = isTesting ? (process.env.SHIPPO_TEST_API_TOKEN || env.SHIPPO_TEST_API_TOKEN || env.SHIPPO_API_TOKEN) : env.SHIPPO_API_TOKEN;
+    const token = (
+      isTesting
+        ? (process.env.SHIPPO_TEST_API_TOKEN || env.SHIPPO_TEST_API_TOKEN)
+        : (process.env.SHIPPO_API_TOKEN || env.SHIPPO_API_TOKEN)
+    ) || process.env.SHIPPO_API_TOKEN || env.SHIPPO_API_TOKEN || process.env.SHIPPO_TEST_API_TOKEN || env.SHIPPO_TEST_API_TOKEN;
+    const tokenType = (token === (process.env.SHIPPO_TEST_API_TOKEN || env.SHIPPO_TEST_API_TOKEN)) ? 'test' : 'prod';
+    console.log(`[labels] Using Shippo token type=${tokenType}`);
     const label = await purchaseLabel({ rateId: body.rateObjectId }, { token });
+    console.log(`[labels] purchase result tx=${label.transactionId} status=${label.status} label?=${!!label.labelUrl} track=${label.trackingNumber || ''} messages=${(label.messages || []).join(' | ')}`);
+
+    // Harden: if Shippo hasn't populated label_url yet, poll the transaction for longer
+    let finalLabelUrl = label.labelUrl;
+    let finalTrackingNumber = label.trackingNumber;
+    let finalTrackingUrl = label.trackingUrl;
+    // First, try a direct transaction fetch using library helper which can retry across tokens
+    if (!finalLabelUrl && label.transactionId) {
+      try {
+        console.log(`[labels] resolving label_url via getLabelUrl(tx=${label.transactionId})`);
+        const { getLabelUrl } = await import("@/lib/shippo");
+        const url = await getLabelUrl(label.transactionId).catch(() => null);
+        console.log(`[labels] getLabelUrl returned?`, !!url);
+        if (url) finalLabelUrl = url;
+      } catch {}
+    }
+    if (!finalLabelUrl && label.transactionId) {
+      try {
+        const maxAttempts = 10; // shorten total wait (~5s)
+        for (let i = 0; i < maxAttempts; i++) {
+          await new Promise((r) => setTimeout(r, 500));
+          const txRes = await fetch(`https://api.goshippo.com/transactions/${label.transactionId}/`, {
+            headers: { Accept: "application/json", Authorization: `ShippoToken ${token}` },
+            cache: "no-store",
+          });
+          const tx = await txRes.json();
+          try { console.log(`[labels] poll tx keys:`, Object.keys(tx || {})); } catch {}
+          if (txRes.ok) {
+            const maybeUrl = (tx?.label_url as string | undefined) || (tx?.label_download?.href as string | undefined) || null;
+            finalLabelUrl = maybeUrl || finalLabelUrl;
+            finalTrackingNumber = (tx?.tracking_number as string | undefined) || finalTrackingNumber;
+            finalTrackingUrl = (tx?.tracking_url_provider as string | undefined) || finalTrackingUrl;
+            console.log(`[labels] poll ${i+1}/${maxAttempts} status=${txRes.status} label?=${!!finalLabelUrl}`);
+            if (finalLabelUrl) break;
+          } else if (txRes.status === 401 || txRes.status === 403 || txRes.status === 404) {
+            // Try alternate token once if available (prod/test mismatch)
+            const alt = (token === (process.env.SHIPPO_API_TOKEN || env.SHIPPO_API_TOKEN))
+              ? (process.env.SHIPPO_TEST_API_TOKEN || env.SHIPPO_TEST_API_TOKEN)
+              : (process.env.SHIPPO_API_TOKEN || env.SHIPPO_API_TOKEN);
+            if (alt) {
+              const altRes = await fetch(`https://api.goshippo.com/transactions/${label.transactionId}/`, {
+                headers: { Accept: "application/json", Authorization: `ShippoToken ${alt}` },
+                cache: "no-store",
+              });
+              const altTx = await altRes.json().catch(() => ({} as unknown as Record<string, unknown>));
+              try { console.log(`[labels] poll alt tx keys:`, Object.keys(altTx || {})); } catch {}
+              if (altRes.ok) {
+                const maybeUrl = (altTx?.label_url as string | undefined) || (altTx?.label_download?.href as string | undefined) || null;
+                finalLabelUrl = maybeUrl || finalLabelUrl;
+                finalTrackingNumber = (altTx?.tracking_number as string | undefined) || finalTrackingNumber;
+                finalTrackingUrl = (altTx?.tracking_url_provider as string | undefined) || finalTrackingUrl;
+                console.log(`[labels] poll alt ${i+1}/${maxAttempts} status=${altRes.status} label?=${!!finalLabelUrl}`);
+                if (finalLabelUrl) break;
+              }
+            }
+          }
+        }
+      } catch {}
+    }
+
+    // If still no URL, and Shippo returned blocking messages, surface a clear error and do not insert a shipment
+    if (!finalLabelUrl && (label.messages?.length || 0) > 0) {
+      const msg = label.messages!.join(' | ');
+      console.warn(`[labels] blocking messages from Shippo, aborting insert: ${msg}`);
+      return NextResponse.json({ error: msg, shippoMessages: label.messages, transactionId: label.transactionId }, { status: 402 });
+    }
 
     // Persist shipment
     const insertPayload = {
@@ -239,11 +312,79 @@ export async function POST(req: NextRequest) {
 
     const { data: shipment, error: insertErr } = await supabase
       .from("shipments")
-      .insert(insertPayload)
+      .insert({
+        ...insertPayload,
+        label_url: finalLabelUrl ?? insertPayload.label_url,
+        tracking_number: finalTrackingNumber ?? insertPayload.tracking_number,
+        tracking_url: finalTrackingUrl ?? insertPayload.tracking_url,
+      })
       .select("*")
       .single();
+    console.log(`[labels] insert shipment label?=${!!finalLabelUrl} txId=${label.transactionId} rowId=${shipment?.id || 'unknown'} insertErr?=${!!insertErr}`);
     if (insertErr) {
       return NextResponse.json({ error: "Failed to persist shipment" }, { status: 500 });
+    }
+
+    // Final server-side safety: if label_url still missing but Shippo has a transaction id, try one more fetch and persist.
+    if (!shipment.label_url && shipment.label_object_id) {
+      try {
+        const txRes = await fetch(`https://api.goshippo.com/transactions/${shipment.label_object_id}/`, {
+          headers: { Accept: "application/json", Authorization: `ShippoToken ${token}` },
+          cache: "no-store",
+        });
+        const tx = await txRes.json();
+        if (txRes.ok) {
+          const url = (tx?.label_url as string | undefined) || (tx?.label_download?.href as string | undefined) || null;
+          const tn = (tx?.tracking_number as string | undefined) || null;
+          const tu = (tx?.tracking_url_provider as string | undefined) || null;
+          if (url || tn || tu) {
+            const { error: upErr } = await supabase
+              .from("shipments")
+              .update({
+                label_url: url ?? shipment.label_url,
+                tracking_number: tn ?? shipment.tracking_number,
+                tracking_url: tu ?? shipment.tracking_url,
+              })
+              .eq("id", shipment.id);
+            if (upErr) console.error(`[labels] post-insert refresh update failed:`, upErr);
+            console.log(`[labels] post-insert refresh status=${txRes.status} url?=${!!url}`);
+            if (url) finalLabelUrl = url;
+            if (tn) finalTrackingNumber = tn;
+            if (tu) finalTrackingUrl = tu;
+          }
+        } else if (txRes.status === 401 || txRes.status === 403 || txRes.status === 404) {
+          const alt = (token === (process.env.SHIPPO_API_TOKEN || env.SHIPPO_API_TOKEN))
+            ? (process.env.SHIPPO_TEST_API_TOKEN || env.SHIPPO_TEST_API_TOKEN)
+            : (process.env.SHIPPO_API_TOKEN || env.SHIPPO_API_TOKEN);
+          if (alt) {
+            const altRes = await fetch(`https://api.goshippo.com/transactions/${shipment.label_object_id}/`, {
+              headers: { Accept: "application/json", Authorization: `ShippoToken ${alt}` },
+              cache: "no-store",
+            });
+            const altTx = await altRes.json().catch(() => ({} as unknown as Record<string, unknown>));
+            if (altRes.ok) {
+              const url = (altTx?.label_url as string | undefined) || (altTx?.label_download?.href as string | undefined) || null;
+              const tn = (altTx?.tracking_number as string | undefined) || null;
+              const tu = (altTx?.tracking_url_provider as string | undefined) || null;
+              if (url || tn || tu) {
+                const { error: upAltErr } = await supabase
+                  .from("shipments")
+                  .update({
+                    label_url: url ?? shipment.label_url,
+                    tracking_number: tn ?? shipment.tracking_number,
+                    tracking_url: tu ?? shipment.tracking_url,
+                  })
+                  .eq("id", shipment.id);
+                if (upAltErr) console.error(`[labels] post-insert alt refresh update failed:`, upAltErr);
+                console.log(`[labels] post-insert alt refresh status=${altRes.status} url?=${!!url}`);
+                if (url) finalLabelUrl = url;
+                if (tn) finalTrackingNumber = tn;
+                if (tu) finalTrackingUrl = tu;
+              }
+            }
+          }
+        }
+      } catch {}
     }
 
     // Update order statuses
@@ -263,11 +404,11 @@ export async function POST(req: NextRequest) {
     // Send shipping confirmation email
     if (to.email) {
       try {
-        const emailHtml = `
+    const emailHtml = `
           <h1>Your Order has Shipped!</h1>
           <p>Your order #${body.orderId} is on its way.</p>
-          <p>You can track your shipment here: <a href="${label.trackingUrl}">${label.trackingUrl}</a></p>
-          <p>Tracking Number: ${label.trackingNumber}</p>
+          ${finalTrackingUrl || label.trackingUrl ? `<p>You can track your shipment here: <a href="${finalTrackingUrl || label.trackingUrl}">${finalTrackingUrl || label.trackingUrl}</a></p>` : ''}
+          ${finalTrackingNumber || label.trackingNumber ? `<p>Tracking Number: ${finalTrackingNumber || label.trackingNumber}</p>` : ''}
         `;
         await sendTransactionalEmail(
           { email: to.email, name: to.name || '' },
@@ -290,10 +431,12 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    console.log(`[labels] DONE order=${body.orderId} tx=${label.transactionId} label?=${!!finalLabelUrl}`);
     return NextResponse.json({
-      labelUrl: label.labelUrl,
-      trackingNumber: label.trackingNumber,
-      trackingUrl: label.trackingUrl,
+      shipmentId: shipment.id,
+      labelUrl: finalLabelUrl ?? label.labelUrl ?? null,
+      trackingNumber: finalTrackingNumber ?? label.trackingNumber ?? null,
+      trackingUrl: finalTrackingUrl ?? label.trackingUrl ?? null,
       carrier: label.carrier,
       service: label.service,
     });

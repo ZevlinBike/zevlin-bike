@@ -55,4 +55,3 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ customerId
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
-

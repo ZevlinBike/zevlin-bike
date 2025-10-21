@@ -4,12 +4,12 @@ import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import type { Address } from "@/lib/shippo";
+import { getLabelUrl } from "@/lib/shippo";
 import { sendTransactionalEmail } from "@/lib/brevo";
 
 // NB: createClient() is async in your setup, so we use Awaited<ReturnType<...>>
 type ServerSupabase = Awaited<ReturnType<typeof createClient>>;
 
-// Self-contained auth check
 async function requireAdmin(supabase: ServerSupabase) {
   const {
     data: { user },
@@ -41,7 +41,7 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { orderId } = await ctx.params || {};
+  const { orderId } = await ctx.params;
   if (!orderId) {
     return NextResponse.json({ error: "Missing orderId" }, { status: 400 });
   }
@@ -55,7 +55,37 @@ export async function GET(
 
     if (error) throw error;
 
-    return NextResponse.json({ shipments });
+    // For shipments with a label_object_id, fetch the latest URL, as it expires.
+    const refreshedShipments = await Promise.all(
+      shipments.map(async (shipment) => {
+        if (shipment.label_object_id) {
+          try {
+            console.log(`[admin.shipments] refreshing label for shipment=${shipment.id} tx=${shipment.label_object_id}`);
+            const latestLabelUrl = await getLabelUrl(shipment.label_object_id);
+            // If DB label_url is missing but Shippo has one, persist it for reliability
+            if (latestLabelUrl && !shipment.label_url) {
+              try {
+                await supabase
+                  .from("shipments")
+                  .update({ label_url: latestLabelUrl })
+                  .eq("id", shipment.id);
+                console.log(`[admin.shipments] persisted missing label_url for shipment=${shipment.id}`);
+              } catch (persistErr) {
+                console.warn(`Failed to persist refreshed label URL for shipment ${shipment.id}:`, persistErr);
+              }
+            }
+            return { ...shipment, label_url: latestLabelUrl || shipment.label_url };
+          } catch (e) {
+            console.error(`Failed to refresh label URL for shipment ${shipment.id}:`, e);
+            // Return original shipment data on error
+            return shipment;
+          }
+        }
+        return shipment;
+      })
+    );
+
+    return NextResponse.json({ shipments: refreshedShipments });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to fetch shipments";
     console.error(`Failed to fetch shipments for order ${orderId}:`, err);
@@ -80,7 +110,7 @@ export async function POST(
   const isAdmin = await requireAdmin(supabase);
   if (!isAdmin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { orderId } = await ctx.params || {};
+  const { orderId } = await ctx.params;
   if (!orderId) return NextResponse.json({ error: 'Missing orderId' }, { status: 400 });
 
   let body: z.infer<typeof ManualShipmentSchema>;

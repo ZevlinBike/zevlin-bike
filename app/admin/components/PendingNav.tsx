@@ -6,6 +6,8 @@ import { motion, AnimatePresence } from "framer-motion";
 
 export default function PendingNav() {
   const pathname = usePathname();
+  // Avoid SSR/CSR markup differences by rendering only after mount
+  const [mounted, setMounted] = useState(false);
   const [pending, setPending] = useState(false);
   const [progress, setProgress] = useState(0);
   const clickedElRef = useRef<HTMLElement | null>(null);
@@ -14,6 +16,7 @@ export default function PendingNav() {
 
   // Drive a simple progress animation while pending
   useEffect(() => {
+    setMounted(true);
     let raf: number | null = null;
     if (pending) {
       setProgress(10);
@@ -117,10 +120,12 @@ export default function PendingNav() {
 
   
 
+  if (!mounted) return null;
+
   return (
-    <div aria-hidden>
+    <div aria-hidden="true">
       {/* Top progress bar */}
-      <AnimatePresence>
+      <AnimatePresence initial={false}>
         {pending && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -139,7 +144,7 @@ export default function PendingNav() {
       </AnimatePresence>
 
       {/* Corner spinner */}
-      <AnimatePresence>
+      <AnimatePresence initial={false}>
         {pending && (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}

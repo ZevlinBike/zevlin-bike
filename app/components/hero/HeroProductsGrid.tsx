@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import HeroProduct from "./HeroProduct";
 import { Product } from "@/lib/schema";
-import { Truck } from "lucide-react";
+// removed unused imports
 
 export default function HeroProductGrid({
   products,
@@ -44,25 +44,6 @@ export default function HeroProductGrid({
 
   return (
     <div className="flex flex-col items-center p-2 sm:p-4 mt-8 sm:mt-10 w-full">
-      {/* Free Shipping pill */}
-      <div className={`mb-5 z-20 ${containerWidths}`}>
-        <span
-          className="
-            mx-auto block w-fit rounded-full border border-blue-600/60
-            bg-white/70 px-3 py-1 text-center text-xs font-medium text-blue-700
-            shadow-sm backdrop-blur dark:border-blue-400/40 dark:bg-neutral-900/70 dark:text-blue-300
-          "
-        >
-          <span className="inline-flex items-center gap-1">
-            <Truck className="h-3.5 w-3.5" />
-            <span className="md:hidden">Free Shipping $49+</span>
-            <span className="hidden md:inline">
-              Free Shipping on orders over $49
-            </span>
-          </span>
-        </span>
-      </div>
-
       {/* Product Carousel */}
       <div
         className={`relative flex flex-col items-center ${containerWidths}`}
@@ -75,7 +56,7 @@ export default function HeroProductGrid({
       >
         {/* Product Image (no card, just image) */}
         <div className="flex flex-col w-full items-center">
-          <div className="relative w-48 h-48 sm:w-64 sm:h-64 md:w-80 md:h-80 lg:w-96 lg:h-96 xl:w-[28rem] xl:h-[28rem] mb-4 flex items-center justify-center">
+          <div className="relative w-64 h-64 sm:w-80 sm:h-80 md:w-96 md:h-96 lg:w-[28rem] lg:h-[28rem] xl:w-[32rem] xl:h-[32rem] mb-0 flex items-center justify-center">
             <AnimatePresence mode="wait">
               <motion.div
                 key={current.id}

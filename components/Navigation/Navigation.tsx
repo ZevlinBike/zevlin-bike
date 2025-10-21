@@ -30,7 +30,7 @@ const Navigation = ({ user, notices } : { user:User | null, notices: Notificatio
       >
         <NotificationBanner scrolled={scrolled} notices={notices || []}/>
         <div
-          className={`${scrolled ? "p-3" : "p-0"} transition-all duration-500`}
+          className={`${scrolled ? "p-0" : "p-0"} transition-all duration-500`}
         >
           <DesktopNav scrolled={scrolled} />
           <MobileNav open={open} setOpen={setOpen} scrolled={scrolled} />
