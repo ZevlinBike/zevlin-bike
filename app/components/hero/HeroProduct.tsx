@@ -19,12 +19,14 @@ export default function HeroProduct({ product }: { product: Product }) {
             className="object-contain p-8"
           />
         </div>
-        <div className="absolute left-1/2 -translate-x-1/2 top-3 z-20 px-4 -translate-y-1/2 py-1.5 text-sm font-medium tracking-wide text-black/90 backdrop-blur-md bg-white/10 rounded-full shadow-lg shadow-black/20 transition-all duration-300 hover:bg-blue-500/20 hover:text-blue-700 hover:border-blue-300/40">
-          ${(product.price_cents / 100).toFixed(2)}
+        <div className="relative flex mx-auto w-fit">
+          <div className="bg-black text-white px-4 rounded-l-full border border-black">
+            ${(product.price_cents / 100).toFixed(2)}
+          </div>
+          <h3 className="text-black dark:text-white px-4 border-r border-t border-b rounded-r-full backdrop-blur-lg bg-white/10">
+            {product.name}
+          </h3>
         </div>
-        <h3 className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap translate-y-1/2 text-lg font-medium tracking-wide text-black/90 backdrop-blur-md bg-white/5 rounded-full  px-3 py-1 shadow-sm shadow-black/20 transition-all duration-300 hover:bg-blue-500/10 hover:border-blue-400/20 hover:text-blue-700">
-          {product.name}
-        </h3>
       </div>
 
     </Link>
