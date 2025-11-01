@@ -45,7 +45,7 @@ export default function Newsletter() {
     <section className="overflow-hidden relative py-20 text-gray-900 dark:text-white dark:from-gray-900 dark:to-black">
       <div className="container relative z-10 px-4 mx-auto lg:px-6">
         <motion.div
-          className="p-8 mx-auto max-w-3xl text-center bg-white rounded-2xl border border-gray-100 shadow-xl dark:bg-gray-800 dark:border-gray-700"
+          className="p-8 mx-auto max-w-3xl text-center bg-white rounded-2xl border border-gray-100 shadow-xl dark:bg-black dark:border-gray-700"
           variants={staggerContainer}
           initial="hidden"
           whileInView="visible"

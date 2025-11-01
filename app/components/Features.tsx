@@ -75,7 +75,7 @@ export default function Features() {
           {features.map(({ title, description, icon: Icon, color }, i) => (
             <motion.div
               key={i}
-              className="flex relative flex-col items-center p-8 rounded-2xl border border-gray-100 shadow-lg transition-all duration-300 dark:border-gray-700 hover:shadow-xl bg-white/70 backdrop-blur-md group dark:bg-gray-800/70 hover:scale-[1.02]"
+              className="flex relative flex-col items-center p-8 rounded-2xl border border-gray-100 shadow-lg transition-all duration-300 dark:border-gray-700 hover:shadow-xl bg-white/70 backdrop-blur-md group dark:bg-black/70 hover:scale-[1.02]"
               variants={itemVariants} // Apply item animation variants
             >
               {/* Dynamic Color Ring/Glow */}

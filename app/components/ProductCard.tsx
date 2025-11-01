@@ -33,7 +33,7 @@ const ProductCard = ({ product, isFocused }: { product: Product, isFocused: bool
   return (
     <Fragment>
       <Card
-        className="overflow-hidden relative bg-white rounded-xl border border-gray-200 shadow-md transition-all duration-300 dark:bg-neutral-800 dark:border-gray-700 hover:border-blue-500 hover:shadow-xl group cursor-pointer p-0"
+        className="overflow-hidden relative bg-white rounded-xl border border-gray-200 shadow-md transition-all duration-300 dark:bg-black dark:border-gray-700 hover:border-blue-500 hover:shadow-xl group cursor-pointer p-0"
         onClick={handleCardClick}
       >
         <CardContent className="flex flex-col p-4 h-full">
@@ -50,7 +50,7 @@ const ProductCard = ({ product, isFocused }: { product: Product, isFocused: bool
             {product.name}
           </h3>
           {product.quantity_in_stock && product.quantity_in_stock > 0 ? (
-            <Badge className="mb-2 text-xs text-green-700 border bg-green-700/10 border-green-700/20 dark:bg-green-700/20 dark:border-green-700/30 w-fit">
+            <Badge className="mb-2 text-xs dark:text-green-200 text-green-800 border bg-green-300/40 border-green-500/20 dark:bg-green-500/40 dark:border-green-500/30 w-fit">
               In Stock
             </Badge>
           ) : (

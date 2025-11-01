@@ -77,7 +77,7 @@ export default function Testimonials() {
               key={index} // Use index as key if testimonials array isn't guaranteed unique IDs
               variants={cardVariants}
               // Enhanced Card Styling
-              className="overflow-hidden relative bg-white rounded-xl border border-gray-200 shadow-lg transition-all duration-300 dark:bg-gray-800 dark:border-gray-700 hover:shadow-xl group hover:scale-[1.01]"
+              className="overflow-hidden relative bg-white rounded-xl border border-gray-200 shadow-lg transition-all duration-300 dark:bg-black dark:border-gray-700 hover:shadow-xl group hover:scale-[1.01]"
             >
               {/* Subtle background glow/overlay for premium feel */}
               <div className="absolute inset-0 opacity-0 transition-opacity duration-500 pointer-events-none group-hover:opacity-100 bg-blue-500/5 blur-xl" />

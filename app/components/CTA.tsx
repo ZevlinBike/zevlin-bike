@@ -87,10 +87,10 @@ export default function CTA() {
         <motion.div variants={itemVariants}>
           <Link
             href={'/products'}
-            className="py-4 px-10 text-xl font-bold text-gray-100 flex w-fit mx-auto dark:text-gray-900 bg-blue-700 dark:bg-yellow-400 rounded-full shadow-xl transition-all duration-300 transform hover:bg-yellow-500 hover:shadow-2xl hover:scale-105 group" // Bolder button, larger padding, scale/shadow on hover
+            className="py-4 items-center px-10 text-xl font-bold text-gray-100 flex w-fit mx-auto dark:text-gray-900 bg-blue-700 dark:bg-yellow-400 rounded-full shadow-xl transition-all duration-300 transform hover:bg-yellow-500 hover:shadow-2xl hover:scale-105 group" // Bolder button, larger padding, scale/shadow on hover
           >
             Gear Up Now
-            <ArrowRight className="ml-2 w-6 h-6 transition-transform text-white duration-300 group-hover:translate-x-1" />{" "}
+            <ArrowRight className="ml-2 w-6 h-6 transition-transform text-black duration-300 group-hover:translate-x-1" />{" "}
             {/* Larger arrow, slides on hover */}
           </Link>
         </motion.div>

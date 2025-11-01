@@ -92,7 +92,7 @@ export default function SocialFABs() {
   return (
     <motion.div
       initial={{ x: 100, opacity: 0 }}
-      animate={isVisible ? { x: 0, opacity: 1, scale: 1 } : { opacity: 0, scale: 0.95 }}
+      animate={isVisible ? { x: 0, opacity: 1, scale: 1 } : { x:100, opacity: 0.5, scale: 0.95 }}
       transition={
         isVisible
           ? { type: "spring", stiffness: 320, damping: 22, bounce: 0.3 }
@@ -107,13 +107,13 @@ export default function SocialFABs() {
       <div className="group relative">
         <div
           className={[
-            "grid items-center gap-2 ",
-            "rounded-lg ",
-            "backdrop-blur-xl mr-1",
+            "grid items-center gap-2",
+            "rounded-l-lg ",
+            "backdrop-blur-xl pl-1 group-hover:pr-20 ",
             // Light / dark glass
             "bg-black shadow-[0_4px_20px_-8px_rgba(0,0,0,0.25)]",
             // Subtle hover lift
-            "transition-colors duration-300",
+            "transition-all duration-300",
           ].join(" ")}
         >
 
@@ -127,12 +127,13 @@ export default function SocialFABs() {
               aria-label={l.name}
               className={[
                 "inline-flex justify-self-center size-7 items-center justify-center",
-                "hover:scale-125",
                 "text-white",
                 "transition-all duration-200",
+                "flex gap-2 group",
               ].join(" ")}
             >
               {l.icon}
+              <p className=" max-w-0 text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all group-hover:max-w-auto">{l.name}</p>
             </a>
           ))}
 
