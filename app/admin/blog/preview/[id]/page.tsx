@@ -6,6 +6,7 @@ import styles from "@/markdown-styles.module.css";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { ChevronLeft } from "lucide-react";
 
 function cleanMarkdown(src = "") {
   return src
@@ -36,8 +37,13 @@ export default async function AdminBlogPreviewPage({ params }: { params: Promise
     <div className="pt-24 pb-12">
       <div className="container mx-auto max-w-5xl px-4">
         <div className="mb-4 flex items-center justify-between">
-          <div className="text-xs text-gray-500">
-            Previewing {post.published ? "published post" : "draft"} • Last updated {formatDate(post.updated_at)}
+          <div className="flex items-center gap-3">
+            <Button asChild variant="outline" size="sm">
+              <Link href="/admin/blog"><ChevronLeft className="h-4 w-4 mr-1" /> Back</Link>
+            </Button>
+            <div className="text-xs text-gray-500">
+              Previewing {post.published ? "published post" : "draft"} • Last updated {formatDate(post.updated_at)}
+            </div>
           </div>
           <div className="flex gap-2">
             <Button asChild variant="outline" size="sm">
@@ -74,4 +80,3 @@ export default async function AdminBlogPreviewPage({ params }: { params: Promise
     </div>
   );
 }
-

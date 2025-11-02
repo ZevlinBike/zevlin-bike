@@ -32,6 +32,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { clsx } from "clsx";
 import { getPosts, deletePost, bulkUpdatePostStatus } from "./actions";
 import { BlogPost } from "@/lib/schema";
@@ -69,6 +70,8 @@ export default function AdminBlogPage() {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [bulkActionLoading, setBulkActionLoading] = useState<null | "publish" | "unpublish" | "delete">(null);
+  const [rowActionLoading, setRowActionLoading] = useState<{ id: string | null; action: null | "edit" | "publish" | "unpublish" | "delete" | "preview" | "view" }>({ id: null, action: null });
 
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -137,55 +140,74 @@ export default function AdminBlogPage() {
   const selectedIds = Object.keys(selected).filter((id) => selected[id]);
 
   const onBulk = async (action: "publish" | "unpublish" | "delete") => {
-    if (action === 'delete') {
-        await Promise.all(selectedIds.map(id => deletePost(id)));
-        toast.success(`${selectedIds.length} posts deleted.`);
-    } else {
-        await bulkUpdatePostStatus(selectedIds, action === 'publish');
-        toast.success(`${selectedIds.length} posts updated.`);
-    }
-    clearSelections();
-    // Refresh data
-    const params = { query, status, sort, page, pageSize };
-    getPosts(params).then(({ posts, total }: { posts: BlogPost[], total: number }) => {
-      setPosts(posts);
+    try {
+      setBulkActionLoading(action);
+      if (action === 'delete') {
+          await Promise.all(selectedIds.map(id => deletePost(id)));
+          toast.success(`${selectedIds.length} posts deleted.`);
+      } else {
+          await bulkUpdatePostStatus(selectedIds, action === 'publish');
+          toast.success(`${selectedIds.length} posts updated.`);
+      }
+      clearSelections();
+      // Refresh data
+      const params = { query, status, sort, page, pageSize };
+      const { posts: fetchedPosts, total } = await getPosts(params);
+      setPosts(fetchedPosts);
       setTotal(total);
-    });
+    } finally {
+      setBulkActionLoading(null);
+    }
   };
 
   const onRow = async (id: string, action: "edit" | "publish" | "unpublish" | "delete" | "preview" | "view") => {
-    if (action === 'delete') {
-        await deletePost(id);
-        toast.success("Post deleted.");
-    } else if (action === 'publish' || action === 'unpublish') {
-        await bulkUpdatePostStatus([id], action === 'publish');
-        toast.success("Post status updated.");
-    } else if (action === 'edit') {
-        replace(`/admin/blog/edit/${id}`);
-    } else if (action === 'preview') {
-        replace(`/admin/blog/preview/${id}`);
-    } else if (action === 'view') {
-        const p = posts.find((x) => x.id === id);
-        if (!p) return;
-        if (!p.published) {
-          toast.message("Not published", { description: "Publish the post, or use Preview instead." });
-          return;
-        }
-        const url = `/blog/${p.slug}`;
-        if (typeof window !== 'undefined') window.open(url, '_blank');
-        else replace(url);
-    }
-    // Refresh data
-    const params = { query, status, sort, page, pageSize };
-    getPosts(params).then(({ posts, total }: { posts: BlogPost[], total: number }) => {
-      setPosts(posts);
+    try {
+      setRowActionLoading({ id, action });
+      if (action === 'delete') {
+          await deletePost(id);
+          toast.success("Post deleted.");
+      } else if (action === 'publish' || action === 'unpublish') {
+          await bulkUpdatePostStatus([id], action === 'publish');
+          toast.success("Post status updated.");
+      } else if (action === 'edit') {
+          replace(`/admin/blog/edit/${id}`);
+          return; // navigating away
+      } else if (action === 'preview') {
+          replace(`/admin/blog/preview/${id}`);
+          return; // navigating away
+      } else if (action === 'view') {
+          const p = posts.find((x) => x.id === id);
+          if (!p) return;
+          if (!p.published) {
+            toast.message("Not published", { description: "Publish the post, or use Preview instead." });
+            return;
+          }
+          const url = `/blog/${p.slug}`;
+          if (typeof window !== 'undefined') window.open(url, '_blank');
+          else replace(url);
+      }
+      // Refresh data
+      const params = { query, status, sort, page, pageSize };
+      const { posts: fetchedPosts, total } = await getPosts(params);
+      setPosts(fetchedPosts);
       setTotal(total);
-    });
+    } finally {
+      // Avoid flashing if we navigate away
+      setRowActionLoading({ id: null, action: null });
+    }
   };
 
   return (
     <div className="min-h-screen bg-white text-gray-900 dark:bg-neutral-900 dark:text-gray-100">
       <div className="container mx-auto px-4 lg:px-6 pt-28 pb-12">
+        {rowActionLoading.action === 'preview' && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/60 dark:bg-black/60">
+            <div className="flex items-center gap-3 rounded-lg bg-white dark:bg-neutral-900 border border-black/5 dark:border-white/10 px-4 py-3 shadow-md">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span className="text-sm">Loading preview…</span>
+            </div>
+          </div>
+        )}
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-4 sm:mb-6">
           <div>
@@ -260,14 +282,47 @@ export default function AdminBlogPage() {
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 <span className="text-gray-600 dark:text-gray-400">{selectedIds.length} selected</span>
                 <div className="flex items-center gap-2">
-                  <Button size="sm" variant="secondary" onClick={() => onBulk("publish")} className="h-8">
-                    <UploadCloud className="h-4 w-4 mr-1" /> Publish
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => onBulk("publish")}
+                    className="h-8"
+                    disabled={selectedIds.length === 0 || !!bulkActionLoading || !!rowActionLoading.id}
+                  >
+                    {bulkActionLoading === 'publish' ? (
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    ) : (
+                      <UploadCloud className="h-4 w-4 mr-1" />
+                    )}
+                    Publish
                   </Button>
-                  <Button size="sm" variant="secondary" onClick={() => onBulk("unpublish")} className="h-8">
-                    <PauseCircle className="h-4 w-4 mr-1" /> Unpublish
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => onBulk("unpublish")}
+                    className="h-8"
+                    disabled={selectedIds.length === 0 || !!bulkActionLoading || !!rowActionLoading.id}
+                  >
+                    {bulkActionLoading === 'unpublish' ? (
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    ) : (
+                      <PauseCircle className="h-4 w-4 mr-1" />
+                    )}
+                    Unpublish
                   </Button>
-                  <Button size="sm" variant="destructive" onClick={() => onBulk("delete")} className="h-8">
-                    <Trash2 className="h-4 w-4 mr-1" /> Delete
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => onBulk("delete")}
+                    className="h-8"
+                    disabled={selectedIds.length === 0 || !!bulkActionLoading || !!rowActionLoading.id}
+                  >
+                    {bulkActionLoading === 'delete' ? (
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4 mr-1" />
+                    )}
+                    Delete
                   </Button>
                 </div>
                 <Button size="sm" variant="ghost" onClick={clearSelections} className="h-8 ml-auto">
@@ -315,7 +370,10 @@ export default function AdminBlogPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-neutral-800">
-                  {posts.map((p) => (
+                  {posts.map((p) => {
+                    const isRowLoading = rowActionLoading.id === p.id;
+                    const isActing = !!bulkActionLoading || !!rowActionLoading.id;
+                    return (
                     <tr key={p.id} className="align-top">
                       <td className="p-3">
                         <button
@@ -342,25 +400,57 @@ export default function AdminBlogPage() {
                       <td className="p-3 text-sm text-gray-600 dark:text-gray-300">{formatDate(p.updated_at)}</td>
                       <td className="p-3">
                         <div className="flex justify-end gap-1">
-                          <IconButton label="Preview" onClick={() => onRow(p.id, "preview")}><Eye className="h-4 w-4" /></IconButton>
-                          <IconButton label="Edit" onClick={() => onRow(p.id, "edit")}><Pencil className="h-4 w-4" /></IconButton>
+                          <IconButton
+                            label="Preview"
+                            onClick={() => onRow(p.id, "preview")}
+                            loading={isRowLoading && rowActionLoading.action === 'preview'}
+                            disabled={isActing}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </IconButton>
+                          <IconButton
+                            label="Edit"
+                            onClick={() => onRow(p.id, "edit")}
+                            loading={isRowLoading && rowActionLoading.action === 'edit'}
+                            disabled={isActing}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </IconButton>
                           {p.published ? (
-                            <IconButton label="Unpublish" onClick={() => onRow(p.id, "unpublish")}><PauseCircle className="h-4 w-4" /></IconButton>
+                            <IconButton
+                              label="Unpublish"
+                              onClick={() => onRow(p.id, "unpublish")}
+                              loading={isRowLoading && rowActionLoading.action === 'unpublish'}
+                              disabled={isActing}
+                            >
+                              <PauseCircle className="h-4 w-4" />
+                            </IconButton>
                           ) : (
-                            <IconButton label="Publish" onClick={() => onRow(p.id, "publish")}><UploadCloud className="h-4 w-4" /></IconButton>
+                            <IconButton
+                              label="Publish"
+                              onClick={() => onRow(p.id, "publish")}
+                              loading={isRowLoading && rowActionLoading.action === 'publish'}
+                              disabled={isActing}
+                            >
+                              <UploadCloud className="h-4 w-4" />
+                            </IconButton>
                           )}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MoreHorizontal className="h-4 w-4" />
+                              <Button variant="ghost" size="icon" className="h-8 w-8" disabled={isActing}>
+                                {isRowLoading && (rowActionLoading.action === 'delete' || rowActionLoading.action === 'view') ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <MoreHorizontal className="h-4 w-4" />
+                                )}
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => onRow(p.id, "view")}>
+                              <DropdownMenuItem onClick={() => onRow(p.id, "view")} disabled={isActing}>
                                 <Globe className="h-4 w-4 mr-2" /> View public
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-red-600" onClick={() => onRow(p.id, "delete")}>
+                              <DropdownMenuItem className="text-red-600" onClick={() => onRow(p.id, "delete")} disabled={isActing}>
                                 <Trash2 className="h-4 w-4 mr-2" /> Delete
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -368,7 +458,7 @@ export default function AdminBlogPage() {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  )})}
                 </tbody>
               </table>
             </div>
@@ -416,11 +506,15 @@ function IconButton({
   label,
   onClick,
   destructive,
+  loading,
+  disabled,
 }: {
   children: React.ReactNode;
   label: string;
   onClick?: () => void;
   destructive?: boolean;
+  loading?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <Button
@@ -435,8 +529,9 @@ function IconButton({
       title={label}
       aria-label={label}
       onClick={onClick}
+      disabled={disabled || loading}
     >
-      {children}
+      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : children}
     </Button>
   );
 }
