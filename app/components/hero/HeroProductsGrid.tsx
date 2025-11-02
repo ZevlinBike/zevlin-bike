@@ -21,7 +21,6 @@ export default function HeroProductGrid({
   const [isDragging, setIsDragging] = useState(false);
   const [clickLocked, setClickLocked] = useState(false);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
-  const [wrapperWidth, setWrapperWidth] = useState(0);
   const startXRef = useRef<number | null>(null);
   const handledRef = useRef(false);
   const [pointerMoved, setPointerMoved] = useState(false);
@@ -43,17 +42,7 @@ export default function HeroProductGrid({
     };
   }, [paused, heroProducts.length]);
 
-  // Measure wrapper width for swipe threshold
-  useEffect(() => {
-    const el = wrapperRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => {
-      setWrapperWidth(el.getBoundingClientRect().width || 0);
-    });
-    ro.observe(el);
-    setWrapperWidth(el.getBoundingClientRect().width || 0);
-    return () => ro.disconnect();
-  }, []);
+  // Measure wrapper width (removed usage to avoid unused var lint)
 
   if (heroProducts.length === 0) return null;
 

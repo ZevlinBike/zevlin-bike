@@ -56,3 +56,20 @@ These features are desirable but not essential for the initial launch. They can 
 - Required env vars (see `.env.local.example`): `SHIPPO_API_TOKEN`, `SHIPPO_WEBHOOK_SECRET`, and `APP_URL`.
 - Configure a webhook in your Shippo dashboard pointing to `/api/webhooks/shippo?secret=<SHIPPO_WEBHOOK_SECRET>`.
 - Not all shipments use Shippo: admins can manually create shipments and update shipping status from Admin → Order detail. A quick “Update Shipping” menu is available on the order header to set `not_shipped`, `shipped`, `delivered`, `returned`, or `lost`.
+
+---
+
+## BlogAssist (Manual)
+
+Use the Admin tool to draft and publish posts manually:
+
+- Route: `/admin/blog/assist`
+- Flow: Pick Topic → Draft Outline & Intro → Generate Full Content → Choose Header Image → Feature Product → Save Draft or Publish
+
+Environment variables (see `.env.local.example`):
+- `OPENAI_API_KEY` (required for drafting and expansion)
+- `UNSPLASH_ACCESS_KEY` (optional; header image search)
+- `RSS_FEEDS` (optional; topic suggestions)
+
+Public rendering:
+- Posts render under `/blog` and `/blog/[slug]`.

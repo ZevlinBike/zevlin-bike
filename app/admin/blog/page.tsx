@@ -153,7 +153,7 @@ export default function AdminBlogPage() {
     });
   };
 
-  const onRow = async (id: string, action: "edit" | "publish" | "unpublish" | "delete" | "preview") => {
+  const onRow = async (id: string, action: "edit" | "publish" | "unpublish" | "delete" | "preview" | "view") => {
     if (action === 'delete') {
         await deletePost(id);
         toast.success("Post deleted.");
@@ -162,6 +162,18 @@ export default function AdminBlogPage() {
         toast.success("Post status updated.");
     } else if (action === 'edit') {
         replace(`/admin/blog/edit/${id}`);
+    } else if (action === 'preview') {
+        replace(`/admin/blog/preview/${id}`);
+    } else if (action === 'view') {
+        const p = posts.find((x) => x.id === id);
+        if (!p) return;
+        if (!p.published) {
+          toast.message("Not published", { description: "Publish the post, or use Preview instead." });
+          return;
+        }
+        const url = `/blog/${p.slug}`;
+        if (typeof window !== 'undefined') window.open(url, '_blank');
+        else replace(url);
     }
     // Refresh data
     const params = { query, status, sort, page, pageSize };
@@ -180,12 +192,17 @@ export default function AdminBlogPage() {
             <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Blog Admin</h1>
             <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Create, edit, and publish posts.</p>
           </div>
-          <Button asChild className="gap-2">
-            <Link href="/admin/blog/new">
-              <Plus className="h-4 w-4" />
-              New Post
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            <Button asChild variant="secondary" className="gap-2">
+              <Link href="/admin/blog/assist">⚙️ BlogAssist</Link>
+            </Button>
+            <Button asChild className="gap-2">
+              <Link href="/admin/blog/new">
+                <Plus className="h-4 w-4" />
+                New Post
+              </Link>
+            </Button>
+          </div>
         </div>
 
         {/* Toolbar */}
@@ -339,7 +356,7 @@ export default function AdminBlogPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => onRow(p.id, "preview")}>
+                              <DropdownMenuItem onClick={() => onRow(p.id, "view")}>
                                 <Globe className="h-4 w-4 mr-2" /> View public
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />

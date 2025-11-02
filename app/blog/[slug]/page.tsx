@@ -13,7 +13,9 @@ function cleanMarkdown(src = "") {
   return src
     .replace(/:contentReference\[[^\]]*?\](?:\{[^}]*\})?/g, "")
     .replace(/\r\n/g, "\n")
-    .replace(/\n{3,}/g, "\n\n");
+    .replace(/\n{3,}/g, "\n\n")
+    // Convert raw HTML <sub>credit</sub> to Markdown italics for safe rendering
+    .replace(/<sub>([\s\S]*?)<\/sub>/gi, '_$1_');
 }
 
 function formatDate(iso?: string | null) {
