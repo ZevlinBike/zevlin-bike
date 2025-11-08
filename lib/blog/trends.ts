@@ -4,7 +4,7 @@
 type Topic = { topic: string; source?: string };
 
 async function fetchText(url: string): Promise<string> {
-  const res = await fetch(url);
+  const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) throw new Error(`${url} -> ${res.status}`);
   return res.text();
 }
@@ -39,7 +39,7 @@ function decodeHtmlEntities(input: string): string {
     .replace(/&([a-zA-Z]+);/g, (_, name) => (named[name] ?? `&${name};`));
 }
 
-export async function getTrendingTopicsFromRss(limit = 8): Promise<Topic[]> {
+export async function getTrendingTopicsFromRss(limitOrOptions: number | { poolLimit?: number; perFeed?: number } = 8): Promise<Topic[]> {
   const feeds = (process.env.RSS_FEEDS || "").split(",").map((s) => s.trim()).filter(Boolean);
   if (feeds.length === 0) {
     return [
@@ -50,6 +50,9 @@ export async function getTrendingTopicsFromRss(limit = 8): Promise<Topic[]> {
       { topic: "Urban commuting safety gear" },
     ];
   }
+  const poolLimit = typeof limitOrOptions === 'number' ? limitOrOptions : (limitOrOptions.poolLimit ?? 64);
+  const perFeed = typeof limitOrOptions === 'number' ? 10 : Math.max(5, Math.min(50, limitOrOptions.perFeed ?? 20));
+
   const titles: string[] = [];
   for (const url of feeds) {
     try {
@@ -57,7 +60,7 @@ export async function getTrendingTopicsFromRss(limit = 8): Promise<Topic[]> {
       const itemRegex = /<item[\s\S]*?<\/item>/gim;
       const titleRegex = /<title>([\s\S]*?)<\/title>/i;
       const list = xml.match(itemRegex) || [];
-      for (let i = 0; i < Math.min(10, list.length); i++) {
+      for (let i = 0; i < Math.min(perFeed, list.length); i++) {
         const block = list[i];
         const raw = block.match(titleRegex)?.[1] ?? "";
         const title = decodeHtmlEntities(raw.replace(/<[^>]*>/g, "").trim());
@@ -65,7 +68,24 @@ export async function getTrendingTopicsFromRss(limit = 8): Promise<Topic[]> {
       }
     } catch {}
   }
-  // Deduplicate and trim to limit
-  const uniq = Array.from(new Set(titles)).slice(0, limit);
+  // Normalize for better de-duplication
+  const norm = (s: string) =>
+    decodeHtmlEntities(s)
+      .replace(/<[^>]*>/g, " ")
+      .replace(/\s+[-–—|:].*$/, "") // drop source suffixes like " - Site"
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  const seen = new Set<string>();
+  const uniq: string[] = [];
+  for (const t of titles) {
+    const key = norm(t);
+    if (!key) continue;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    uniq.push(t);
+    if (uniq.length >= poolLimit) break;
+  }
   return uniq.map((t) => ({ topic: t }));
 }

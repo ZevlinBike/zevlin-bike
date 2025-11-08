@@ -109,9 +109,9 @@ export default async function AdminDashboard() {
       {/* Dashboard title and action buttons removed for cleaner layout */}
 
       {/* FINANCIALS */}
-      <div className="space-y-3">
-        <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Financials</div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="space-y-3 ">
+        <div className="text-[11px] font-semibold uppercase tracking-wide bg-green-400 dark:bg-green-700 rounded-full p-0.5 px-2 text-gray-800 dark:text-gray-200">Financials</div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3 ">
           <FinancialCard label="Today’s Revenue" value={stats.revenueToday} />
           <FinancialCard label="Month-to-Date Revenue" value={stats.revenueMonth} />
           <FinancialCard label="Year-to-Date Revenue" value={stats.revenueYear} />
@@ -120,7 +120,7 @@ export default async function AdminDashboard() {
 
       {/* OPERATIONS */}
       <div className="space-y-3">
-        <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Operations</div>
+        <div className="text-[11px] font-semibold uppercase tracking-wide bg-orange-300 dark:bg-orange-700 rounded-full p-0.5 px-2 text-gray-800 dark:text-gray-200">Operations</div>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-6">
           {kpis.map(({ label, value, icon: Icon }) => (
             <Card key={label} className="shadow-sm hover:shadow transition-shadow border border-gray-200/80 dark:border-neutral-800/80 bg-neutral-50 dark:bg-neutral-800">
@@ -138,7 +138,7 @@ export default async function AdminDashboard() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* Fulfillment queue */}
-        <Card className="lg:col-span-3 shadow-sm hover:shadow transition-shadow border border-gray-200/80 dark:border-neutral-800/80 bg-neutral-50 dark:bg-neutral-800">
+        <Card className="lg:col-span-3 w-full shadow-sm hover:shadow transition-shadow border border-gray-200/80 dark:border-neutral-800/80 bg-neutral-50 dark:bg-neutral-800">
           <CardHeader className="flex items-center justify-between">
             <CardTitle>To Fulfill</CardTitle>
             <div className="flex items-center gap-1">

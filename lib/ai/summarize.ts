@@ -36,6 +36,9 @@ export async function summarizeToBlog({
     "Write short, engaging posts that feel human—no generic filler.",
     "Prioritize factual accuracy and clarity.",
     "Use a confident, warm tone with a touch of personality.",
+    "Align topics with Zevlin’s focus on rider comfort and chamois creams when relevant.",
+    "Avoid medical claims or promises; keep guidance educational and practical.",
+    "If appropriate, include at most one gentle CTA referencing Zevlin products—no hard sell.",
   ].join(" ");
 
   const user = [
@@ -130,7 +133,7 @@ export async function expandOutlineToBody({
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY is not set");
 
-  const system = `You are a senior cycling editor for Zevlin. Expand outlines into clean, practical, human-feeling articles. Tone: ${brandVoice}.`;
+  const system = `You are a senior cycling editor for Zevlin. Expand outlines into clean, practical, human-feeling articles. Emphasize rider comfort and, when natural, connect to chamois cream best practices and skin comfort. Avoid medical claims or unverified efficacy. Keep any product mentions subtle and helpful. Tone: ${brandVoice}.`;
   const user = [
     `Topic: ${topic}`,
     facts ? `Relevant facts (verbatim, cite naturally):\n${facts}` : "",
@@ -142,6 +145,8 @@ export async function expandOutlineToBody({
     `- Use clear H2/H3 subheadings derived from the outline.`,
     `- Keep paragraphs short, specific, and actionable.`,
     `- Avoid filler and generic AI phrases.`,
+    `- No health/medical claims; keep it educational and brand-aligned.`,
+    `- Optional: a single soft CTA near the end (non-pushy).`,
   ].filter(Boolean).join("\n\n");
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -176,7 +181,7 @@ export async function draftOutlineAndIntro({
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY is not set");
 
-  const system = `You are a senior cycling editor for Zevlin. Draft crisp outlines and engaging intros without fluff. Tone: ${brandVoice}`;
+  const system = `You are a senior cycling editor for Zevlin. Draft crisp outlines and engaging intros without fluff. Prefer angles relevant to rider comfort and chamois creams. Avoid medical claims; keep advice practical and brand-aligned. Tone: ${brandVoice}`;
   const user = [
     `Topic: ${topic}`,
     facts ? `Relevant facts:\n${facts}` : "",

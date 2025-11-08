@@ -192,6 +192,29 @@ export async function getPosts(params: {
     }
   }
   
+  // Sorting
+  const sort = params.sort || "updated_at-desc";
+  const [sortField, sortDir] = sort.split("-");
+  const ascending = (sortDir || "desc").toLowerCase() === "asc";
+  // Restrict sortable fields to known columns to satisfy typing and avoid injection
+  const allowedSortFields = new Set([
+    "updated_at",
+    "created_at",
+    "title",
+    "published_at",
+  ]);
+  const resolvedField = allowedSortFields.has(sortField)
+    ? (sortField as "updated_at" | "created_at" | "title" | "published_at")
+    : ("updated_at" as const);
+  queryBuilder = queryBuilder.order(resolvedField, { ascending, nullsFirst: false });
+
+  // Pagination
+  const page = Math.max(1, Number(params.page) || 1);
+  const pageSize = Math.max(1, Math.min(100, Number(params.pageSize) || 10));
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  queryBuilder = queryBuilder.range(from, to);
+
   const { data, error, count } = await queryBuilder;
 
   if (error) {

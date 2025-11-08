@@ -85,6 +85,13 @@ export default function AdminBlogPage() {
   const page = Number(searchParams.get("page")) || 1;
   const pageSize = 8;
 
+  const sortLabelMap: Record<string, string> = {
+    "updated_at-desc": "Updated ↓ (newest)",
+    "updated_at-asc": "Updated ↑ (oldest)",
+    "title-asc": "Title A → Z",
+    "title-desc": "Title Z → A",
+  };
+
   useEffect(() => {
     setIsLoading(true);
     const params = {
@@ -199,7 +206,7 @@ export default function AdminBlogPage() {
 
   return (
     <div className="min-h-screen bg-white text-gray-900 dark:bg-neutral-900 dark:text-gray-100">
-      <div className="container mx-auto px-4 lg:px-6 pt-28 pb-12">
+      <div className="container mx-auto px-4 lg:px-6 pt-6 sm:pt-8 pb-12">
         {rowActionLoading.action === 'preview' && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/60 dark:bg-black/60">
             <div className="flex items-center gap-3 rounded-lg bg-white dark:bg-neutral-900 border border-black/5 dark:border-white/10 px-4 py-3 shadow-md">
@@ -262,7 +269,7 @@ export default function AdminBlogPage() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="h-9">
-                  Sort: {sort.replace("-", " ")} <ChevronDown className="h-4 w-4 ml-2 opacity-70" />
+                  Sort: {sortLabelMap[sort] || sort} <ChevronDown className="h-4 w-4 ml-2 opacity-70" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="min-w-52">

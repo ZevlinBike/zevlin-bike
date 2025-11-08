@@ -14,7 +14,8 @@ type OrderRow = {
   total_cents: number;
   is_training?: boolean | null;
   order_status?: string | null;
-  customers?: { first_name?: string | null; last_name?: string | null } | null;
+  display_name?: string | null;
+  guest?: boolean | null;
 };
 
 function formatStatus(s?: string | null) {
@@ -67,7 +68,7 @@ export default function RecentOrdersCard() {
   );
 
   return (
-    <Card className="col-span-1 lg:col-span-3 shadow-sm hover:shadow transition-shadow border border-gray-200/80 dark:border-neutral-800/80 bg-neutral-50 dark:bg-neutral-800">
+    <Card className="col-span-1 lg:col-span-3 w-full shadow-sm hover:shadow transition-shadow border border-gray-200/80 dark:border-neutral-800/80 bg-neutral-50 dark:bg-neutral-800">
       <CardHeader className="flex items-center justify-between">
         <CardTitle>Recent Orders</CardTitle>
         <div className="flex items-center gap-1">
@@ -98,7 +99,12 @@ export default function RecentOrdersCard() {
             {orders.map((o, idx) => (
               <TableRow key={o.id} className={idx % 2 === 0 ? 'bg-white/40 dark:bg-neutral-900/30' : ''}>
                 <TableCell className="font-mono text-xs whitespace-nowrap">#{o.id.substring(0,8)}</TableCell>
-                <TableCell className="whitespace-nowrap">{o.customers?.first_name || 'Guest'} {o.customers?.last_name || ''}</TableCell>
+                <TableCell className="whitespace-nowrap">
+                  {o.display_name || 'Guest'}
+                  {o.guest ? (
+                    <Badge variant="secondary" className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-800 dark:bg-neutral-800 dark:text-gray-300">Guest</Badge>
+                  ) : null}
+                </TableCell>
                 <TableCell className="whitespace-nowrap">{new Date(o.created_at).toLocaleDateString()}</TableCell>
                 <TableCell className="whitespace-nowrap">
                   <Badge variant="secondary" className={statusClass(o.order_status)}>{formatStatus(o.order_status)}</Badge>

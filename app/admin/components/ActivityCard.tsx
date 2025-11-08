@@ -69,7 +69,7 @@ export default function ActivityCard() {
   }, [data, showTests]);
 
   return (
-    <Card className="col-span-1 lg:col-span-3 shadow-sm hover:shadow transition-shadow border border-gray-200/80 dark:border-neutral-800/80 bg-neutral-50 dark:bg-neutral-800">
+    <Card className="col-span-1 lg:col-span-3 w-full shadow-sm hover:shadow transition-shadow border border-gray-200/80 dark:border-neutral-800/80 bg-neutral-50 dark:bg-neutral-800">
       <CardHeader className="flex items-center justify-between">
         <CardTitle>Activity</CardTitle>
         <div className="flex items-center gap-1">

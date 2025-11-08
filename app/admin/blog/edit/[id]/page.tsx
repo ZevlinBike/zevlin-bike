@@ -1,8 +1,10 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import PostForm from "../../components/PostForm";
 import { updatePost } from "../../actions";
 import { BlogPost } from "@/lib/schema";
+import { Button } from "@/components/ui/button";
 
 async function getPostById(id: string): Promise<BlogPost | null> {
   const supabase = await createClient();
@@ -33,7 +35,12 @@ export default async function EditPostPage({ params }: EditPostPageProps) {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4">Edit Post</h1>
+      <div className="flex items-end justify-between gap-3 mb-4">
+        <h1 className="text-2xl font-bold">Edit Post</h1>
+        <Button asChild variant="secondary" className="gap-2">
+          <Link href={`/admin/blog/assist?from=${id}`}>Edit with BlogAssist</Link>
+        </Button>
+      </div>
       <PostForm action={updatePost} post={post} />
     </div>
   );

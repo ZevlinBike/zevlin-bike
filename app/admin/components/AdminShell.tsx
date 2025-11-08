@@ -176,7 +176,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-neutral-100 dark:bg-neutral-900 text-black dark:text-white">
+    <div className="min-h-screen bg-neutral-100 dark:bg-neutral-900 text-black dark:text-white overflow-x-hidden">
       <PendingNav />
       <AnimatePresence>
         {sidebarOpen && (
@@ -265,10 +265,10 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         )}
       </AnimatePresence>
 
-      <div className="flex min-h-screen" >
+      <div className="flex min-h-screen">
         {/* Sidebar (desktop, collapsible) */}
         <aside
-          className="hidden lg:flex lg:flex-col lg:border-r lg:border-neutral-200 dark:lg:border-neutral-800 bg-white dark:bg-neutral-900 h-[100dvh] min-h-[640px] sticky top-0 lg:w-16 group hover:lg:w-64 transition-[width] duration-300 ease-in-out group overflow-hidden"
+          className="hidden lg:flex lg:flex-col lg:border-r lg:border-neutral-200 dark:lg:border-neutral-800 bg-white dark:bg-neutral-900 h-[100dvh] min-h-[640px] fixed top-0 left-0 lg:w-16 group hover:lg:w-64 transition-[width] duration-300 ease-in-out peer overflow-hidden z-40"
         >
           <div className="flex h-16 items-center px-4">
             <Link href="/admin" className="flex items-center gap-2 w-full">
@@ -342,7 +342,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           </nav>
           <div className="border-t border-neutral-200 dark:border-neutral-800 p-4 overflow-hidden">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-100 font-semibold dark:bg-neutral-700">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-neutral-100 font-semibold dark:bg-neutral-700 leading-none">
                 {avatarLetter}
               </div>
               <div className="hidden group-hover:block leading-tight overflow-hidden min-w-0">
@@ -357,7 +357,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         </aside>
 
         {/* Main content */}
-        <motion.main layout className="flex-1">
+        <motion.main layout className="flex-1 overflow-x-hidden lg:ml-16 lg:transition-[margin] lg:duration-300 lg:ease-in-out lg:peer-hover:ml-64">
           <div className="sticky top-0 z-30 border-b bg-white/80 backdrop-blur dark:bg-neutral-900/80 dark:border-neutral-800">
             <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
               <div className="flex items-center gap-2 lg:hidden">
@@ -389,7 +389,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             </div>
           </div>
 
-          <div className="mx-auto max-w-7xl px-4 pt-6 sm:pt-8 pb-6" >
+          <div className="mx-auto max-w-7xl px-4 pt-6 sm:pt-8 pb-6 overflow-x-hidden">
             {children}
           </div>
         </motion.main>
