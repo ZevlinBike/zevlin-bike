@@ -6,6 +6,7 @@ import { searchUnsplash, type UnsplashPhoto } from "@/lib/media/unsplash";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import type { BlogPost } from "@/lib/schema";
+import { loadKeywordList, injectKeywordsParagraph, injectRelatedLinks } from "@/lib/blog/seo";
 
 export async function getTrendingTopicsAction(input?: { limit?: number; seed?: number; exclude?: string[] }) {
   const limit = Math.max(1, Math.min(24, input?.limit ?? 8));
@@ -269,4 +270,36 @@ export async function updateAssistPostAction(input: {
   revalidatePath(`/admin/blog/edit/${input.id}`);
   revalidatePath(`/blog/${existing.slug}`);
   return { ok: true };
+}
+
+// SEO helpers
+export async function getKeywordListAction(): Promise<string[]> {
+  return await loadKeywordList();
+}
+
+export async function optimizeBodyAction(input: {
+  body: string;
+  selectedKeywords?: string[];
+  includeRelatedLinks?: boolean;
+  excludeSlug?: string | null;
+}): Promise<{ body: string }>{
+  let out = input.body || "";
+  const selected = (input.selectedKeywords || []).filter(Boolean);
+  if (selected.length > 0) {
+    out = injectKeywordsParagraph(out, selected);
+  }
+  if (input.includeRelatedLinks) {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("blog_posts")
+      .select("title, slug, published")
+      .eq("published", true)
+      .order("published_at", { ascending: false })
+      .limit(5);
+    const posts = (data || [])
+      .filter((p) => (input.excludeSlug ? p.slug !== input.excludeSlug : true))
+      .map((p) => ({ title: p.title as string, slug: p.slug as string }));
+    out = injectRelatedLinks(out, posts, 3);
+  }
+  return { body: out };
 }

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { getTrendingTopicsAction, draftAction, unsplashAction, listProductsAction, publishAssistPostAction, expandAction, getPostByIdAction, updateAssistPostAction } from "./actions";
+import { getTrendingTopicsAction, draftAction, unsplashAction, listProductsAction, publishAssistPostAction, expandAction, getPostByIdAction, updateAssistPostAction, getKeywordListAction, optimizeBodyAction } from "./actions";
 import type { UnsplashPhoto } from "@/lib/media/unsplash";
 import { Loader2, ImageIcon, Lightbulb, Rocket, ListChecks, Eye, EyeOff, ChevronLeft, ChevronRight, RefreshCcw } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -38,6 +38,15 @@ export default function BlogAssistPage() {
   const [drafting, setDrafting] = useState(false);
   const [loadingPhotos, setLoadingPhotos] = useState(false);
   const [generatingContent, setGeneratingContent] = useState(false);
+  // SEO step state
+  const [keywordList, setKeywordList] = useState<string[]>([]);
+  const [selectedKeywords, setSelectedKeywords] = useState<Record<string, boolean>>({});
+  const [includeRelatedLinks, setIncludeRelatedLinks] = useState(false);
+  const [loadingKeywords, setLoadingKeywords] = useState(false);
+  // Loading existing post state (when ?from=...)
+  const [loadingExisting, setLoadingExisting] = useState(false);
+  // Applying SEO updates overlay
+  const [applyingSeo, setApplyingSeo] = useState(false);
 
   // Wizard state
   const steps = [
@@ -46,7 +55,8 @@ export default function BlogAssistPage() {
     { key: 3, title: "Header Image" },
     { key: 4, title: "Full Body" },
     { key: 5, title: "Feature a Product" },
-    { key: 6, title: "Review & Publish" },
+    { key: 6, title: "SEO Keywords & Links" },
+    { key: 7, title: "Review & Publish" },
   ] as const;
   const [step, setStep] = useState<(typeof steps)[number]["key"]>(1);
   const [showPreview, setShowPreview] = useState(true);
@@ -65,20 +75,35 @@ export default function BlogAssistPage() {
   useEffect(() => {
     const id = searchParams.get("from");
     if (!id) return;
+    setLoadingExisting(true);
     (async () => {
-      const post = await getPostByIdAction(id);
-      if (!post) return;
-      setEditingId(id);
-      setDraft({ title: post.title || "", outline: "", intro: post.excerpt || "" });
-      setBody(post.body || "");
-      setHeaderUrl(post.image_url || null);
-      setSelectedTopic("");
-      setCustomTopic("");
-      setImageIdx(null);
-      setPhotos([]);
-      setStep(4); // jump to body editing
+      try {
+        const post = await getPostByIdAction(id);
+        if (!post) return;
+        setEditingId(id);
+        setDraft({ title: post.title || "", outline: "", intro: post.excerpt || "" });
+        setBody(post.body || "");
+        setHeaderUrl(post.image_url || null);
+        setSelectedTopic("");
+        setCustomTopic("");
+        setImageIdx(null);
+        setPhotos([]);
+        setStep(4); // jump to body editing
+      } finally {
+        setLoadingExisting(false);
+      }
     })();
   }, [searchParams]);
+
+  // Load keywords list when entering SEO step
+  useEffect(() => {
+    if (step !== 6) return;
+    if (keywordList.length > 0) return;
+    setLoadingKeywords(true);
+    getKeywordListAction()
+      .then((list) => setKeywordList(list || []))
+      .finally(() => setLoadingKeywords(false));
+  }, [step, keywordList.length]);
 
   const refreshTopics = async () => {
     setLoadingTopics(true);
@@ -185,7 +210,7 @@ export default function BlogAssistPage() {
         </div>
 
         {/* Stepper */}
-        <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+        <div className="mt-4 flex flex-wrap items-center gap-2 text-sm" aria-busy={loadingExisting}>
           {steps.map((s, idx) => {
             const active = step === s.key;
             const done = s.key < step;
@@ -193,13 +218,14 @@ export default function BlogAssistPage() {
               <button
                 key={s.key}
                 onClick={() => setStep(s.key)}
+                disabled={loadingExisting}
                 className={`px-3 py-1.5 rounded-md border transition-colors ${
                   active
                     ? 'bg-blue-600 text-white border-blue-600'
                     : done
                       ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-800'
                       : 'bg-white text-gray-700 border-gray-200 dark:bg-neutral-800 dark:text-gray-200 dark:border-neutral-700'
-                }`}
+                } ${loadingExisting ? 'opacity-60 cursor-not-allowed' : ''}`}
               >
                 <span className="font-medium mr-2">{idx + 1}.</span>
                 {s.title}
@@ -357,15 +383,105 @@ export default function BlogAssistPage() {
               </Card>
             )}
 
-            {/* Step 6: Review & Publish */}
+            {/* Step 6: SEO Keywords & Links */}
             {step === 6 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><ListChecks className="h-4 w-4" /> SEO Keywords & Links</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="text-sm text-gray-600 dark:text-gray-300">
+                    Pick relevant phrases to reinforce. Optionally insert a Related Reading list.
+                  </div>
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      disabled={loadingKeywords || applyingSeo || keywordList.length === 0}
+                      onClick={() => {
+                        const text = (body || "").toLowerCase();
+                        const scored = keywordList.map((k) => ({
+                          k,
+                          c: (text.match(new RegExp(`\\b${k.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}\\b`, 'gi')) || []).length,
+                        })).sort((a, b) => a.c - b.c);
+                        const next: Record<string, boolean> = {};
+                        scored.slice(0, 6).forEach(({ k }) => (next[k] = true));
+                        setSelectedKeywords(next);
+                      }}
+                    >
+                      Auto-select Suggestions
+                    </Button>
+                    <label className="ml-2 inline-flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={includeRelatedLinks} onChange={(e) => setIncludeRelatedLinks(e.target.checked)} disabled={applyingSeo} />
+                      Insert &quot;Related Reading&quot; in body
+                    </label>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                    {(keywordList || []).slice(0, 60).map((kw) => (
+                      <label key={kw} className="flex items-center gap-2 text-sm p-2 border rounded-md bg-white dark:bg-neutral-900">
+                        <input
+                          type="checkbox"
+                          checked={!!selectedKeywords[kw]}
+                          onChange={(e) => setSelectedKeywords((prev) => ({ ...prev, [kw]: e.target.checked }))}
+                          disabled={applyingSeo}
+                        />
+                        <span className="truncate" title={kw}>{kw}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          setApplyingSeo(true);
+                          const chosen = Object.keys(selectedKeywords).filter((k) => selectedKeywords[k]);
+                          const res = await optimizeBodyAction({ body, selectedKeywords: chosen, includeRelatedLinks });
+                          setBody(res.body || body);
+                        } finally {
+                          setApplyingSeo(false);
+                        }
+                      }}
+                      disabled={loadingKeywords || applyingSeo}
+                      className="gap-2"
+                    >
+                      {applyingSeo && <Loader2 className="h-4 w-4 animate-spin" />}
+                      Apply SEO Updates
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Step 7: Review & Publish */}
+            {step === 7 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2"><ListChecks className="h-4 w-4" /> Review & Publish</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-6">
+                  {/* Large full-width preview */}
+                  <div className="rounded-lg border border-black/10 dark:border-white/10 overflow-hidden bg-white dark:bg-neutral-900">
+                    {/* Header image */}
+                    {selectedPhoto ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={selectedPhoto.regular || selectedPhoto.thumb} alt={selectedPhoto.alt} className="w-full h-56 sm:h-72 md:h-80 object-cover" />
+                    ) : headerUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={headerUrl} alt="Header" className="w-full h-56 sm:h-72 md:h-80 object-cover" />
+                    ) : null}
+                    <div className="px-5 sm:px-8 py-6">
+                      <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-3">{draft?.title || 'Post title'}</h1>
+                      <div className={`mt-2 ${styles.markdown}`}>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: (props) => <a {...props} target="_blank" rel="noopener noreferrer" /> }}>
+                          {combinedMarkdown || "Your content preview will appear here once you write the intro/body."}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                  </div>
                   <div className="text-sm text-gray-600 dark:text-gray-300">
-                    Quick check: title, image, intro/body, and optional product look good? Use the preview to the right.
+                    Quick check: title, image, and content look good? If so, publish below.
                   </div>
                   <div className="flex justify-end gap-2">
                     <Button asChild variant="outline"><Link href="/admin/blog">Cancel</Link></Button>
@@ -414,28 +530,19 @@ export default function BlogAssistPage() {
 
             {/* Nav controls */}
             <div className="flex items-center justify-between">
-              <Button variant="ghost" onClick={() => setStep((s) => Math.max(1, s - 1) as (typeof steps)[number]["key"]) } disabled={step === 1} className="gap-1">
+              <Button variant="ghost" onClick={() => setStep((s) => Math.max(1, s - 1) as (typeof steps)[number]["key"]) } disabled={step === 1 || loadingExisting} className="gap-1">
                 <ChevronLeft className="h-4 w-4" /> Back
               </Button>
-              <Button variant="default" onClick={() => setStep((s) => Math.min(steps.length as number, s + 1) as (typeof steps)[number]["key"]) } disabled={step === steps.length} className="gap-1">
+              <Button variant="default" onClick={() => setStep((s) => Math.min(steps.length as number, s + 1) as (typeof steps)[number]["key"]) } disabled={step === steps.length || loadingExisting} className="gap-1">
                 Continue <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
 
             {/* Blocking overlay while generating */}
-            {generatingContent && (
-              <div className="fixed inset-0 h-screen w-screen z-[1000] bg-black/40 backdrop-blur-sm flex items-center justify-center">
-                <div className="rounded-lg bg-white dark:bg-neutral-900 border border-black/10 dark:border-white/10 p-6 shadow-xl flex items-center gap-3">
-                  <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                  <div className="text-sm text-gray-700 dark:text-gray-200">
-                    Generating full article… Please keep this tab open.
-                  </div>
-                </div>
-              </div>
-            )}
           </motion.div>
 
           {/* Preview column (desktop): keep mounted, animate width for smoother UX */}
+          {step !== 7 && (
           <motion.div
             className="hidden lg:block transform-gpu"
             animate={{ width: showPreview ? PREVIEW_WIDTH : 0, opacity: showPreview ? 1 : 0 }}
@@ -472,8 +579,40 @@ export default function BlogAssistPage() {
               </Card>
             </div>
           </motion.div>
+          )}
         </motion.div>
       </div>
+      {/* Full-screen overlays mounted at root to avoid transform clipping */}
+      {generatingContent && (
+        <div className="fixed inset-0 h-screen w-screen z-[1000] bg-black/40 backdrop-blur-sm flex items-center justify-center">
+          <div className="rounded-lg bg-white dark:bg-neutral-900 border border-black/10 dark:border-white/10 p-6 shadow-xl flex items-center gap-3">
+            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+            <div className="text-sm text-gray-700 dark:text-gray-200">
+              Generating full article… Please keep this tab open.
+            </div>
+          </div>
+        </div>
+      )}
+      {applyingSeo && (
+        <div className="fixed inset-0 h-screen w-screen z-[1000] bg-black/40 backdrop-blur-sm flex items-center justify-center">
+          <div className="rounded-lg bg-white dark:bg-neutral-900 border border-black/10 dark:border-white/10 p-6 shadow-xl flex items-center gap-3">
+            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+            <div className="text-sm text-gray-700 dark:text-gray-200">
+              Applying SEO updates…
+            </div>
+          </div>
+        </div>
+      )}
+      {loadingExisting && (
+        <div className="fixed inset-0 h-screen w-screen z-[1000] bg-black/40 backdrop-blur-sm flex items-center justify-center">
+          <div className="rounded-lg bg-white dark:bg-neutral-900 border border-black/10 dark:border-white/10 p-6 shadow-xl flex items-center gap-3">
+            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+            <div className="text-sm text-gray-700 dark:text-gray-200">
+              Loading existing post…
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

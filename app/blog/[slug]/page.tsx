@@ -7,6 +7,7 @@ import MainLayout from "@/app/components/layouts/MainLayout";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import styles from "@/markdown-styles.module.css";
+import RelatedPosts from "../components/RelatedPosts";
 
 // optional: clean weird placeholders/spacings if your content has them
 function cleanMarkdown(src = "") {
@@ -79,6 +80,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
               {body}
             </ReactMarkdown>
           </div>
+          <RelatedPosts currentSlug={post.slug} />
         </article>
       </div>
     </MainLayout>
