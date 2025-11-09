@@ -27,7 +27,7 @@ export default function AboutPage() {
 
   return (
     <MainLayout>
-    <div className="relative pt-24 min-h-screen text-gray-900 bg-gray-100 dark:text-gray-100 dark:bg-neutral-900">
+    <div className="relative  min-h-screen text-gray-900 bg-gray-100 dark:text-gray-100 dark:bg-neutral-900">
       {/* Hero Section */}
       <div className="flex overflow-hidden relative justify-center items-center pt-32 h-[400px] md:h-[500px] lg:h-[600px]">
         <Image
