@@ -361,9 +361,9 @@ export default function AdminBlogPage() {
           </div>
         ) : (
           <>
-            {/* Desktop table */}
-            <div className="hidden sm:block mt-4 overflow-hidden rounded-xl border border-black/5 dark:border-white/10 bg-white dark:bg-neutral-900 shadow-sm">
-              <table className="w-full text-sm">
+            {/* Posts table (scrollable on mobile) */}
+            <div className="mt-4 overflow-x-auto rounded-xl border border-black/5 dark:border-white/10 bg-white dark:bg-neutral-900 shadow-sm">
+              <table className="w-full min-w-[800px] text-sm">
                 <thead className="bg-gray-50 dark:bg-neutral-800/60 text-gray-600 dark:text-gray-300">
                   <tr>
                     <th className="w-10 p-3 text-left">

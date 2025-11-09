@@ -158,11 +158,11 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
 
   return (
     <div className="space-y-6 text-black dark:text-white">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold">Activity</h1>
-        <div className="flex gap-2">
-          <form className="flex gap-2" action="/admin/activity">
-            <Input name="q" placeholder="Search events, IDs, tracking..." defaultValue={String(qRaw)} className="w-72" />
+        <div className="flex flex-col gap-2 sm:flex-row sm:gap-2 sm:items-center">
+          <form className="flex gap-2 w-full sm:w-auto" action="/admin/activity">
+            <Input name="q" placeholder="Search events, IDs, tracking..." defaultValue={String(qRaw)} className="w-full sm:w-72" />
             <input type="hidden" name="type" value={type} />
             <Button type="submit" variant="outline">Search</Button>
           </form>
@@ -198,21 +198,25 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
             <div className="text-sm text-gray-500 py-6">No activity found.</div>
           ) : (
             items.map((it, idx) => (
-              <div key={idx} className="py-3 flex items-start gap-3">
-                <div className="w-40 shrink-0 font-mono text-xs text-gray-500">
+              <div key={idx} className="py-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3">
+                <div className="w-full sm:w-40 shrink-0 font-mono text-xs text-gray-500">
                   {new Date(it.ts).toLocaleString()}
                 </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 min-w-0">
                     {it.kind === "order" && <Badge>Order</Badge>}
                     {it.kind === "shipment" && <Badge variant="outline">Shipment</Badge>}
                     {it.kind === "webhook" && (
                       <Badge variant="secondary">Webhook{it.source ? `:${String(it.source).toUpperCase()}` : ""}</Badge>
                     )}
-                    <div className="font-medium">{it.title}</div>
+                    <div className="font-medium truncate sm:whitespace-normal">
+                      {it.title}
+                    </div>
                   </div>
                   {it.subtitle && (
-                    <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">{it.subtitle}</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400 mt-1 break-words sm:break-normal">
+                      {it.subtitle}
+                    </div>
                   )}
                 </div>
                 {it.href && (

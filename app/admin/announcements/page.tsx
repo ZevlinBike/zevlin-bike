@@ -135,7 +135,7 @@ export default function AdminAnnouncementsPage() {
 
   return (
     <div className="min-h-screen bg-white text-gray-900 dark:bg-neutral-900 dark:text-gray-100">
-      <div className="container mx-auto px-4 lg:px-6 pt-28 pb-12">
+      <div className="container mx-auto px-4 lg:px-6 pt-6 sm:pt-8 pb-12">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-4 sm:mb-6">
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Announcements</h1>

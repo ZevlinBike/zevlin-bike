@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import LineChart, { type Point } from "@/components/charts/LineChart";
 
 type TypeKey = "post" | "product" | "page";
 
 type Summary = { totalViews: number; totalUniques: number; days: number; items: number; avgPerDay: number };
 type DayRow = { day: string; views: number; uniques: number };
-type ItemRow = { slug: string; views: number; uniques: number };
+type ItemRow = { slug: string; title?: string; href?: string; views: number; uniques: number };
 type RefEntry = { slug: string; referrers: { domain: string; views: number }[] };
 
 type ApiResponse = { summary: Summary; byDay: DayRow[]; byItem: ItemRow[]; referrers: RefEntry[] };
@@ -91,11 +92,7 @@ export default function AnalyticsClient({ initialType = "post" as TypeKey }) {
     return rows;
   }, [data, start, end]);
 
-  const selectedRefs = useMemo(() => {
-    if (!data || !selectedSlug) return [] as { domain: string; views: number }[];
-    const entry = data.referrers.find((x) => x.slug === selectedSlug);
-    return entry?.referrers || [];
-  }, [data, selectedSlug]);
+  // Selected referrers are derived on demand in the details section.
 
   return (
     <div className="space-y-6">
@@ -162,10 +159,10 @@ export default function AnalyticsClient({ initialType = "post" as TypeKey }) {
           <table className="min-w-full text-sm">
             <thead>
               <tr className="text-left text-gray-500">
-                <th className="px-2 py-1">Slug</th>
-                <th className="px-2 py-1 text-right">Views</th>
-                <th className="px-2 py-1 text-right">Uniques</th>
-                <th className="px-2 py-1">Referrers (top 3)</th>
+                <th className="px-2 py-2 whitespace-nowrap">Title</th>
+                <th className="px-2 py-2 text-right whitespace-nowrap w-24">Views</th>
+                <th className="px-2 py-2 text-right whitespace-nowrap w-24">Uniques</th>
+                <th className="px-2 py-2 hidden md:table-cell">Referrers (top 3)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-neutral-800">
@@ -174,12 +171,27 @@ export default function AnalyticsClient({ initialType = "post" as TypeKey }) {
                 const selected = selectedSlug === it.slug;
                 return (
                   <tr key={it.slug} className={selected ? 'bg-blue-50/50 dark:bg-blue-950/20' : ''}>
-                    <td className="px-2 py-1 font-medium">
-                      <button className="underline underline-offset-2" onClick={() => setSelectedSlug((s) => (s === it.slug ? null : it.slug))}>{it.slug}</button>
+                    <td className="px-2 py-2 font-medium whitespace-nowrap max-w-[260px] sm:max-w-[360px]">
+                      <div className="flex items-center gap-2">
+                        <button
+                          className="underline underline-offset-2"
+                          title={it.title || it.slug}
+                          onClick={() => setSelectedSlug((s) => (s === it.slug ? null : it.slug))}
+                        >
+                          <span className="truncate inline-block max-w-[180px] sm:max-w-[280px] align-bottom">
+                            {it.title || it.slug}
+                          </span>
+                        </button>
+                        {it.href && (
+                          <Link href={it.href} className="text-xs text-blue-600 underline whitespace-nowrap" target="_blank" rel="noreferrer">
+                            View
+                          </Link>
+                        )}
+                      </div>
                     </td>
-                    <td className="px-2 py-1 text-right tabular-nums">{it.views.toLocaleString()}</td>
-                    <td className="px-2 py-1 text-right tabular-nums">{it.uniques.toLocaleString()}</td>
-                    <td className="px-2 py-1">
+                    <td className="px-2 py-2 text-right tabular-nums whitespace-nowrap w-24">{it.views.toLocaleString()}</td>
+                    <td className="px-2 py-2 text-right tabular-nums whitespace-nowrap w-24">{it.uniques.toLocaleString()}</td>
+                    <td className="px-2 py-2 hidden md:table-cell">
                       <div className="flex flex-wrap gap-2">
                         {refs.length === 0 && <span className="text-xs opacity-60">—</span>}
                         {refs.map((r) => (
@@ -260,4 +272,3 @@ function SelectedDetails({ type, slug, start, end }: { type: TypeKey; slug: stri
     </div>
   );
 }
-

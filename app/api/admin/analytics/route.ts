@@ -72,18 +72,37 @@ export async function POST(req: NextRequest) {
     const byDay = Array.from(byDayMap.values()).sort((a, b) => (a.day < b.day ? -1 : 1));
 
     // Aggregate by item
-    const byItemMap = new Map<string, { slug: string; views: number; uniques: number }>();
+    type ByItemBase = { slug: string; views: number; uniques: number };
+    type ByItemPost = ByItemBase & { title: string; href: string };
+    const byItemMap = new Map<string, ByItemBase>();
     for (const r of views) {
       const cur = byItemMap.get(r.slug) || { slug: r.slug, views: 0, uniques: 0 };
       cur.views += r.views || 0;
       cur.uniques += r.uniques || 0;
       byItemMap.set(r.slug, cur);
     }
-    const byItem = Array.from(byItemMap.values()).sort((a, b) => b.views - a.views).slice(0, limit);
+    const byItemBase = Array.from(byItemMap.values()).sort((a, b) => b.views - a.views).slice(0, limit);
+
+    // Enrich with titles/links for known types
+    let byItemOut: (ByItemBase | ByItemPost)[] = byItemBase;
+    if (type === 'post' && byItemBase.length) {
+      const topSlugs = byItemBase.map((x) => x.slug);
+      const { data: posts } = await supabase
+        .from('blog_posts')
+        .select('slug,title')
+        .in('slug', topSlugs);
+      const tmap = new Map<string, string>((posts || []).map((p: { slug: string; title: string | null }) => [p.slug, p.title || '']));
+      const enriched: ByItemPost[] = byItemBase.map((row) => ({
+        ...row,
+        title: tmap.get(row.slug) || row.slug,
+        href: `/blog/${row.slug}`,
+      }));
+      byItemOut = enriched;
+    }
 
     // Referrers per item (top 5)
     const refByItem: { slug: string; referrers: { domain: string; views: number }[] }[] = [];
-    const topSet = new Set(byItem.map((x) => x.slug));
+    const topSet = new Set(byItemOut.map((x) => x.slug));
     const refMap = new Map<string, Map<string, number>>();
     for (const r of refs) {
       if (!topSet.has(r.slug)) continue;
@@ -104,12 +123,12 @@ export async function POST(req: NextRequest) {
     const totalViews = byDay.reduce((s, r) => s + r.views, 0);
     const totalUniques = byDay.reduce((s, r) => s + r.uniques, 0);
     const days = byDay.length || 1;
-    const items = byItem.length;
+    const items = byItemOut.length;
 
     return NextResponse.json({
       summary: { totalViews, totalUniques, days, items, avgPerDay: Math.round(totalViews / days) },
       byDay,
-      byItem,
+      byItem: byItemOut,
       referrers: refByItem,
     });
   } catch (e) {

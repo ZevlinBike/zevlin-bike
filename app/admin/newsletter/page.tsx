@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { getNewsletters, getNewsletterSignupCount } from "./actions";
 import { NewsletterList } from "./components/NewsletterList";
@@ -19,10 +20,10 @@ export default async function NewsletterPage({
     : newsletters;
 
   return (
-    <div className="container mx-auto py-10">
-      <div className="flex justify-between items-center mb-6">
+    <div className="space-y-6 text-black dark:text-white">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Newsletters</h1>
+          <h1 className="text-2xl font-bold">Newsletters</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {signupCount.toLocaleString()} {signupCount === 1 ? "signup" : "signups"}
           </p>
@@ -31,7 +32,15 @@ export default async function NewsletterPage({
           <Link href="/admin/newsletter/new">New Newsletter</Link>
         </Button>
       </div>
-      <NewsletterList newsletters={filtered} />
+
+      <Card>
+        <CardHeader>
+          <CardTitle>All Newsletters</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <NewsletterList newsletters={filtered} />
+        </CardContent>
+      </Card>
     </div>
   );
 }
