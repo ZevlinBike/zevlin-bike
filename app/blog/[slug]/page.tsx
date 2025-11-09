@@ -8,6 +8,8 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import styles from "@/markdown-styles.module.css";
 import RelatedPosts from "../components/RelatedPosts";
+import TrackView from "@/components/analytics/TrackView";
+import { getPostViewTotals } from "../actions";
 
 // optional: clean weird placeholders/spacings if your content has them
 function cleanMarkdown(src = "") {
@@ -34,10 +36,14 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   if (!post) notFound();
 
   const body = cleanMarkdown(post.body);
+  const { views } = await getPostViewTotals(post.slug);
 
   return (
     <MainLayout>
       <div className="pt-40">
+        {/* Pageview tracking */}
+        {/* client-only tracker to record post views */}
+        <TrackView type="post" slug={post.slug} />
         <article className="container mx-auto max-w-4xl px-4 py-12 sm:py-16 lg:py-20">
           <header className="mb-8 text-center">
             <h1 className="mb-4 text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl">
@@ -51,6 +57,10 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
                 <time dateTime={post.published_at ?? ""}>{formatDate(post.published_at)}</time>
+              </div>
+              <div className="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4"><path d="M12 5c-7.633 0-10 7-10 7s2.367 7 10 7 10-7 10-7-2.367-7-10-7Zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10Zm0-2.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/></svg>
+                <span>{views.toLocaleString()} views</span>
               </div>
             </div>
           </header>

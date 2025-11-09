@@ -59,6 +59,7 @@ const navGroups: NavGroup[] = [
     label: "Website",
     icon: Newspaper,
     items: [
+      { name: "Analytics", href: "/admin/analytics" },
       { name: "Blog", href: "/admin/blog" },
       { name: "Announcements", href: "/admin/announcements" },
       { name: "Functions", href: "/admin/functions" },

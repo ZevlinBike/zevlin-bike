@@ -1,9 +1,10 @@
 import MainLayout from "@/app/components/layouts/MainLayout";
-import { getPublishedPosts } from "./actions";
+import { getPublishedPosts, getPostViewsForSlugs } from "./actions";
 import PostCard from "./components/PostCard";
 
 export default async function BlogPage() {
   const posts = await getPublishedPosts();
+  const viewsBySlug = await getPostViewsForSlugs(posts.map((p) => p.slug));
 
   return (
     <MainLayout>
@@ -22,7 +23,7 @@ export default async function BlogPage() {
       ) : (
         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
           {posts.map((post) => (
-            <PostCard key={post.id} post={post} />
+            <PostCard key={post.id} post={post} views={viewsBySlug[post.slug] || 0} />
           ))}
         </div>
       )}

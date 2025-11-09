@@ -34,7 +34,7 @@ import {
 } from "lucide-react";
 import { Loader2 } from "lucide-react";
 import { clsx } from "clsx";
-import { getPosts, deletePost, bulkUpdatePostStatus } from "./actions";
+import { getPosts, deletePost, bulkUpdatePostStatus, getPostViewsForSlugs } from "./actions";
 import { BlogPost } from "@/lib/schema";
 import { useDebouncedCallback } from "use-debounce";
 import { toast } from "sonner";
@@ -70,6 +70,7 @@ export default function AdminBlogPage() {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [viewCounts, setViewCounts] = useState<Record<string, number>>({});
   const [bulkActionLoading, setBulkActionLoading] = useState<null | "publish" | "unpublish" | "delete">(null);
   const [rowActionLoading, setRowActionLoading] = useState<{ id: string | null; action: null | "edit" | "publish" | "unpublish" | "delete" | "preview" | "view" }>({ id: null, action: null });
 
@@ -101,9 +102,14 @@ export default function AdminBlogPage() {
       page,
       pageSize,
     };
-    getPosts(params).then(({ posts, total }: { posts: BlogPost[], total: number }) => {
+    getPosts(params).then(async ({ posts, total }: { posts: BlogPost[], total: number }) => {
       setPosts(posts);
       setTotal(total);
+      // fetch views by slug (total across all time)
+      try {
+        const map = await getPostViewsForSlugs(posts.map(p => p.slug));
+        setViewCounts(map);
+      } catch {}
       setIsLoading(false);
     });
   }, [query, status, sort, page, pageSize]);
@@ -373,6 +379,7 @@ export default function AdminBlogPage() {
                     <th className="p-3 text-left">Status</th>
                     <th className="p-3 text-left">Author</th>
                     <th className="p-3 text-left">Updated</th>
+                    <th className="p-3 text-right">Views</th>
                     <th className="p-3 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -405,6 +412,7 @@ export default function AdminBlogPage() {
                         </div>
                       </td>
                       <td className="p-3 text-sm text-gray-600 dark:text-gray-300">{formatDate(p.updated_at)}</td>
+                      <td className="p-3 text-right font-medium">{(viewCounts[p.slug] || 0).toLocaleString()}</td>
                       <td className="p-3">
                         <div className="flex justify-end gap-1">
                           <IconButton

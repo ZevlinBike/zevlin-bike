@@ -254,3 +254,26 @@ export async function bulkUpdatePostStatus(postIds: string[], published: boolean
     revalidatePath("/admin/blog");
     return { message: "Successfully updated posts." };
 }
+
+type ViewCountRow = { slug: string; views: number };
+
+export async function getPostViewsForSlugs(slugs: string[]): Promise<Record<string, number>> {
+  if (!slugs || slugs.length === 0) return {};
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("analytics_view_counts")
+    .select("slug, views")
+    .eq("type", "post")
+    .in("slug", slugs);
+
+  if (error) {
+    console.error("Error fetching views for slugs:", error);
+    return {};
+  }
+
+  const map: Record<string, number> = {};
+  (data || []).forEach((r: ViewCountRow) => {
+    map[r.slug] = (map[r.slug] || 0) + (r.views || 0);
+  });
+  return map;
+}

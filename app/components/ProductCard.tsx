@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import Image from "next/image";
 import { useCartStore } from "@/store/cartStore";
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { motion, useAnimation, AnimatePresence } from "framer-motion";
 import { Product } from "@/lib/schema";
 
@@ -29,6 +29,22 @@ const ProductCard = ({ product, isFocused }: { product: Product, isFocused: bool
 
   const handleCardClick = () => setShowModal(true);
   const handleCloseModal = () => setShowModal(false);
+
+  // Track a product "view" when the modal opens (focused view)
+  useEffect(() => {
+    if (showModal) {
+      const controller = new AbortController();
+      const referrer = typeof document !== "undefined" ? document.referrer : "";
+      fetch("/api/track-view", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ type: "product", slug: product.slug, referrer }),
+        signal: controller.signal,
+      }).catch(() => {});
+      return () => controller.abort();
+    }
+  }, [showModal, product.slug]);
 
   return (
     <Fragment>

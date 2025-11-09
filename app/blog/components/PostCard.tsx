@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { BlogPost } from "@/lib/schema";
-import { Calendar, User2 } from "lucide-react";
+import { Calendar, User2, Eye } from "lucide-react";
 
 function formatDate(iso?: string | null) {
   if (!iso) return "-";
@@ -13,7 +13,7 @@ function formatDate(iso?: string | null) {
   });
 }
 
-export default function PostCard({ post }: { post: BlogPost }) {
+export default function PostCard({ post, views = 0 }: { post: BlogPost; views?: number }) {
   return (
     <Link href={`/blog/${post.slug}`} className="group block">
       <div className="overflow-hidden rounded-lg bg-white dark:bg-neutral-800 shadow-md group-hover:shadow-xl transition-shadow duration-300">
@@ -40,11 +40,17 @@ export default function PostCard({ post }: { post: BlogPost }) {
               <User2 className="h-4 w-4" />
               <span>{post.author_name || "Zevlin Team"}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              <time dateTime={post.published_at ?? ""}>
-                {formatDate(post.published_at)}
-              </time>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Eye className="h-4 w-4" />
+                <span>{views.toLocaleString()} views</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                <time dateTime={post.published_at ?? ""}>
+                  {formatDate(post.published_at)}
+                </time>
+              </div>
             </div>
           </div>
         </div>
