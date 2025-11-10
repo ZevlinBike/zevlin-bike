@@ -31,7 +31,7 @@ export default function ParallaxGrid({
   const lineDark = "rgba(255,255,255,0.06)";
 
   return (
-    <div className="absolute inset-0 z-0 pointer-events-none" aria-hidden>
+    <div className="absolute inset-0 z-10 pointer-events-none" aria-hidden>
       <div className="absolute inset-0" style={{ perspective: 1200 }}>
         <motion.div
           style={{ x, y, rotateX: 58, rotateZ: 0 }}

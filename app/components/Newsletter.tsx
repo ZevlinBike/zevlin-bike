@@ -42,28 +42,28 @@ export default function Newsletter() {
   } satisfies Variants;
 
   return (
-    <section className="overflow-hidden relative py-20 text-gray-900 dark:text-white dark:from-gray-900 dark:to-black">
+    <section className="relative overflow-hidden py-20 bg-black text-white border-y border-white/10">
       <div className="container relative z-10 px-4 mx-auto lg:px-6">
         <motion.div
-          className="p-8 mx-auto max-w-3xl text-center bg-white rounded-2xl border border-gray-100 shadow-xl dark:bg-black dark:border-gray-700"
+          className="mx-auto max-w-3xl text-center"
           variants={staggerContainer}
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, amount: 0.3 }}
         >
           <motion.h3
-            className="mb-4 text-3xl font-extrabold leading-tight text-gray-900 md:text-4xl dark:text-white"
+            className="mb-3 text-4xl md:text-5xl font-extrabold leading-tight tracking-tight"
             variants={fadeInRise}
           >
-            Unlock Your Edge: Join the Zevlin Crew!
+            A mediocre newsletter. Occasionally.
           </motion.h3>
 
           <motion.p
-            className="mx-auto mb-8 max-w-xl text-lg text-gray-600 dark:text-gray-400"
+            className="mx-auto mb-8 max-w-xl text-lg text-gray-300"
             variants={fadeInRise}
           >
-            Get exclusive access to cutting-edge cycling tips, early product
-            releases, and members-only deals straight to your inbox.
+            Every once in a while — when we actually have something cool to share.
+            No spam. No fluff. Just the good stuff, when it exists.
           </motion.p>
 
           <motion.div
@@ -74,15 +74,15 @@ export default function Newsletter() {
               <Input
                 type="email"
                 name="email"
-                placeholder="Your email address"
-                className="flex-grow py-2.5 px-4 placeholder-gray-400 text-gray-900 bg-gray-50 rounded-lg border border-gray-200 shadow-sm transition-all duration-300 dark:text-white dark:bg-gray-700 dark:border-gray-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                placeholder="you@yourdomain.com"
+                className="flex-grow h-12 py-2.5 px-4 placeholder-gray-400 text-white bg-gray-800 rounded-lg border border-white/10 shadow-sm transition-all duration-300 focus:border-white/30 focus:ring-1 focus:ring-white/30"
                 required
               />
               <Button
                 type="submit"
-                className="font-bold text-white whitespace-nowrap bg-blue-600 shadow-md transition-all duration-300 hover:bg-blue-700 hover:scale-105"
+                className="h-12 px-6 text-base font-bold text-black whitespace-nowrap bg-white shadow-md transition-all duration-300 hover:bg-gray-200 hover:scale-105"
               >
-                Subscribe Now
+                Fine, sign me up
               </Button>
             </form>
           </motion.div>

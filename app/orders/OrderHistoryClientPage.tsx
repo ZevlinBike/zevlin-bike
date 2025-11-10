@@ -32,9 +32,26 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
+import Link from "next/link";
 import { requestRefund } from "./actions";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
+
+const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+
+const statusClass = (status: string) => {
+  switch (status) {
+    case 'paid':
+      return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
+    case 'fulfilled':
+      return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
+    case 'cancelled':
+    case 'refunded':
+      return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
+    default:
+      return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300';
+  }
+};
 
 const OrderRow = ({ order }: { order: OrderWithLineItems }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -93,25 +110,23 @@ const OrderRow = ({ order }: { order: OrderWithLineItems }) => {
     <>
       <TableRow
         onClick={() => setIsOpen(!isOpen)}
-        className="cursor-pointer hover:bg-gray-50 dark:hover:bg-neutral-800"
+        className="cursor-pointer hover:bg-gray-50/70 dark:hover:bg-neutral-800/70"
       >
         <TableCell className="font-medium">
-          #{order.id.substring(0, 8)}
+          <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-[12px] font-mono font-medium text-gray-800 dark:bg-neutral-800 dark:text-gray-200">#{order.id.substring(0, 8)}</span>
         </TableCell>
         <TableCell>
-          {new Date(order.created_at!).toLocaleDateString()}
+          <div>{new Date(order.created_at!).toLocaleDateString()}</div>
+          <div className="text-xs text-gray-500">{new Date(order.created_at!).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
         </TableCell>
         <TableCell>
-          <Badge
-            variant="outline"
-            className="capitalize flex items-center gap-2"
-          >
+          <Badge variant="secondary" className={`capitalize flex items-center gap-2 ${statusClass(order.status)}`}>
             {getStatusIcon(order.status)}
             {order.status}
           </Badge>
         </TableCell>
-        <TableCell className="text-right">
-          ${(order.total_cents / 100).toFixed(2)}
+        <TableCell className="text-right font-semibold">
+          {currency.format(order.total_cents / 100)}
         </TableCell>
         <TableCell className="text-right">
           {isOpen ? (
@@ -133,7 +148,7 @@ const OrderRow = ({ order }: { order: OrderWithLineItems }) => {
               <div className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="md:col-span-2 space-y-4">
-                    <h4 className="font-semibold">Order Details</h4>
+                    <h4 className="font-semibold tracking-tight">Order Details</h4>
                     {order.line_items.map((item, index) => {
                       if (!item.products) return null;
                       type ProductImage = { url: string; is_featured: boolean };
@@ -161,7 +176,7 @@ const OrderRow = ({ order }: { order: OrderWithLineItems }) => {
                     })}
                   </div>
                   <div className="space-y-4">
-                    <h4 className="font-semibold">Actions</h4>
+                    <h4 className="font-semibold tracking-tight">Actions</h4>
                     <div className="flex flex-col gap-2">
                       <Button
                         variant="outline"
@@ -228,23 +243,22 @@ export default function OrderHistoryClientPage({
   orders: OrderWithLineItems[];
 }) {
   return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <Card>
+    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <Card className="bg-white/90 backdrop-blur ring-1 ring-black/5 dark:bg-neutral-900/90 dark:ring-white/10">
         <CardHeader>
-          <CardTitle>Order History</CardTitle>
+          <CardTitle className="text-2xl font-bold tracking-tight">Your Orders</CardTitle>
           <CardDescription>
-            Here is a list of your past orders. Click on an order to see more
-            details.
+            Track your orders and peek into details. Click any row to expand.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
+          <Table className="text-[14px]">
             <TableHeader>
               <TableRow>
-                <TableHead>Order ID</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Total</TableHead>
+                <TableHead className="uppercase tracking-wider text-xs text-gray-500">Order</TableHead>
+                <TableHead className="uppercase tracking-wider text-xs text-gray-500">Date</TableHead>
+                <TableHead className="uppercase tracking-wider text-xs text-gray-500">Status</TableHead>
+                <TableHead className="text-right uppercase tracking-wider text-xs text-gray-500">Total</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
@@ -253,8 +267,13 @@ export default function OrderHistoryClientPage({
                 orders.map((order) => <OrderRow key={order.id} order={order} />)
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center h-24">
-                    You have no orders yet.
+                  <TableCell colSpan={5} className="text-center h-40">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <p className="text-sm text-gray-600 dark:text-gray-300">You don&apos;t have any orders yet.</p>
+                      <Button asChild size="sm">
+                        <Link href="/products">Start shopping</Link>
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               )}

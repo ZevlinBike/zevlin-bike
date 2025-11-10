@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Order, Customer } from "@/lib/schema";
-import { PrintModal } from "./PrintModal";
+// Actions removed from table view for simplicity
 
 type OrderWithCustomer = Order & {
   customers: Pick<Customer, "first_name" | "last_name" | "email"> | null;
@@ -68,32 +68,33 @@ export default function OrderTable({
   onToggleAll?: (ids: string[]) => void;
 }) {
   const router = useRouter();
+  const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
   const handleRowClick = (orderId: string) => {
     router.push(`/admin/order/${orderId}`);
   };
 
   return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-10">
+    <div className=" border bg-white shadow-sm dark:bg-neutral-900">
+      <Table className="text-[13px]">
+        <TableHeader className="sticky top-0 z-10 bg-gray-50/60 backdrop-blur supports-[backdrop-filter]:bg-gray-50/60 dark:bg-neutral-900/60">
+          <TableRow className="hover:bg-transparent">
+            <TableHead className="w-10 hidden sm:table-cell">
               <input
                 type="checkbox"
+                className="h-4 w-4 rounded border-gray-300 dark:border-neutral-600"
                 onChange={() => onToggleAll?.(orders.map(o => o.id))}
                 checked={orders.length > 0 && orders.every((o) => selected?.includes(o.id))}
                 aria-label="Select all"
               />
             </TableHead>
-            <TableHead>Order ID</TableHead>
-            <TableHead>Customer</TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead>Payment</TableHead>
-            <TableHead>Order Status</TableHead>
-            <TableHead>Shipping</TableHead>
-            <TableHead className="text-right">Total</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead className="uppercase tracking-wider text-xs text-gray-500">Order</TableHead>
+            <TableHead className="uppercase tracking-wider text-xs text-gray-500">Customer</TableHead>
+            <TableHead className="uppercase tracking-wider text-xs text-gray-500">Date</TableHead>
+            <TableHead className="uppercase tracking-wider text-xs text-gray-500 hidden md:table-cell">Payment</TableHead>
+            <TableHead className="uppercase tracking-wider text-xs text-gray-500 hidden md:table-cell">Order</TableHead>
+            <TableHead className="uppercase tracking-wider text-xs text-gray-500 hidden lg:table-cell">Shipping</TableHead>
+            <TableHead className="text-right uppercase tracking-wider text-xs text-gray-500">Total</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -101,21 +102,27 @@ export default function OrderTable({
             <TableRow
               key={order.id}
               onClick={() => handleRowClick(order.id)}
-              className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+              className="cursor-pointer hover:bg-gray-50/80 dark:hover:bg-neutral-800/70"
               data-navigates="true"
               role="link"
               aria-label={`Open order ${order.id.substring(0,8)}`}
             >
-              <TableCell onClick={(e) => e.stopPropagation()}>
+              <TableCell onClick={(e) => e.stopPropagation()} className="hidden sm:table-cell">
                 <input
                   type="checkbox"
+                  className="h-4 w-4 rounded border-gray-300 dark:border-neutral-600"
                   checked={selected?.includes(order.id) || false}
                   onChange={() => onToggle?.(order.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  onDoubleClick={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
                   aria-label={`Select ${order.id.substring(0,8)}`}
                 />
               </TableCell>
-              <TableCell className="font-mono text-sm">
-                {order.id.substring(0, 8)}
+              <TableCell className="font-mono">
+                <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-[11px] font-medium text-gray-800 dark:bg-neutral-800 dark:text-gray-200">
+                  {order.id.substring(0, 8)}
+                </span>
               </TableCell>
               <TableCell>
                 <div className="font-medium flex items-center gap-2">
@@ -131,36 +138,31 @@ export default function OrderTable({
                     <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 uppercase tracking-wide">Test</span>
                   )}
                 </div>
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-gray-500 hidden sm:block">
                   {order.customers?.email || ''}
                 </div>
               </TableCell>
               <TableCell>
-                {new Date(order.created_at!).toLocaleDateString()}
+                <div>{new Date(order.created_at!).toLocaleDateString()}</div>
+                <div className="text-xs text-gray-500 hidden sm:block">{new Date(order.created_at!).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
               </TableCell>
-              <TableCell>
+              <TableCell className="hidden md:table-cell">
                 <Badge variant="secondary" className={getStatusClass(order.payment_status)}>
                   {formatStatus(order.payment_status)}
                 </Badge>
               </TableCell>
-              <TableCell>
+              <TableCell className="hidden md:table-cell">
                 <Badge variant="secondary" className={getStatusClass(order.order_status)}>
                   {formatStatus(order.order_status)}
                 </Badge>
               </TableCell>
-              <TableCell>
+              <TableCell className="hidden lg:table-cell">
                 <Badge variant="secondary" className={getStatusClass(order.shipping_status)}>
                   {formatStatus(order.shipping_status)}
                 </Badge>
               </TableCell>
-              <TableCell className="text-right font-medium">
-                ${(order.total_cents / 100).toFixed(2)}
-              </TableCell>
-              <TableCell
-                className="text-right"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <PrintModal orderId={order.id} />
+              <TableCell className="text-right font-semibold">
+                {currency.format(order.total_cents / 100)}
               </TableCell>
             </TableRow>
           ))}

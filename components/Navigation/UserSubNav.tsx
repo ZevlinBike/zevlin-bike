@@ -36,14 +36,9 @@ export default function UserSubNav({ user }: { user: User }) {
     <div
       className="
         sticky top-[var(--subnav-offset,0px)]
+        backdrop-blur-md
+        bg-white/50 dark:bg-black/50
         z-40
-        mx-4 
-        rounded-b-xl
-        bg-gradient-to-r
-        from-black/80 via-black/70 to-black/80 
-        border border-white/10
-        backdrop-blur
-        shadow-[0_1px_0_0_rgba(255,255,255,0.06)_inset,0_8px_20px_rgba(0,0,0,0.25)]
         overflow-hidden
       "
       role="navigation"
@@ -54,16 +49,15 @@ export default function UserSubNav({ user }: { user: User }) {
         className="
           container mx-auto
           px-3 sm:px-4
-          py-1
           flex items-center justify-between
           leading-none
         "
       >
         {/* Left: tiny welcome (ellipsis on overflow) */}
-        <div className="min-w-0 flex items-center gap-2 text-[11px] sm:text-xs text-white/80">
+        <div className="min-w-0 flex items-center gap-2 text-[11px] sm:text-xs dark:text-white/80">
           <span className="inline-block size-1.5 rounded-full bg-emerald-400/80 shadow-[0_0_8px_rgba(16,185,129,0.7)]" />
           <span className="truncate">
-            Hi, <span className="font-medium text-white">{name}</span>
+            Hi, <span className="font-medium dark:text-white">{name}</span>
           </span>
         </div>
 
@@ -76,8 +70,7 @@ export default function UserSubNav({ user }: { user: User }) {
                 group
                 inline-flex items-center gap-1
                 text-[11px] sm:text-xs
-                text-white/80 hover:text-white
-                rounded-md
+                dark:text-white/80 dark:hover:text-white
                 ring-1 ring-white/10 hover:ring-white/20
                 transition
                 px-2
@@ -94,8 +87,7 @@ export default function UserSubNav({ user }: { user: User }) {
               group
               inline-flex items-center gap-1
               text-[11px] sm:text-xs
-              text-white/80 hover:text-white
-              rounded-md
+              dark:text-white/80 dark:hover:text-white
               ring-1 ring-white/10 hover:ring-white/20
               transition
               px-2
@@ -112,8 +104,7 @@ export default function UserSubNav({ user }: { user: User }) {
               group
               inline-flex items-center gap-1
               text-[11px] sm:text-xs
-              text-white/80 hover:text-white
-              rounded-md
+              dark:text-white/80 dark:hover:text-white
               ring-1 ring-white/10 hover:ring-white/20
               transition
               cursor-pointer
@@ -129,7 +120,11 @@ export default function UserSubNav({ user }: { user: User }) {
       </div>
 
       {/* razor accent line for that “sports car clock” vibe */}
-      <div className="h-px w-full bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+      <div className="h-[2px] 
+      w-full bg-gradient-to-r 
+      dark:from-pink-300/40 dark:via-blue-400/60 dark:to-purple-400/30
+      from-green-400/50 to-blue-400/60 via-orange-400/40
+      " />
     </div>
   );
 }
