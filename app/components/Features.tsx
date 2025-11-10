@@ -1,35 +1,65 @@
 "use client";
-import { Bike, Shield, Leaf, Trophy } from "lucide-react";
+import { Bike, Shield, Leaf, Trophy, CheckCircle2 } from "lucide-react";
 import { motion, Variants } from "framer-motion"; // Import motion
 
-const features = [
+type Feature = {
+  title: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+  color: "blue" | "green" | "purple" | "orange";
+  badge: string;
+  highlights: string[];
+};
+
+const features: Feature[] = [
   {
     title: "All-Day Comfort",
     description:
-      "Our formula reduces friction and prevents saddle sores, keeping you comfortable on your longest rides. Experience seamless performance, mile after mile.",
+      "Our formula reduces friction and prevents saddle sores so you stay focused and comfortable on your longest rides.",
     icon: Bike,
-    color: "blue", // Use color name for better Tailwind class generation
+    color: "blue",
+    badge: "Most Loved",
+    highlights: [
+      "Reduces friction and hot spots",
+      "Stays put on long efforts",
+      "Works with bibs and liners",
+    ],
   },
   {
     title: "Skin Protection",
     description:
-      "Creates a long-lasting, protective barrier on your skin to fight friction, chafing, and irritation. Your skin stays healthy, ride after ride.",
+      "Creates a durable barrier to help fight chafing and irritation so your skin stays calm ride after ride.",
     icon: Shield,
     color: "green",
+    badge: "Barrier Care",
+    highlights: [
+      "Shields high‑friction zones",
+      "Helps reduce saddle sores",
+    ],
   },
   {
     title: "Natural Formula",
     description:
-      "Made with natural, non-tingle ingredients, our cream is gentle on your skin and perfect for everyday use. Feel good about what you put on your body.",
+      "Made with gentle, non‑tingle ingredients you can use every day and feel good about.",
     icon: Leaf,
     color: "purple",
+    badge: "Clean Feel",
+    highlights: [
+      "Non‑tingle, gentle on skin",
+      "No harsh dyes or parabens",
+    ],
   },
   {
-    title: "Pro-Cyclist Approved",
+    title: "Pro‑Cyclist Approved",
     description:
-      "Developed with and trusted by professional cyclists to perform at the highest levels. Get the edge that pros rely on for peak performance.",
+      "Developed with and trusted by professional cyclists to perform when it matters most.",
     icon: Trophy,
     color: "orange",
+    badge: "Pro Tested",
+    highlights: [
+      "Refined with elite riders",
+      "Ready for race day",
+    ],
   },
 ];
 
@@ -50,6 +80,51 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } },
 } satisfies Variants;
 
+function colorClasses(color: Feature["color"]) {
+  return {
+    ring:
+      color === "blue"
+        ? "ring-blue-500/30"
+        : color === "green"
+          ? "ring-green-500/30"
+          : color === "purple"
+            ? "ring-purple-500/30"
+            : "ring-orange-500/30",
+    solid:
+      color === "blue"
+        ? "bg-blue-600"
+        : color === "green"
+          ? "bg-green-600"
+          : color === "purple"
+            ? "bg-purple-600"
+            : "bg-orange-600",
+    soft:
+      color === "blue"
+        ? "from-blue-500/10 to-blue-500/0"
+        : color === "green"
+          ? "from-green-500/10 to-green-500/0"
+          : color === "purple"
+            ? "from-purple-500/10 to-purple-500/0"
+            : "from-orange-500/10 to-orange-500/0",
+    text:
+      color === "blue"
+        ? "text-blue-600"
+        : color === "green"
+          ? "text-green-600"
+          : color === "purple"
+            ? "text-purple-600"
+            : "text-orange-600",
+    badgeBg:
+      color === "blue"
+        ? "bg-blue-600"
+        : color === "green"
+          ? "bg-green-600"
+          : color === "purple"
+            ? "bg-purple-600"
+            : "bg-orange-600",
+  } as const;
+}
+
 export default function Features() {
   return (
     <section className="overflow-hidden relative py-20 bg-gray-100 dark:bg-neutral-900">
@@ -64,60 +139,64 @@ export default function Features() {
           </h2>
         </div>
 
-        {/* Feature Grid: Using Framer Motion container */}
+        {/* Feature Grid: compact, uniform, bold styling */}
         <motion.div
-          className="grid gap-12 md:grid-cols-2 lg:grid-cols-4"
+          className="grid gap-6 md:grid-cols-2 lg:grid-cols-4"
           variants={containerVariants}
           initial="hidden"
           whileInView="visible" // Animate when element comes into view
           viewport={{ once: true, amount: 0.3 }} // Only animate once, when 30% visible
         >
-          {features.map(({ title, description, icon: Icon, color }, i) => (
-            <motion.div
-              key={i}
-              className="flex relative flex-col items-center p-8 rounded-2xl border border-gray-100 shadow-lg transition-all duration-300 dark:border-gray-700 hover:shadow-xl bg-white/70 backdrop-blur-md group dark:bg-black/70 hover:scale-[1.02]"
-              variants={itemVariants} // Apply item animation variants
-            >
-              {/* Dynamic Color Ring/Glow */}
-              <div
-                className={`absolute inset-0 rounded-2xl ring-2 ring-${color}-500/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none`}
-              />
-              <div
-                className={`absolute w-32 h-32 rounded-full blur-2xl opacity-10 ${
-                  color === "blue"
-                    ? "bg-blue-500"
-                    : color === "green"
-                      ? "bg-green-500"
-                      : color === "purple"
-                        ? "bg-purple-500"
-                        : "bg-orange-500"
-                }`}
-              />
+          {features.map(({ title, description, icon: Icon, color, badge, highlights }, i) => {
+            const colors = colorClasses(color);
+            const index = (i + 1).toString().padStart(2, "0");
 
-              {/* Icon Container: Larger, more prominent */}
-              <div
-                className={`relative z-10 flex justify-center items-center mb-6 w-20 h-20 rounded-full ${
-                  color === "blue"
-                    ? "bg-blue-600"
-                    : color === "green"
-                      ? "bg-green-600"
-                      : color === "purple"
-                        ? "bg-purple-600"
-                        : "bg-orange-600"
-                } shadow-lg transform transition-transform duration-300 group-hover:rotate-6 group-hover:scale-110`}
+            return (
+              <motion.div
+                key={i}
+                className="group relative flex h-full min-h-[220px] flex-col justify-between overflow-hidden rounded-xl border-2 border-neutral-200 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl dark:border-neutral-700 dark:bg-neutral-950"
+                variants={itemVariants}
+                aria-label={title}
               >
-                <Icon className="w-10 h-10 text-white" />
-              </div>
+                {/* Bold left accent */}
+                <div className={`absolute left-0 top-0 h-full w-1 ${colors.badgeBg}`} />
 
-              {/* Text Content */}
-              <h3 className="mb-3 text-2xl font-semibold text-center text-gray-900 dark:text-white">
-                {title}
-              </h3>
-              <p className="text-center text-gray-600 dark:text-gray-400">
-                {description}
-              </p>
-            </motion.div>
-          ))}
+                {/* Ghost index for attitude */}
+                <div className={`pointer-events-none absolute right-3 top-1 text-6xl font-black ${colors.text} opacity-10 select-none`}>{index}</div>
+
+                {/* Badge */}
+                <span className={`absolute right-3 top-3 rounded-full ${colors.badgeBg} px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm`}>{badge}</span>
+
+                {/* Header */}
+                <div className="mb-3 flex items-center gap-3">
+                  <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${colors.solid} text-white shadow-md transition-transform group-hover:rotate-1 group-hover:scale-105`}>
+                    <Icon className="h-6 w-6" />
+                  </div>
+                  <h3 className="text-lg font-extrabold uppercase tracking-wide text-gray-900 dark:text-white">
+                    {title}
+                  </h3>
+                </div>
+
+                {/* Body */}
+                <p className="text-sm text-gray-700 dark:text-gray-300">
+                  {description}
+                </p>
+
+                {/* Highlights */}
+                <ul className="mt-4 grid gap-1.5">
+                  {highlights.map((h, idx) => (
+                    <li key={idx} className="flex items-start gap-2 text-sm text-gray-800 dark:text-gray-300">
+                      <CheckCircle2 className={`mt-0.5 h-4 w-4 ${colors.text}`} />
+                      <span>{h}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                {/* Bottom gradient indicator */}
+                <span className={`absolute bottom-0 left-0 h-1 w-0 bg-gradient-to-r ${colors.soft} transition-all duration-300 group-hover:w-full`} />
+              </motion.div>
+            );
+          })}
         </motion.div>
       </div>
     </section>
