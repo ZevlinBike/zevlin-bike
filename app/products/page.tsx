@@ -3,6 +3,7 @@ import AllProducts from "../components/AllProducts";
 import Newsletter from "../components/Newsletter";
 import { getProducts } from "../admin/products/actions";
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 
 export default async function ProductsPage({
   searchParams,
@@ -12,9 +13,10 @@ export default async function ProductsPage({
   const sp = ((await searchParams) || {}) as Record<string, string | string[] | undefined>;
   const categorySlug = sp.category as string | undefined;
   const focusSlug = sp.focus as string | undefined;
+  if (focusSlug) {
+    redirect(`/products/${focusSlug}`);
+  }
   const products = await getProducts(categorySlug);
-
-  console.log(focusSlug)
 
   // Load active categories for filters/footer coherence
   const supabase = await createClient();
@@ -30,7 +32,6 @@ export default async function ProductsPage({
           products={products}
           activeCategorySlug={categorySlug}
           categories={(categories || []).map(c => ({ name: c.name, slug: c.slug }))}
-          focusProduct={focusSlug}
         />
         <Newsletter />
       </div>

@@ -31,6 +31,11 @@ export default function ProductForm({ product, isOpen, onClose }: ProductFormPro
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [name, setName] = useState<string>(product?.name || "");
+  const [slug, setSlug] = useState<string>(product?.slug || "");
+  const [slugTouched, setSlugTouched] = useState<boolean>(false);
+
+  const slugify = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -54,6 +59,13 @@ export default function ProductForm({ product, isOpen, onClose }: ProductFormPro
       setPreviewUrls(urls);
     }
   };
+
+  // Keep slug in sync with name until user edits slug manually
+  useEffect(() => {
+    if (!slugTouched) {
+      setSlug(slugify(name));
+    }
+  }, [name, slugTouched]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -93,7 +105,7 @@ export default function ProductForm({ product, isOpen, onClose }: ProductFormPro
           
           <div className="space-y-2">
             <Label htmlFor="name">Product Name</Label>
-            <Input id="name" name="name" defaultValue={product?.name} required />
+            <Input id="name" name="name" value={name} onChange={(e) => setName(e.target.value)} required />
           </div>
 
           <div className="space-y-2">
@@ -129,7 +141,14 @@ export default function ProductForm({ product, isOpen, onClose }: ProductFormPro
 
           <div className="space-y-2">
             <Label htmlFor="slug">URL Slug</Label>
-            <Input id="slug" name="slug" defaultValue={product?.slug} required />
+            <Input
+              id="slug"
+              name="slug"
+              value={slug}
+              onChange={(e) => { setSlug(e.target.value); setSlugTouched(true); }}
+              onBlur={() => setSlug((s) => slugify(s))}
+              required
+            />
           </div>
 
           <div className="space-y-2">

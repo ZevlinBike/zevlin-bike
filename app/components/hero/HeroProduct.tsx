@@ -6,7 +6,7 @@ export default function HeroProduct({ product, disableClick = false }: { product
   return (
     <Link
       className="flex relative flex-col items-center text-center group"
-      href={`/products?focus=${product.slug}`}
+      href={`/products/${product.slug}`}
       draggable={false}
       onClick={(e) => {
         if (disableClick) {

@@ -159,7 +159,7 @@ export async function publishAssistPostAction(input: {
   }
   // Optional product + image credit footers
   if (input.product) {
-    finalBody += `\n---\n> Upgrade your ride with [${input.product.name}](/products?focus=${input.product.slug}).\n\n`;
+    finalBody += `\n---\n> Upgrade your ride with [${input.product.name}](/products/${input.product.slug}).\n\n`;
   }
   if (input.imageCredit) {
     finalBody += `\n_Header photo by [${input.imageCredit.name}](${input.imageCredit.link}) on Unsplash_`;

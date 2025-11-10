@@ -157,7 +157,10 @@ export interface Review {
   product_id: string;
   customer_id?: string;
   rating: number;
+  title?: string;
   body?: string;
+  verified?: boolean;
+  helpful_count?: number;
   created_at?: string;
 }
 
