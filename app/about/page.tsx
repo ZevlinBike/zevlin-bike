@@ -110,7 +110,7 @@ export default function AboutPage() {
       {/* Why We Ride Section */}
       <section className="px-4 pb-24 sm:px-6 lg:px-8">
         <motion.div
-          className="p-10 mx-auto max-w-4xl bg-white bg-opacity-95 rounded-2xl border border-blue-100 shadow-xl md:p-14 dark:bg-gray-800 dark:border-gray-700 backdrop-blur-sm" // Added blue border and slight blur/opacity
+          className="p-10 mx-auto max-w-4xl bg-pink-400 bg-opacity-95 rounded-2xl border border-blue-100 shadow-xl md:p-14 dark:bg-gray-800 dark:border-gray-700 backdrop-blur-sm" // Added blue border and slight blur/opacity
           initial="hidden"
           whileInView="visible"
           variants={containerVariants}

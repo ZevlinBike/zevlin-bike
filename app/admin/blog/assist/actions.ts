@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import type { BlogPost } from "@/lib/schema";
 import { loadKeywordList, injectKeywordsParagraph, injectRelatedLinks } from "@/lib/blog/seo";
+import { validateAssist, type AssistValidationResult, fixAssist } from "@/lib/blog/assistValidation";
 
 export async function getTrendingTopicsAction(input?: { limit?: number; seed?: number; exclude?: string[] }) {
   const limit = Math.max(1, Math.min(24, input?.limit ?? 8));
@@ -165,6 +166,27 @@ export async function publishAssistPostAction(input: {
     finalBody += `\n_Header photo by [${input.imageCredit.name}](${input.imageCredit.link}) on Unsplash_`;
   }
 
+  // Validate and sanitize when publishing
+  if (input.publish) {
+    const recent = await getRecentBlogSlugs();
+    const validation = validateAssist({
+      title: input.title,
+      outline: input.outline,
+      intro: input.intro,
+      // validate body content without duplicating the H1 (we already add it above)
+      body: finalBody.replace(/^\s*#\s+[^\n]+\n+/, ""),
+      companyName: "Zevlin",
+      keywords: [],
+      internalDomains: ["zevlinbike.com", "www.zevlinbike.com"],
+      internalPaths: ["/blog/"],
+      recentBlogSlugs: recent,
+    });
+    if (validation.errors.length > 0) {
+      throw new Error(`Content validation failed:\n- ${validation.errors.join("\n- ")}`);
+    }
+    finalBody = validation.sanitizedMarkdown;
+  }
+
   const { error } = await supabase.from("blog_posts").insert({
     title: input.title,
     slug: input.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, ""),
@@ -250,6 +272,26 @@ export async function updateAssistPostAction(input: {
     finalBody = lines.join("\n");
   }
 
+  // Validate and sanitize when publishing
+  if (input.publish) {
+    const recent = await getRecentBlogSlugs();
+    const validation = validateAssist({
+      title: input.title,
+      outline: input.outline,
+      intro: input.intro,
+      body: finalBody.replace(/^\s*#\s+[^\n]+\n+/, ""),
+      companyName: "Zevlin",
+      keywords: [],
+      internalDomains: ["zevlinbike.com", "www.zevlinbike.com"],
+      internalPaths: ["/blog/"],
+      recentBlogSlugs: recent,
+    });
+    if (validation.errors.length > 0) {
+      throw new Error(`Content validation failed:\n- ${validation.errors.join("\n- ")}`);
+    }
+    finalBody = validation.sanitizedMarkdown;
+  }
+
   const { error } = await supabase
     .from("blog_posts")
     .update({
@@ -302,4 +344,76 @@ export async function optimizeBodyAction(input: {
     out = injectRelatedLinks(out, posts, 3);
   }
   return { body: out };
+}
+
+// Server-side validation for Assist UI (DB-aware)
+export async function validateAssistContentAction(input: {
+  title: string;
+  outline: string;
+  intro: string;
+  body: string;
+  selectedKeywords?: string[];
+}): Promise<AssistValidationResult> {
+  const recent = await getRecentBlogSlugs();
+  return validateAssist({
+    title: input.title,
+    outline: input.outline,
+    intro: input.intro,
+    body: input.body,
+    companyName: "Zevlin",
+    keywords: input.selectedKeywords || [],
+    internalDomains: ["zevlinbike.com", "www.zevlinbike.com"],
+    internalPaths: ["/blog/"],
+    recentBlogSlugs: recent,
+  });
+}
+
+// Server-side auto-fix for Assist UI
+export async function fixAssistContentAction(input: {
+  title: string;
+  outline: string;
+  intro: string;
+  body: string;
+  selectedKeywords?: string[];
+}): Promise<{ body: string; applied: string[]; validation: AssistValidationResult }>{
+  const supabase = await createClient();
+  const oneYearAgo = new Date();
+  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+  const { data } = await supabase
+    .from("blog_posts")
+    .select("title, slug, published_at")
+    .eq("published", true)
+    .gte("published_at", oneYearAgo.toISOString())
+    .order("published_at", { ascending: false })
+    .limit(12);
+  const posts = (data || []).map((p) => ({ title: p.title as string, slug: p.slug as string }));
+  const recentSlugs = new Set(posts.map((p) => p.slug));
+  const res = fixAssist({
+    title: input.title,
+    outline: input.outline,
+    intro: input.intro,
+    body: input.body,
+    companyName: "Zevlin",
+    keywords: input.selectedKeywords || [],
+    internalDomains: ["zevlinbike.com", "www.zevlinbike.com"],
+    internalPaths: ["/blog/"],
+    recentBlogSlugs: recentSlugs,
+    recentPosts: posts,
+    minInternalLinks: 4,
+    minExternalLinks: 2,
+  });
+  return { body: res.fixedMarkdown, applied: res.appliedFixes, validation: res.postValidation };
+}
+
+async function getRecentBlogSlugs(): Promise<Set<string>> {
+  const supabase = await createClient();
+  const oneYearAgo = new Date();
+  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+  const { data } = await supabase
+    .from("blog_posts")
+    .select("slug, published_at")
+    .eq("published", true)
+    .gte("published_at", oneYearAgo.toISOString())
+    .limit(1000);
+  return new Set((data || []).map((p: any) => p.slug as string));
 }

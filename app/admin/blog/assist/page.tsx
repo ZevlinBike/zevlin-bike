@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { getTrendingTopicsAction, draftAction, unsplashAction, listProductsAction, publishAssistPostAction, expandAction, getPostByIdAction, updateAssistPostAction, getKeywordListAction, optimizeBodyAction } from "./actions";
+import { getTrendingTopicsAction, draftAction, unsplashAction, listProductsAction, publishAssistPostAction, expandAction, getPostByIdAction, updateAssistPostAction, getKeywordListAction, optimizeBodyAction, validateAssistContentAction, fixAssistContentAction } from "./actions";
 import type { UnsplashPhoto } from "@/lib/media/unsplash";
 import { Loader2, ImageIcon, Lightbulb, Rocket, ListChecks, Eye, EyeOff, ChevronLeft, ChevronRight, RefreshCcw } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -47,6 +47,10 @@ export default function BlogAssistPage() {
   const [loadingExisting, setLoadingExisting] = useState(false);
   // Applying SEO updates overlay
   const [applyingSeo, setApplyingSeo] = useState(false);
+  // Validation state
+  const [validating, setValidating] = useState(false);
+  const [validation, setValidation] = useState<null | { errors: string[]; warnings: string[]; metrics: any }>(null);
+  const [appliedFixes, setAppliedFixes] = useState<string[]>([]);
 
   // Wizard state
   const steps = [
@@ -155,6 +159,8 @@ export default function BlogAssistPage() {
   const publish = () => {
     if (!draft) return;
     startPublish(async () => {
+      // Block publish if validation has errors
+      if (validation && validation.errors?.length > 0) return;
       if (editingId) {
         await updateAssistPostAction({
           id: editingId,
@@ -481,7 +487,98 @@ export default function BlogAssistPage() {
                     </div>
                   </div>
                   <div className="text-sm text-gray-600 dark:text-gray-300">
-                    Quick check: title, image, and content look good? If so, publish below.
+                    Run the checklist to confirm all publishing requirements.
+                  </div>
+                  <div className="rounded-md border p-4 bg-white dark:bg-neutral-900">
+                    <div className="flex items-center justify-between mb-3 gap-2">
+                      <div className="font-medium">Quality Checklist</div>
+                      <div className="flex items-center gap-2">
+                      <Button size="sm" variant="secondary" disabled={!draft || validating}
+                        onClick={async () => {
+                          if (!draft) return;
+                          setValidating(true);
+                          try {
+                            const res = await validateAssistContentAction({
+                              title: draft.title,
+                              outline: draft.outline,
+                              intro: draft.intro,
+                              body: body,
+                              selectedKeywords: (() => {
+                                const chosen = Object.keys(selectedKeywords).filter((k) => selectedKeywords[k]);
+                                if (chosen.length > 0) return chosen;
+                                const basis = (selectedTopic || customTopic || draft.title || '').toLowerCase();
+                                const stop = new Set(['the','and','or','to','of','a','in','for','on','with','how','what','why','when','is','it','your','you','vs','from']);
+                                return (basis.match(/[a-z0-9]+/g) || []).filter((w) => !stop.has(w));
+                              })(),
+                            });
+                            setValidation({ errors: res.errors, warnings: res.warnings, metrics: res.metrics });
+                            setAppliedFixes([]);
+                          } finally {
+                            setValidating(false);
+                          }
+                        }}
+                        className="gap-2"
+                      >
+                        {validating && <Loader2 className="h-4 w-4 animate-spin" />} Run Checks
+                      </Button>
+                      <Button size="sm" variant="default" disabled={!draft || validating}
+                        onClick={async () => {
+                          if (!draft) return;
+                          setValidating(true);
+                          try {
+                            const res = await fixAssistContentAction({
+                              title: draft.title,
+                              outline: draft.outline,
+                              intro: draft.intro,
+                              body: body,
+                              selectedKeywords: Object.keys(selectedKeywords).filter((k) => selectedKeywords[k]),
+                            });
+                            setBody(res.body);
+                            setAppliedFixes(res.applied || []);
+                            setValidation({ errors: res.validation.errors, warnings: res.validation.warnings, metrics: res.validation.metrics });
+                          } finally {
+                            setValidating(false);
+                          }
+                        }}
+                        className="gap-2"
+                      >
+                        {validating && <Loader2 className="h-4 w-4 animate-spin" />} Fix Issues
+                      </Button>
+                      </div>
+                    </div>
+                    {validation ? (
+                      <div className="space-y-2 text-sm">
+                        <div className={validation.errors.length === 0 ? 'text-green-700' : 'text-red-700'}>
+                          {validation.errors.length === 0 ? 'All required checks passed.' : `${validation.errors.length} issues to fix before publishing:`}
+                        </div>
+                        {validation.errors.length > 0 && (
+                          <ul className="list-disc pl-5 text-red-700">
+                            {validation.errors.map((e, i) => (<li key={i}>{e}</li>))}
+                          </ul>
+                        )}
+                        {appliedFixes.length > 0 && (
+                          <>
+                            <div className="text-green-700 mt-2">Applied fixes:</div>
+                            <ul className="list-disc pl-5 text-green-700">
+                              {appliedFixes.map((f, i) => (<li key={i}>{f}</li>))}
+                            </ul>
+                          </>
+                        )}
+                        {validation.warnings?.length > 0 && (
+                          <>
+                            <div className="text-amber-700 mt-2">Suggestions:</div>
+                            <ul className="list-disc pl-5 text-amber-700">
+                              {validation.warnings.map((w, i) => (<li key={i}>{w}</li>))}
+                            </ul>
+                          </>
+                        )}
+                        <div className="text-xs text-gray-500 mt-2">
+                          Word count: {validation.metrics?.wordCount ?? '-'} • Reading level (FK): {validation.metrics?.fkGrade?.toFixed ? validation.metrics.fkGrade.toFixed(1) : validation.metrics?.fkGrade}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-500">Click “Run Checks” to see pass/fail details.</div>
+                    )}
                   </div>
                   <div className="flex justify-end gap-2">
                     <Button asChild variant="outline"><Link href="/admin/blog">Cancel</Link></Button>
@@ -520,7 +617,7 @@ export default function BlogAssistPage() {
                     >
                       {savingDraft && <Loader2 className="h-4 w-4 animate-spin" />} Save as Draft
                     </Button>
-                    <Button onClick={publish} disabled={!draft || publishing} className="gap-2">
+                    <Button onClick={publish} disabled={!draft || publishing || (validation?.errors?.length ?? 0) > 0} className="gap-2">
                       {publishing && <Loader2 className="h-4 w-4 animate-spin" />} Publish Post
                     </Button>
                   </div>

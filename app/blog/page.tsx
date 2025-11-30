@@ -21,7 +21,7 @@ export default async function BlogPage() {
       {posts.length === 0 ? (
         <p className="text-center text-gray-500">No posts have been published yet. Check back soon!</p>
       ) : (
-        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 pb-8">
           {posts.map((post) => (
             <PostCard key={post.id} post={post} views={viewsBySlug[post.slug] || 0} />
           ))}
