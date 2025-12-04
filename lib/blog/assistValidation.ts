@@ -383,7 +383,7 @@ function estimateSyllables(text: string): number {
 
 function syllablesInWord(w: string): number {
   if (w.length <= 3) return 1;
-  let v = w
+  const v = w
     .replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/, "")
     .replace(/^y/, "");
   const m = v.match(/[aeiouy]{1,2}/g);
@@ -521,7 +521,8 @@ function choosePhrasesToBold(md: string, keywords: string[], maxCount: number): 
   const chosen: string[] = [];
   for (const k of keywords) {
     if (chosen.length >= maxCount) break;
-    if (!new RegExp(`\n?\*\*${escapeRegExp(k)}\*\*`, 'i').test(md) && wordBoundaryIncludes(markdownToPlain(md), k)) {
+    const escK = k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (!new RegExp(`\\*\\*${escK}\\*\\*`, 'i').test(md) && wordBoundaryIncludes(markdownToPlain(md), k)) {
       chosen.push(k);
     }
   }

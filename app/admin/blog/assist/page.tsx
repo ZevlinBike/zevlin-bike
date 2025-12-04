@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { getTrendingTopicsAction, draftAction, unsplashAction, listProductsAction, publishAssistPostAction, expandAction, getPostByIdAction, updateAssistPostAction, getKeywordListAction, optimizeBodyAction, validateAssistContentAction, fixAssistContentAction } from "./actions";
+import type { AssistValidationResult } from "@/lib/blog/assistValidation";
 import type { UnsplashPhoto } from "@/lib/media/unsplash";
 import { Loader2, ImageIcon, Lightbulb, Rocket, ListChecks, Eye, EyeOff, ChevronLeft, ChevronRight, RefreshCcw } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -49,7 +50,7 @@ export default function BlogAssistPage() {
   const [applyingSeo, setApplyingSeo] = useState(false);
   // Validation state
   const [validating, setValidating] = useState(false);
-  const [validation, setValidation] = useState<null | { errors: string[]; warnings: string[]; metrics: any }>(null);
+  const [validation, setValidation] = useState<null | Pick<AssistValidationResult, 'errors' | 'warnings' | 'metrics'>>(null);
   const [appliedFixes, setAppliedFixes] = useState<string[]>([]);
 
   // Wizard state

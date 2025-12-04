@@ -415,5 +415,5 @@ async function getRecentBlogSlugs(): Promise<Set<string>> {
     .eq("published", true)
     .gte("published_at", oneYearAgo.toISOString())
     .limit(1000);
-  return new Set((data || []).map((p: any) => p.slug as string));
+  return new Set((data || []).map((p: { slug: string }) => p.slug));
 }
