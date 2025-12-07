@@ -26,7 +26,7 @@ const Navigation = ({ user, notices } : { user:User | null, notices: Notificatio
   return (
     <>
       <header
-        className={`fixed top-0 left-0 right-0 z-[100] duration-500 transition-all`}
+        className={`fixed top-3 left-3 right-3 rounded-lg overflow-hidden z-[100] duration-500 transition-all`}
       >
         <NotificationBanner scrolled={scrolled} notices={notices || []}/>
         <div

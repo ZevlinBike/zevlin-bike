@@ -7,6 +7,7 @@ export default function HeroBackground() {
       <div className="absolute inset-0 bg-gradient-to-br from-gray-100 via-gray-200 to-white dark:from-gray-900 dark:via-gray-800 dark:to-black" />
       <div className="absolute inset-0 z-10 bg-gradient-to-r from-white to-transparent dark:from-black to-transparent" />
       <div className="absolute inset-0 z-20 bg-gradient-to-t from-white via-transparent to-transparent dark:from-black to-transparent" />
+      <div className="absolute inset-0 z-20 bg-gradient-to-b from-white via-transparent to-transparent dark:from-black to-transparent" />
 
       <DotGrid />
       {/* Faint hero background image */}
