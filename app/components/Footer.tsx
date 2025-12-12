@@ -147,8 +147,19 @@ export default function Footer() {
 
         {/* bottom bar */}
         <div className="py-6 text-center">
-          <p className="text-[12px] text-gray-500 dark:text-gray-400">
-            &copy; {new Date().getFullYear()} Zevlin Bike. All rights reserved.
+          <p className="text-[12px] text-gray-500 dark:text-gray-400 inline-flex flex-wrap items-center justify-center gap-2">
+            <span>
+              &copy; {new Date().getFullYear()} Zevlin Bike. All rights reserved.
+            </span>
+            <span aria-hidden className="text-gray-400">•</span>
+            <a
+              href="https://tylerweb.dev"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-4 hover:text-gray-700 dark:hover:text-gray-200"
+            >
+              Site by Tyler Lundin
+            </a>
           </p>
         </div>
       </div>
