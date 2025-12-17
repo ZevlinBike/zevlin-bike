@@ -78,3 +78,24 @@ export async function deleteDiscount(id: string) {
   revalidatePath('/admin/discounts');
   return { data };
 }
+
+export async function updateDiscountActive(id: string, active: boolean) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('discounts')
+    .update({ active })
+    .eq('id', id);
+  if (error) {
+    console.error('Error updating discount active:', error);
+    return { error: error.message };
+  }
+  revalidatePath('/admin/discounts');
+  return { ok: true };
+}
+
+export async function updateDiscountActiveForm(formData: FormData) {
+  const id = String(formData.get('id') || '');
+  const active = String(formData.get('active') || '') === 'true';
+  if (!id) return { error: 'Missing id' };
+  return updateDiscountActive(id, active);
+}

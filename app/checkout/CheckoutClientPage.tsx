@@ -24,7 +24,7 @@ type PaymentRef = {
   confirm: () => Promise<{ paymentIntentId?: string; error?: string } | undefined>;
 };
 import { toast } from "sonner";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+// Removed unused Dialog components
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
