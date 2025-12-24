@@ -235,6 +235,7 @@ export async function processCheckout(
         payment_status: 'paid',
         order_status: 'pending_fulfillment',
         shipping_status: 'not_shipped',
+        is_training: env.NODE_ENV !== 'production',
         address_verified: addressVerified,
         address_verification_message: addressVerificationMessage,
         subtotal_cents: Math.round(costData.subtotal * 100),
@@ -580,7 +581,7 @@ export async function finalizeOrder(
         discount_cents: Math.round(costData.discount * 100),
         total_cents: totalInCents,
         stripe_payment_intent_id: paymentIntentId,
-        is_training: options?.isTraining ?? false,
+        is_training: options?.isTraining ?? (env.NODE_ENV !== 'production'),
         billing_name: `${
           checkoutData.billingSameAsShipping
             ? checkoutData.shippingFirstName + ' ' + checkoutData.shippingLastName
@@ -791,6 +792,7 @@ export async function upsertPendingOrder(
           payment_status: 'pending',
           order_status: 'pending_payment',
           shipping_status: 'not_shipped',
+          is_training: env.NODE_ENV !== 'production',
           address_verified: addressVerified,
           address_verification_message: addressVerificationMessage,
           subtotal_cents: Math.round(costData.subtotal * 100),
@@ -827,6 +829,7 @@ export async function upsertPendingOrder(
           payment_status: 'pending',
           order_status: 'pending_payment',
           shipping_status: 'not_shipped',
+          is_training: env.NODE_ENV !== 'production',
           address_verified: addressVerified,
           address_verification_message: addressVerificationMessage,
           subtotal_cents: Math.round(costData.subtotal * 100),

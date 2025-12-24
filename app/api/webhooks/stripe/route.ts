@@ -82,6 +82,7 @@ export async function POST(req: NextRequest) {
                 payment_status: 'paid',
                 order_status: 'pending_fulfillment',
                 shipping_status: 'not_shipped',
+                is_training: env.NODE_ENV !== 'production',
                 subtotal_cents: invoice.final_total_cents,
                 shipping_cost_cents: 0,
                 tax_cents: 0,
