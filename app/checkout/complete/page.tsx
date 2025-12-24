@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import MainLayout from "@/app/components/layouts/MainLayout";
+import PageShell from "@/app/components/layouts/PageShell";
 import { Loader2 } from "lucide-react";
 import { finalizeOrder } from "../actions";
 import { useCartStore } from "@/store/cartStore";
@@ -51,7 +51,7 @@ export default function CheckoutCompletePage() {
   }, [router, search, clearCart]);
 
   return (
-    <MainLayout>
+    <PageShell>
       <div className="pt-40 min-h-screen text-gray-900 bg-white dark:text-white dark:bg-neutral-900">
         <div className="container px-4 mx-auto sm:px-6 lg:px-8">
           <h1 className="mb-8 text-3xl font-extrabold tracking-tight sm:text-4xl">
@@ -63,6 +63,6 @@ export default function CheckoutCompletePage() {
           </div>
         </div>
       </div>
-    </MainLayout>
+    </PageShell>
   );
 }

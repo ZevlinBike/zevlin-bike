@@ -66,6 +66,8 @@ export default function PendingNav() {
   useEffect(() => {
     if (isAdmin) return;
     const onClick = (e: MouseEvent) => {
+      // If another handler already called preventDefault (e.g., an in-card button), skip
+      if (e.defaultPrevented) return;
       const target = e.target as HTMLElement | null;
       if (!target) return;
       // Allow opt-out

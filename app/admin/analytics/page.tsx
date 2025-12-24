@@ -1,9 +1,9 @@
-import MainLayout from "@/app/components/layouts/MainLayout";
+import PageShell from "@/app/components/layouts/PageShell";
 import AnalyticsClient from "./Client";
 
 export default function AnalyticsPage() {
   return (
-    <MainLayout>
+    <PageShell>
       <div className="min-h-screen bg-gray-50 dark:bg-neutral-900 text-black dark:text-white">
         <div className="container mx-auto max-w-6xl px-4 py-6 sm:py-8">
           <div className="mb-4 sm:mb-6">
@@ -13,6 +13,6 @@ export default function AnalyticsPage() {
           <AnalyticsClient />
         </div>
       </div>
-    </MainLayout>
+    </PageShell>
   );
 }

@@ -1,4 +1,4 @@
-import MainLayout from "@/app/components/layouts/MainLayout";
+import PageShell from "@/app/components/layouts/PageShell";
 import { getPublishedPosts, getPostViewsForSlugs } from "./actions";
 import PostCard from "./components/PostCard";
 
@@ -7,7 +7,7 @@ export default async function BlogPage() {
   const viewsBySlug = await getPostViewsForSlugs(posts.map((p) => p.slug));
 
   return (
-    <MainLayout>
+    <PageShell>
     <div className="mx-auto px-4 pt-40">
       <div className="text-center mb-12">
         <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl">
@@ -28,6 +28,6 @@ export default async function BlogPage() {
         </div>
       )}
     </div>
-    </MainLayout>
+    </PageShell>
   );
 }

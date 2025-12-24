@@ -1,4 +1,4 @@
-import MainLayout from "@/app/components/layouts/MainLayout";
+import PageShell from "@/app/components/layouts/PageShell";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Product, ProductImage, ProductVariant } from "@/lib/schema";
@@ -72,7 +72,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const variants: ProductVariant[] = product.product_variants || [];
 
   return (
-    <MainLayout>
+    <PageShell>
       <div className="relative pt-28 pb-24 min-h-screen overflow-x-hidden bg-gradient-to-b from-white via-gray-50 to-gray-100 text-black dark:from-neutral-950 dark:via-neutral-950 dark:to-neutral-900 dark:text-white">
         <ParallaxGrid />
         <div className="container mx-auto px-4 lg:px-6 relative z-10">
@@ -133,6 +133,6 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           <ReviewsSection productSlug={product.slug} />
         </div>
       </div>
-    </MainLayout>
+    </PageShell>
   );
 }

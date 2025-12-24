@@ -75,7 +75,7 @@ export default function OrderTable({
   };
 
   return (
-    <div className=" border bg-white shadow-sm dark:bg-neutral-900">
+    <div className=" border border-black/10 dark:border-white/10 bg-white shadow-sm dark:bg-neutral-900">
       <Table className="text-[13px]">
         <TableHeader className="sticky top-0 z-10 bg-gray-50/60 backdrop-blur supports-[backdrop-filter]:bg-gray-50/60 dark:bg-neutral-900/60">
           <TableRow className="hover:bg-transparent">

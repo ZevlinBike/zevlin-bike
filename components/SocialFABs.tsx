@@ -99,8 +99,8 @@ export default function SocialFABs() {
           : { duration: 0.2, ease: "easeOut" }
       }
       className={[
-        "fixed right-0 md:scale-100 top-1/2 sm:bottom-6 z-50",
-        "transition-all duration-300",
+        "fixed right-0 md:scale-100 top-1/2 h-fit sm:bottom-6 z-50",
+        "transition-all duration-300 ",
         isVisible ? "pointer-events-auto" : "pointer-events-none",
       ].join(" ")}
     >
@@ -109,7 +109,7 @@ export default function SocialFABs() {
           className={[
             "grid items-center gap-2",
             "rounded-l-lg ",
-            "backdrop-blur-xl pl-1 group-hover:pr-20 ",
+            "backdrop-blur-xl pl-1 group-hover:pr-20 border border-black/10 dark:border-white/10",
             // Light / dark glass
             "bg-black shadow-[0_4px_20px_-8px_rgba(0,0,0,0.25)]",
             // Subtle hover lift

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCartStore } from "@/store/cartStore";
-import MainLayout from "@/app/components/layouts/MainLayout";
+import PageShell from "@/app/components/layouts/PageShell";
 import { Loader2, CreditCard, Truck, User, LogIn, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { verifyDiscountCode, createPaymentIntent, finalizeOrder, upsertAuthCart } from "./actions";
@@ -59,7 +59,8 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
 
   const [isPending, startTransition] = useTransition();
   const [errors, setErrors] = useState<Record<string, string[] | undefined>>({});
-  // Client-side address validation removed
+  // Client-side address validation (non-blocking)
+  const [addrStatus, setAddrStatus] = useState<{ state: 'idle'|'ok'|'warn'|'error'; message?: string }>({ state: 'idle' });
 
   const [formData, setFormData] = useState<CheckoutForm>({
     email: user?.email || (customer?.email || ""),
@@ -94,6 +95,44 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
   // Payment Element state
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+
+  const validateShippingAddress = useCallback(async () => {
+    if (!formData.shippingFirstName || !formData.shippingLastName || !formData.shippingAddress || !formData.shippingCity || !formData.shippingState || !formData.shippingZipCode) {
+      setAddrStatus({ state: 'idle' });
+      return;
+    }
+    try {
+      // Add a short timeout so validation never blocks the flow
+      const controller = new AbortController();
+      const to = setTimeout(() => controller.abort(), 2500);
+      const res = await fetch('/api/shipping/validate-address', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ address: {
+          name: `${formData.shippingFirstName} ${formData.shippingLastName}`.trim(),
+          address1: formData.shippingAddress,
+          city: formData.shippingCity,
+          state: formData.shippingState,
+          postal_code: formData.shippingZipCode,
+          country: 'US',
+        } }),
+        signal: controller.signal,
+      });
+      clearTimeout(to);
+      const data = await res.json();
+      if (data?.ok && data?.isValid) {
+        setAddrStatus({ state: 'ok', message: data?.messages?.[0] || 'Address verified' });
+      } else if (data?.ok) {
+        setAddrStatus({ state: 'warn', message: data?.messages?.[0] || 'Address may be incomplete or invalid' });
+      } else {
+        setAddrStatus({ state: 'error', message: data?.messages?.[0] || 'Failed to validate address' });
+      }
+    } catch (e) {
+      // Treat timeouts/network failures as non-blocking warnings
+      const msg = (e as Error)?.name === 'AbortError' ? 'Address check timed out' : (e as Error)?.message;
+      setAddrStatus({ state: 'error', message: msg || 'Unable to verify address right now' });
+    }
+  }, [formData.shippingFirstName, formData.shippingLastName, formData.shippingAddress, formData.shippingCity, formData.shippingState, formData.shippingZipCode]);
 
   // Restore saved progress (best-effort) so accidental refreshes don't wipe info
   useEffect(() => {
@@ -328,7 +367,7 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
 
   if (!hydrated) {
     return (
-      <MainLayout>
+      <PageShell>
         <div className="pt-40 min-h-screen text-gray-900 bg-white dark:text-white dark:bg-neutral-900">
           <div className="container px-4 mx-auto sm:px-6 lg:px-8">
             <h1 className="mb-8 text-3xl font-extrabold tracking-tight sm:text-4xl">
@@ -344,13 +383,13 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
             </div>
           </div>
         </div>
-      </MainLayout>
+      </PageShell>
     );
   }
 
   if (cartItems.length === 0) {
     return (
-      <MainLayout>
+      <PageShell>
         <div className="pt-40 min-h-screen text-gray-900 bg-white dark:text-white dark:bg-neutral-900">
           <div className="container px-4 mx-auto sm:px-6 lg:px-8">
             <h1 className="mb-8 text-3xl font-extrabold tracking-tight sm:text-4xl">
@@ -368,12 +407,12 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
             </div>
           </div>
         </div>
-      </MainLayout>
+      </PageShell>
     );
   }
 
   return (
-    <MainLayout>
+    <PageShell>
       <div className="pt-40 min-h-screen text-gray-900 bg-white dark:text-white dark:bg-neutral-900 pb-20">
         <div className="container px-4 mx-auto sm:px-6 lg:px-8">
           <h1 className="mb-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
@@ -599,10 +638,16 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
                           required
                           value={formData.shippingAddress}
                           onChange={handleInputChange}
+                          onBlur={validateShippingAddress}
                           disabled={step > 2}
                           placeholder="123 Main St"
                         />
                         {errors.shippingAddress && <p className="text-red-500 text-sm mt-1">{errors.shippingAddress[0]}</p>}
+                        {addrStatus.state !== 'idle' && (
+                          <p className={`text-sm mt-2 ${addrStatus.state === 'ok' ? 'text-emerald-600' : addrStatus.state === 'warn' ? 'text-amber-600' : 'text-red-600'}`}>
+                            {addrStatus.message}
+                          </p>
+                        )}
                       </div>
                       
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -655,8 +700,8 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
                       {/* Address validation UI removed */}
                       <div className="flex items-center justify-between mt-2">
                           <Button type="button" variant="outline" onClick={() => goToStep(1)}>Back</Button>
-                          <Button type="button" onClick={() => setStep(3)}>Continue</Button>
-                      </div>
+                          <Button type="button" onClick={() => { void validateShippingAddress(); setStep(3); }}>Continue</Button>
+                       </div>
                     </CardContent>
                   </Card>
                   )}
@@ -828,6 +873,18 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
                       </div>
                     </CardContent>
                   </Card>
+                  )}
+
+                  {step === 4 && addrStatus.state !== 'ok' && (
+                  <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-900/20 p-3 mb-4 text-sm text-amber-800 dark:text-amber-200 flex items-start justify-between gap-3">
+                    <div>
+                      <div className="font-medium">Please confirm your shipping address</div>
+                      <p className="mt-0.5 text-xs">
+                        {addrStatus.message || "We couldn’t verify this address. You can continue, but delivery may be delayed if it’s incorrect."}
+                      </p>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={() => goToStep(2)}>Edit</Button>
+                  </div>
                   )}
 
                   {step === 4 && (
@@ -1009,7 +1066,7 @@ const CheckoutForm = ({ user, customer }: { user: UserType | null, customer: Cus
       </div>
 
       {/* Suggested Address Dialog removed */}
-    </MainLayout>
+    </PageShell>
   );
 }
 

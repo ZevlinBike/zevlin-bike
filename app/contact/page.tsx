@@ -6,7 +6,7 @@ import Newsletter from "../components/Newsletter";
 import { ContactFormState, sendContactMessage } from "./actions";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import MainLayout from "../components/layouts/MainLayout";
+import PageShell from "../components/layouts/PageShell";
 
 export default function ContactPage() {
   const [form, setForm] = useState({
@@ -79,7 +79,7 @@ export default function ContactPage() {
   }
 
   return (
-    <MainLayout>
+    <PageShell>
       <div className="grid justify-center items-start px-4 pt-40 min-h-screen mb-16 bg-gradient-to-b from-amber-50 to-rose-50 sm:px-6 lg:px-8 dark:from-neutral-950 dark:to-neutral-900">
         <motion.div
           className="p-8 mx-auto w-full max-w-3xl bg-white/90 backdrop-blur rounded-2xl ring-1 ring-black/5 shadow-xl dark:bg-neutral-900/90 dark:ring-white/10"
@@ -203,6 +203,6 @@ export default function ContactPage() {
       </div>
       {/* Spacer before full-width newsletter */}
       <Newsletter />
-    </MainLayout>
+    </PageShell>
   );
 }

@@ -76,6 +76,8 @@ export interface Order {
   total_cents: number;
   stripe_payment_intent_id?: string | null;
   is_training?: boolean; // training/test dataset flag
+  address_verified?: boolean | null; // informational
+  address_verification_message?: string | null; // optional message
   billing_name?: string | null;
   billing_address_line1?: string | null;
   billing_address_line2?: string | null;

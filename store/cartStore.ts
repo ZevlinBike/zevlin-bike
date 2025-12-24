@@ -50,7 +50,7 @@ export const useCartStore = create<CartState>()(
           const featuredImage =
             images.find((img: ProductImage) => img.is_featured)?.url ||
             images[0]?.url ||
-            "/images/placeholder.png";
+            "/images/placeholder.webp";
 
           const newItem = {
             ...product,

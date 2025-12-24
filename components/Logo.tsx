@@ -4,7 +4,7 @@ export default function Logo({ className, showText = true }: { className?: strin
   return (
     <span className={`flex gap-2 transition-all items-center text-lg font-bold ${className}`}>
       <Image
-        src="/images/logo.png"
+        src="/images/logo.webp"
         alt="Zevlin Bike Logo"
         width={32}
         height={32}

@@ -8,10 +8,24 @@ import { User } from "@supabase/supabase-js";
 import { usePathname } from "next/navigation";
 import { Notification } from "@/lib/schema";
 
+export type NavLink = { href: string; label: string };
+
 const Navigation = ({ user, notices } : { user:User | null, notices: Notification[] | null }) => {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const path = usePathname();
+
+  // Single source of truth for top-level navigation links
+  const LINKS: NavLink[] = [
+    { href: "/", label: "Home" },
+    { href: "/products", label: "Products" },
+    { href: "/about", label: "About" },
+    { href: "/contact", label: "Contact" },
+    { href: "/blog", label: "Blog" },
+    // { href: "/mission", label: "Mission" },
+    // { href: "/faq", label: "FAQ" },
+    // { href: "/privacy", label: "Privacy" },
+  ];
 
   useEffect(() => {
     const handleScroll = () => {
@@ -26,14 +40,14 @@ const Navigation = ({ user, notices } : { user:User | null, notices: Notificatio
   return (
     <>
       <header
-        className={`fixed top-3 left-3 right-3 rounded-lg overflow-hidden z-[100] duration-500 transition-all`}
+        className={`fixed top-3 left-3 right-3 rounded-lg overflow-visible z-[100] duration-500 transition-all`}
       >
         <NotificationBanner scrolled={scrolled} notices={notices || []}/>
         <div
-          className={`${scrolled ? "p-0" : "p-0"} transition-all duration-500`}
+          className={`${scrolled ? "p-0 rounded-t-lg" : "p-0 rounded-t-none"} rounded-lg transition-all duration-500 overflow-hidden`}
         >
-          <DesktopNav scrolled={scrolled} />
-          <MobileNav open={open} setOpen={setOpen} scrolled={scrolled} />
+          <DesktopNav scrolled={scrolled} links={LINKS} />
+          <MobileNav open={open} setOpen={setOpen} scrolled={scrolled} links={LINKS} />
         {user && !open && <UserSubNav user={user} />}
         </div>
       </header>

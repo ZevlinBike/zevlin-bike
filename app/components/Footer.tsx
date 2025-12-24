@@ -158,7 +158,7 @@ export default function Footer() {
               rel="noopener noreferrer"
               className="underline underline-offset-4 hover:text-gray-700 dark:hover:text-gray-200"
             >
-              Site by Tyler Lundin
+              Site by Tyler
             </a>
           </p>
         </div>

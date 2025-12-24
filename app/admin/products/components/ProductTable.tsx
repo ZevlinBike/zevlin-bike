@@ -11,8 +11,14 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Product } from "@/lib/schema";
 import {
-  PlusCircle, Edit, Trash2, Loader2, Search, ArrowUpDown,
+  PlusCircle, Edit, Trash2, Loader2, Search, ArrowUpDown, MoreHorizontal,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import ProductForm from "./ProductForm";
 import { toast } from "sonner";
 import { deleteProduct } from "../actions";
@@ -146,14 +152,14 @@ export default function ProductTable({ products: initialProducts, initialQuery =
       {/* Mobile cards */}
       <ul className="sm:hidden space-y-3">
         {filtered.map((product) => {
-          const img = product.product_images?.[0]?.url || "/images/placeholder.png";
+          const img = product.product_images?.[0]?.url || "/images/placeholder.webp";
           return (
             <li
               key={product.id}
-              className="rounded-xl border border-black/5 dark:border-white/10 bg-white dark:bg-neutral-800 p-3 shadow-sm"
+              className="rounded-xl relative border border-black/5 dark:border-white/10 bg-white dark:bg-neutral-800 p-3 shadow-sm"
             >
               <div className="flex gap-3">
-                <div className="w-20 h-20 flex-shrink-0 overflow-hidden rounded-md ring-1 ring-black/5 dark:ring-white/10 bg-white">
+                <div className="w-20 h-20 flex-shrink-0 overflow-hidden rounded-md ring-1 ring-black/5 dark:ring-white/10 bg-gradient-to-br p-1 from-neutral-200 to-neutral-800">
                   <Image
                     src={img}
                     alt={product.name}
@@ -161,7 +167,7 @@ export default function ProductTable({ products: initialProducts, initialQuery =
                     height={96}
                     className="h-full w-full object-contain"
                     onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src = "/images/placeholder.png";
+                      (e.currentTarget as HTMLImageElement).src = "/images/placeholder.webp";
                     }}
                   />
                 </div>
@@ -171,32 +177,48 @@ export default function ProductTable({ products: initialProducts, initialQuery =
                     <div className="text-sm font-semibold tabular-nums">{money(product.price_cents)}</div>
                   </div>
                   {product.product_variants?.[0]?.sku && (
-                    <div className="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">
+                    <div className="mt-0.5 text-[14px] text-gray-500 dark:text-gray-400">
                       SKU: <span className="font-mono">{product.product_variants[0].sku}</span>
                     </div>
                   )}
-                  <div className="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">
+                  <div className="mt-0.5 text-[14px] text-gray-500 dark:text-gray-400">
                     Stock: <span className="font-mono">{product.quantity_in_stock}</span>
                   </div>
-                  <div className="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">
+                  <div className="mt-0.5 text-[14px] text-gray-500 dark:text-gray-400">
                     Weight: <span className="font-mono">{product.weight ? `${product.weight} ${product.weight_unit}` : "—"}</span>
                   </div>
-                  <div className="mt-3 flex justify-end gap-1">
-                    <IconBtn label="Edit" onClick={() => handleEditProduct(product)}>
-                      <Edit className="h-4 w-4" />
-                    </IconBtn>
-                    <IconBtn
-                      label="Delete"
-                      destructive
-                      disabled={isPending && deletingId === product.id}
-                      onClick={() => handleDeleteProduct(product.id)}
-                    >
-                      {isPending && deletingId === product.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
-                    </IconBtn>
+                  <div className="mt-3 absolute right-2 top-1/2 flex justify-end">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-700 dark:text-gray-200"
+                          title="Actions"
+                          aria-label="Open actions menu"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                          <span className="sr-only">Open menu</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); handleEditProduct(product); }}>
+                          <Edit className="h-4 w-4" /> Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          variant="destructive"
+                          disabled={isPending && deletingId === product.id}
+                          onSelect={(e) => { e.preventDefault(); handleDeleteProduct(product.id); }}
+                        >
+                          {isPending && deletingId === product.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               </div>
@@ -212,22 +234,24 @@ export default function ProductTable({ products: initialProducts, initialQuery =
           <TableHeader>
             <TableRow className="bg-gray-50 dark:bg-neutral-800/60">
               <TableHead className="w-[116px]">Image</TableHead>
-              <TableHead>Name</TableHead>
+              <TableHead >Name</TableHead>
               <TableHead className="w-[160px]">Category</TableHead>
               <TableHead className="w-[120px]">Price</TableHead>
               <TableHead className="w-[120px]">SKU</TableHead>
               <TableHead className="w-[120px]">Stock</TableHead>
               <TableHead className="w-[120px]">Weight</TableHead>
-              <TableHead className="w-[120px] text-right">Actions</TableHead>
+              <TableHead className="w-[64px] text-right">
+                <span className="sr-only">Actions</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.map((product) => {
-              const img = product.product_images?.[0]?.url || "/images/placeholder.png";
+              const img = product.product_images?.[0]?.url || "/images/placeholder.webp";
               return (
                 <TableRow key={product.id} className="align-middle">
                   <TableCell>
-                    <div className="w-[84px] h-[84px] overflow-hidden rounded-md ring-1 ring-black/5 dark:ring-white/10 bg-white">
+                    <div className="w-[84px] h-[84px] overflow-hidden rounded-md ring-1 ring-black/5 dark:ring-white/10 bg-gradient-to-br p-1 from-neutral-200 to-neutral-800">
                       <Image
                         src={img}
                         alt={product.name}
@@ -235,7 +259,7 @@ export default function ProductTable({ products: initialProducts, initialQuery =
                         height={84}
                         className="h-full w-full object-contain"
                         onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).src = "/images/placeholder.png";
+                          (e.currentTarget as HTMLImageElement).src = "/images/placeholder.webp";
                         }}
                       />
                     </div>
@@ -253,23 +277,37 @@ export default function ProductTable({ products: initialProducts, initialQuery =
                     {product.weight ? `${product.weight} ${product.weight_unit}` : "—"}
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <IconBtn label="Edit" onClick={() => handleEditProduct(product)}>
-                        <Edit className="h-4 w-4" />
-                      </IconBtn>
-                      <IconBtn
-                        label="Delete"
-                        destructive
-                        disabled={isPending && deletingId === product.id}
-                        onClick={() => handleDeleteProduct(product.id)}
-                      >
-                        {isPending && deletingId === product.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                      </IconBtn>
-                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-700 dark:text-gray-200"
+                          title="Actions"
+                          aria-label="Open actions menu"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                          <span className="sr-only">Open menu</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); handleEditProduct(product); }}>
+                          <Edit className="h-4 w-4" /> Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          variant="destructive"
+                          disabled={isPending && deletingId === product.id}
+                          onSelect={(e) => { e.preventDefault(); handleDeleteProduct(product.id); }}
+                        >
+                          {isPending && deletingId === product.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               );
@@ -294,34 +332,6 @@ export default function ProductTable({ products: initialProducts, initialQuery =
         />
       )}
     </>
-  );
-}
-
-/* ---------- tiny bits ---------- */
-function IconBtn({
-  children, label, onClick, destructive, disabled,
-}: {
-  children: React.ReactNode;
-  label: string;
-  onClick?: () => void;
-  destructive?: boolean;
-  disabled?: boolean;
-}) {
-  return (
-    <Button
-      variant={destructive ? "destructive" : "ghost"}
-      size="icon"
-      className={clsx(
-        "h-8 w-8",
-        !destructive && "hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-700 dark:text-gray-200"
-      )}
-      title={label}
-      aria-label={label}
-      onClick={onClick}
-      disabled={disabled}
-    >
-      {children}
-    </Button>
   );
 }
 

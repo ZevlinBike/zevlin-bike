@@ -133,24 +133,22 @@ export async function processCheckout(
 
   let customerId: string;
 
-  // Validate shipping address via Shippo before charging
-  const validation = await validateAddress({
-    name: `${checkoutData.shippingFirstName} ${checkoutData.shippingLastName}`,
-    address1: checkoutData.shippingAddress,
-    city: checkoutData.shippingCity,
-    state: checkoutData.shippingState,
-    postal_code: checkoutData.shippingZipCode,
-    country: 'US',
-  });
-  if (!validation.isValid) {
-    return {
-      errors: {
-        _form: [
-          validation.messages?.[0] ||
-            "The shipping address appears invalid. Please review and try again.",
-        ],
-      },
-    };
+  // Non-blocking address verification snapshot (informational only)
+  let addressVerified = false as boolean;
+  let addressVerificationMessage: string | null = null;
+  try {
+    const validation = await validateAddress({
+      name: `${checkoutData.shippingFirstName} ${checkoutData.shippingLastName}`,
+      address1: checkoutData.shippingAddress,
+      city: checkoutData.shippingCity,
+      state: checkoutData.shippingState,
+      postal_code: checkoutData.shippingZipCode,
+      country: 'US',
+    });
+    addressVerified = Boolean(validation.isValid);
+    addressVerificationMessage = validation.messages?.[0] || null;
+  } catch {
+    // leave defaults; do not block checkout
   }
 
   try {
@@ -199,6 +197,8 @@ export async function processCheckout(
 
     // Step 2: Now that we have a customer, create the Payment Intent.
     const totalInCents = Math.round(costData.total * 100);
+
+    // Use the previously captured addressVerified/addressVerificationMessage snapshot
     const stripe = getStripeClient();
     const paymentIntent = await stripe.paymentIntents.create(
       {
@@ -235,6 +235,8 @@ export async function processCheckout(
         payment_status: 'paid',
         order_status: 'pending_fulfillment',
         shipping_status: 'not_shipped',
+        address_verified: addressVerified,
+        address_verification_message: addressVerificationMessage,
         subtotal_cents: Math.round(costData.subtotal * 100),
         shipping_cost_cents: Math.round(costData.shipping * 100),
         tax_cents: Math.round(costData.tax * 100),
@@ -549,6 +551,18 @@ export async function finalizeOrder(
 
     // Create the order, same as processCheckout but without creating a new PI
     const totalInCents = Math.round(costData.total * 100);
+
+    // Non-blocking address verification (info only)
+    const verification = await validateAddress({
+      name: `${checkoutData.shippingFirstName} ${checkoutData.shippingLastName}`,
+      address1: checkoutData.shippingAddress,
+      city: checkoutData.shippingCity,
+      state: checkoutData.shippingState,
+      postal_code: checkoutData.shippingZipCode,
+      country: 'US',
+    });
+    const addressVerified = Boolean(verification.isValid);
+    const addressVerificationMessage = verification.messages?.[0] || null;
     const { data: order, error: orderError } = await (service ?? supabase)
       .from("orders")
       .insert({
@@ -558,6 +572,8 @@ export async function finalizeOrder(
         payment_status: isSucceeded ? 'paid' : 'pending',
         order_status: isSucceeded ? 'pending_fulfillment' : 'pending_payment',
         shipping_status: 'not_shipped',
+        address_verified: addressVerified,
+        address_verification_message: addressVerificationMessage,
         subtotal_cents: Math.round(costData.subtotal * 100),
         shipping_cost_cents: Math.round(costData.shipping * 100),
         tax_cents: Math.round(costData.tax * 100),
@@ -724,6 +740,24 @@ export async function upsertPendingOrder(
 
     const totalInCents = Math.round(costData.total * 100);
 
+    // Non-blocking address verification snapshot (informational only)
+    let addressVerified = false as boolean;
+    let addressVerificationMessage: string | null = null;
+    try {
+      const verification = await validateAddress({
+        name: `${checkoutData.shippingFirstName} ${checkoutData.shippingLastName}`,
+        address1: checkoutData.shippingAddress,
+        city: checkoutData.shippingCity,
+        state: checkoutData.shippingState,
+        postal_code: checkoutData.shippingZipCode,
+        country: 'US',
+      });
+      addressVerified = Boolean(verification.isValid);
+      addressVerificationMessage = verification.messages?.[0] || null;
+    } catch {
+      // leave defaults
+    }
+
     // Attach or refresh PI metadata snapshot (best-effort)
     try {
       const stripe = getStripeClient();
@@ -757,6 +791,8 @@ export async function upsertPendingOrder(
           payment_status: 'pending',
           order_status: 'pending_payment',
           shipping_status: 'not_shipped',
+          address_verified: addressVerified,
+          address_verification_message: addressVerificationMessage,
           subtotal_cents: Math.round(costData.subtotal * 100),
           shipping_cost_cents: Math.round(costData.shipping * 100),
           tax_cents: Math.round(costData.tax * 100),
@@ -791,6 +827,8 @@ export async function upsertPendingOrder(
           payment_status: 'pending',
           order_status: 'pending_payment',
           shipping_status: 'not_shipped',
+          address_verified: addressVerified,
+          address_verification_message: addressVerificationMessage,
           subtotal_cents: Math.round(costData.subtotal * 100),
           shipping_cost_cents: Math.round(costData.shipping * 100),
           tax_cents: Math.round(costData.tax * 100),

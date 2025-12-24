@@ -70,13 +70,13 @@ export function LabelPrintModal({ labelUrl, trigger, open: controlledOpen, onOpe
         const bytes = new Uint8Array(buf);
         // Magic sniff
         const isPdf = bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46; // %PDF
-        const isPng = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
+        const iswebp = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
         const isJpg = bytes[0] === 0xff && bytes[1] === 0xd8;
         if (isPdf || ct.includes("pdf")) {
           setLabelKind("pdf");
           setPdfBytes(bytes);
           if (blobUrl) { URL.revokeObjectURL(blobUrl); setBlobUrl(null); }
-        } else if (isPng || isJpg || ct.startsWith("image/")) {
+        } else if (iswebp || isJpg || ct.startsWith("image/")) {
           setLabelKind("image");
           const url = URL.createObjectURL(new Blob([bytes]));
           if (blobUrl) URL.revokeObjectURL(blobUrl);

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import { getPostBySlug } from "../actions";
 import { Calendar, User2 } from "lucide-react";
-import MainLayout from "@/app/components/layouts/MainLayout";
+import PageShell from "@/app/components/layouts/PageShell";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import styles from "@/markdown-styles.module.css";
@@ -39,7 +39,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   const { views } = await getPostViewTotals(post.slug);
 
   return (
-    <MainLayout>
+    <PageShell>
       <div className="pt-40">
         {/* Pageview tracking */}
         {/* client-only tracker to record post views */}
@@ -93,6 +93,6 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           <RelatedPosts currentSlug={post.slug} />
         </article>
       </div>
-    </MainLayout>
+    </PageShell>
   );
 }

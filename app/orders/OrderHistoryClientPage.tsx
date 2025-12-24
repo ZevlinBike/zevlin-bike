@@ -155,7 +155,7 @@ const OrderRow = ({ order }: { order: OrderWithLineItems }) => {
                       const pi = item.products.product_images as ProductImage | ProductImage[] | null;
                       const list: ProductImage[] = Array.isArray(pi) ? pi : (pi ? [pi] : []);
                       const featured = list.find((im) => im?.is_featured) || list[0];
-                      const src = featured?.url || "/images/logo.png";
+                      const src = featured?.url || "/images/logo.webp";
                       return (
                         <div key={index} className="flex items-center gap-4">
                           <Image

@@ -70,12 +70,13 @@ export default function NotificationBanner({
             exit={{ opacity: 0, y: 16 }}
             transition={{ duration: 0.2 }}
             onClick={() => setClosed(false)}
-            className="
-              fixed bottom-4 right-4 z-[9999]
-              inline-flex items-center gap-2 rounded-full px-3 py-2
-              bg-neutral-900 text-white shadow-lg
+            className={`
+              fixed top-px left-1/2 -translate-x-1/2 z-[9999]
+              inline-flex items-center gap-2 px-3 py-2
+              bg-black/50 text-white shadow-lg
               hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50
-            "
+              ${variantClass}
+            `}
             aria-label="Show announcements"
           >
             <Megaphone className="h-4 w-4" />
@@ -93,7 +94,7 @@ export default function NotificationBanner({
             animate={{ height: 40, opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
-            className={`relative z-10 flex h-10 items-center justify-center overflow-hidden text-white shadow-md bg-gradient-to-r ${variantClass(
+            className={`relative z-10 flex h-10 items-center justify-center overflow-hidden text-white rounded-t-lg overflow-hidden shadow-md bg-gradient-to-r ${variantClass(
               current.variant
             )}`}
             onMouseEnter={() => setPaused(true)}

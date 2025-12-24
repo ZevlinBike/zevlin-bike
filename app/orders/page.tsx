@@ -1,4 +1,4 @@
-import MainLayout from "@/app/components/layouts/MainLayout";
+import PageShell from "@/app/components/layouts/PageShell";
 import { createClient } from "@/lib/supabase/server";
 import { OrderWithLineItems } from "@/lib/schema";
 import { redirect } from "next/navigation";
@@ -32,22 +32,22 @@ export default async function OrderHistoryPage() {
   if (error) {
     console.error("Error fetching orders:", error);
     return (
-      <MainLayout>
+      <PageShell>
         <div className="pt-40 min-h-screen container mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl mb-8">
             Order History
           </h1>
           <p>There was an error fetching your orders. Please try again later.</p>
         </div>
-      </MainLayout>
+      </PageShell>
     );
   }
 
   return (
-    <MainLayout>
+    <PageShell>
       <div className="pt-40 min-h-screen text-black dark:text-white">
         <OrderHistoryClientPage orders={orders as OrderWithLineItems[]} />
       </div>
-    </MainLayout>
+    </PageShell>
   );
 }

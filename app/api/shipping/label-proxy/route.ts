@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
     try {
       const comma = urlParam.indexOf(",");
       if (comma === -1) return NextResponse.json({ error: "Invalid data URL" }, { status: 400 });
-      const header = urlParam.slice(5, comma); // e.g., image/png;base64
+      const header = urlParam.slice(5, comma); // e.g., image/webp;base64
       const data = urlParam.slice(comma + 1);
       const isBase64 = /;base64/i.test(header);
       const mime = header.replace(/;base64/i, "") || "application/octet-stream";

@@ -1,4 +1,4 @@
-import MainLayout from "@/app/components/layouts/MainLayout";
+import PageShell from "@/app/components/layouts/PageShell";
 import CTA from "./components/CTA";
 import FeaturedProducts from "./components/FeaturedProducts";
 import Features from "./components/Features";
@@ -11,13 +11,13 @@ export default async function ZevlinCrackLanding() {
   const featuredProducts = await getFeaturedProducts();
 
   return (
-    <MainLayout>
+    <PageShell>
       <Hero />
       <FeaturedProducts products={featuredProducts} />
       <Features />
       <Testimonials />
       <CTA />
       <Newsletter />
-    </MainLayout>
+    </PageShell>
   );
 }

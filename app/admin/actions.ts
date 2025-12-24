@@ -4,6 +4,47 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function getDashboardStats() {
   const supabase = await createClient();
+  // Debug: capture auth context once per call
+  try {
+    const { data: userData, error: userErr } = await supabase.auth.getUser();
+    type MinimalAuthError = { message?: string; status?: number };
+    const authErr = (userErr ?? undefined) as unknown as MinimalAuthError | undefined;
+    console.log("[admin:getDashboardStats] auth user:", {
+      userId: userData?.user?.id ?? null,
+      hasError: Boolean(userErr),
+      error: authErr ? { message: authErr.message, status: authErr.status } : null,
+    });
+  } catch (err) {
+    console.warn("[admin:getDashboardStats] failed to read auth user", err);
+  }
+
+  const logSbError = (label: string, err: unknown, context?: Record<string, unknown>) => {
+    try {
+      type SupabaseErrorShape = {
+        message?: string;
+        code?: string;
+        details?: string;
+        hint?: string;
+        status?: number;
+      };
+      const asObj = (e: unknown): SupabaseErrorShape => {
+        if (e && typeof e === 'object') {
+          const o = e as Record<string, unknown>;
+          return {
+            message: typeof o.message === 'string' ? o.message : undefined,
+            code: typeof o.code === 'string' ? o.code : undefined,
+            details: typeof o.details === 'string' ? o.details : undefined,
+            hint: typeof o.hint === 'string' ? o.hint : undefined,
+            status: typeof o.status === 'number' ? o.status : undefined,
+          };
+        }
+        return {};
+      };
+      console.error(label, { ...asObj(err), context: context ?? null });
+    } catch {
+      console.error(label, err);
+    }
+  };
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayIso = today.toISOString();
@@ -26,7 +67,7 @@ export async function getDashboardStats() {
     .eq('is_training', false);
 
   if (todayOrdersError) {
-    console.error("Error fetching today's orders:", todayOrdersError);
+    logSbError("[admin:getDashboardStats] Error fetching today's orders", todayOrdersError, { todayIso });
   }
 
   const validTodayOrders = (todayOrders || [])
@@ -47,7 +88,7 @@ export async function getDashboardStats() {
     .eq('is_training', false);
 
   if (unfulfilledError) {
-    console.error("Error fetching unfulfilled count:", unfulfilledError);
+    logSbError("[admin:getDashboardStats] Error fetching unfulfilled count", unfulfilledError);
   }
 
   // Pending payment orders (real only)
@@ -57,7 +98,7 @@ export async function getDashboardStats() {
     .eq('order_status', 'pending_payment')
     .eq('is_training', false);
   if (pendingPaymentError) {
-    console.error("Error fetching pending payment count:", pendingPaymentError);
+    logSbError("[admin:getDashboardStats] Error fetching pending payment count", pendingPaymentError);
   }
 
   // Labels created today
@@ -67,7 +108,7 @@ export async function getDashboardStats() {
     .gte("created_at", todayIso);
 
   if (labelsError) {
-    console.error("Error fetching labels count:", labelsError);
+    logSbError("[admin:getDashboardStats] Error fetching labels count", labelsError, { todayIso });
   }
 
   // In-transit orders
@@ -78,7 +119,7 @@ export async function getDashboardStats() {
     .eq('is_training', false);
 
   if (inTransitError) {
-    console.error("Error fetching in-transit count:", inTransitError);
+    logSbError("[admin:getDashboardStats] Error fetching in-transit count", inTransitError);
   }
 
   // Exceptions
@@ -97,11 +138,11 @@ export async function getDashboardStats() {
       .eq('status', 'pending');
     pendingRefundsCount = count ?? 0;
   } catch (e) {
-    console.warn('Failed to fetch pending refunds count', e);
+    console.warn('[admin:getDashboardStats] Failed to fetch pending refunds count', e);
   }
 
   if (exceptionsError) {
-    console.error("Error fetching exceptions count:", exceptionsError);
+    logSbError("[admin:getDashboardStats] Error fetching exceptions count", exceptionsError);
   }
 
   // Revenue this month (real, paid, not cancelled/refunded)
@@ -115,7 +156,7 @@ export async function getDashboardStats() {
     const valid = (monthOrders || []).filter(o => o.payment_status === 'paid' && o.order_status !== 'cancelled' && o.order_status !== 'refunded');
     revenueMonth = valid.reduce((sum, o) => sum + (o.total_cents || 0), 0) / 100;
   } catch (e) {
-    console.warn('Failed to compute monthly revenue', e);
+    console.warn('[admin:getDashboardStats] Failed to compute monthly revenue', e);
   }
 
   // Revenue this year (real, paid, not cancelled/refunded)
@@ -129,7 +170,7 @@ export async function getDashboardStats() {
     const valid = (yearOrders || []).filter(o => o.payment_status === 'paid' && o.order_status !== 'cancelled' && o.order_status !== 'refunded');
     revenueYear = valid.reduce((sum, o) => sum + (o.total_cents || 0), 0) / 100;
   } catch (e) {
-    console.warn('Failed to compute yearly revenue', e);
+    console.warn('[admin:getDashboardStats] Failed to compute yearly revenue', e);
   }
 
   return {

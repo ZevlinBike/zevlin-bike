@@ -159,7 +159,7 @@ export default function PostForm({
                 className="file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:text-sm file:font-medium hover:file:bg-gray-200 dark:file:bg-neutral-800 dark:hover:file:bg-neutral-700"
               />
               <p className="mt-2 text-[12px] text-gray-500">
-                PNG/JPG, up to ~5MB. Uploading a new file replaces the existing image.
+                webp/JPG, up to ~5MB. Uploading a new file replaces the existing image.
               </p>
 
               {/* Remove existing option */}

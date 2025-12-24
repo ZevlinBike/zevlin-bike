@@ -158,7 +158,7 @@ export default function ProductForm({ product, isOpen, onClose }: ProductFormPro
               type="file" 
               multiple
               onChange={handleFileChange}
-              accept="image/png, image/jpeg, image/webp"
+              accept="image/webp, image/jpeg, image/webp"
             />
             <p className="text-xs text-gray-500 dark:text-gray-400">Select one or more images to upload.</p>
           </div>

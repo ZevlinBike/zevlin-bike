@@ -13,7 +13,7 @@ export default function HeroBackground() {
       {/* Faint hero background image */}
       <Image
         className="object-cover absolute inset-0 z-0 w-full h-full opacity-40 brightness-150 grayscale"
-        src="/images/hero-image.png"
+        src="/images/hero-image.webp"
         alt="Zevlin Hero"
         fill
         priority

@@ -16,7 +16,7 @@ export default function EpicHero({
   variants: ProductVariant[];
 }) {
   const featured = useMemo(
-    () => images.find((i) => i.is_featured)?.url || images[0]?.url || "/images/placeholder.png",
+    () => images.find((i) => i.is_featured)?.url || images[0]?.url || "/images/placeholder.webp",
     [images]
   );
   const [current, setCurrent] = useState<string>(featured);

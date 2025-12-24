@@ -9,6 +9,7 @@ import { Toaster } from "@/components/ui/sonner";
 import SocialFABs from "@/components/SocialFABs";
 import { Analytics } from "@vercel/analytics/next"
 import PendingNav from "@/app/components/PendingNav";
+import RouteChrome from "@/app/components/RouteChrome";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -46,7 +47,6 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <SocialFABs />
         <Analytics />
         <SpeedInsights />
         <ThemeProvider
@@ -55,11 +55,14 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {/* Public route pending navigation indicator */}
-          <PendingNav />
-          <Navigation user={user} notices={notices}/>
+          {/* Public route pending navigation indicator and site chrome (hidden on receipt routes) */}
+          <RouteChrome>
+            <PendingNav />
+            <Navigation user={user} notices={notices}/>
+            <SocialFABs />
+            <Toaster />
+          </RouteChrome>
           {children}
-          <Toaster />
         </ThemeProvider>
       </body>
     </html>

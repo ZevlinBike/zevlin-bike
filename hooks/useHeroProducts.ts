@@ -36,7 +36,7 @@ export default function useHeroProducts() {
           const featuredImage =
             images.find((img: { is_featured: boolean; url: string }) => img.is_featured)?.url ||
             images[0]?.url ||
-            "/images/placeholder.png";
+            "/images/placeholder.webp";
 
           return {
             ...product,

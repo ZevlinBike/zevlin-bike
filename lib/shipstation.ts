@@ -130,10 +130,10 @@ export async function createLabel(input: {
   const useMock = (env.NODE_ENV === 'development');
   if (useMock) {
     // Return a data URL image label with a fake tracking number
-    const png1x1 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8Xw8AApcB9m8G3bQAAAAASUVORK5CYII=";
+    const webp1x1 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8Xw8AApcB9m8G3bQAAAAASUVORK5CYII=";
     return {
       trackingNumber: `MOCK${Date.now()}`,
-      labelUrl: `data:image/png;base64,${png1x1}`,
+      labelUrl: `data:image/webp;base64,${webp1x1}`,
       carrierCode: input.carrierCode || env.SHIPSTATION_DEFAULT_CARRIER_CODE || 'stamps_com',
       serviceCode: input.serviceCode || env.SHIPSTATION_DEFAULT_SERVICE_CODE || 'usps_priority_mail',
       serviceName: 'Mock Label',

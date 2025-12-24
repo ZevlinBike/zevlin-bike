@@ -12,7 +12,11 @@ const productSchema = z.object({
   price: z.coerce.number(),
   slug: z.string(),
   quantity_in_stock: z.coerce.number().optional(),
-  category_id: z.string().uuid().optional(),
+  // Allow an empty string from the <select> ("Uncategorized") and coerce to undefined
+  category_id: z
+    .union([z.string().uuid(), z.literal("")])
+    .optional()
+    .transform((v) => (v === "" ? undefined : v)),
   // Shipping fields (optional in form)
   weight: z.coerce.number().optional(),
   weight_unit: z.string().optional(),

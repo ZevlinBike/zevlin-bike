@@ -35,7 +35,7 @@ export default function CTA() {
       <div className="absolute inset-0">
         <Image
           className="object-cover opacity-50 grayscale saturate-150" // Increased opacity, added saturation for a punchier grayscale
-          src="/images/hero-image.jpeg"
+          src="/images/hero-image.webp"
           alt="Zevlin Bike Hero"
           fill
           priority

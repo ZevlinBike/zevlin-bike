@@ -14,7 +14,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useCartStore } from "@/store/cartStore";
-import MainLayout from "@/app/components/layouts/MainLayout";
+import PageShell from "@/app/components/layouts/PageShell";
 import { useMemo } from "react";
 
 export default function CartPage() {
@@ -47,8 +47,8 @@ export default function CartPage() {
   // Loading state
   if (!hydrated) {
     return (
-      <MainLayout>
-        <div className="pt-40 min-h-screen bg-white text-gray-900 dark:bg-neutral-900 dark:text-white">
+      <PageShell>
+        <div className="pt-24 md:pt-28 min-h-screen bg-white text-gray-900 dark:bg-neutral-900 dark:text-white">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-6">Shopping Cart</h1>
             <div className="py-20 flex items-center justify-center">
@@ -59,15 +59,15 @@ export default function CartPage() {
             </div>
           </div>
         </div>
-      </MainLayout>
+      </PageShell>
     );
   }
 
   const isEmpty = cartItems.length === 0;
 
   return (
-    <MainLayout>
-      <div className="pt-40 min-h-screen bg-white text-gray-900 dark:bg-neutral-900 dark:text-white">
+    <PageShell>
+      <div className="pt-24 md:pt-28 min-h-screen bg-white text-gray-900 dark:bg-neutral-900 dark:text-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
           <div className="mb-4 sm:mb-8 flex items-end justify-between">
@@ -295,6 +295,6 @@ export default function CartPage() {
           </div>
         )}
       </div>
-    </MainLayout>
+    </PageShell>
   );
 }

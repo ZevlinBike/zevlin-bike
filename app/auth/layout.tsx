@@ -1,4 +1,4 @@
-import MainLayout from "@/app/components/layouts/MainLayout";
+import PageShell from "@/app/components/layouts/PageShell";
 
 
 export default function AuthLayout({
@@ -7,10 +7,10 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <MainLayout>
+    <PageShell>
       <div className="min-h-screen bg-gray-50 dark:bg-black pt-20">
           {children}
       </div>
-    </MainLayout>
+    </PageShell>
   );
 } 

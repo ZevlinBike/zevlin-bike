@@ -24,11 +24,14 @@ const CartIcon = () => (
   </svg>
 );
 
+import type { NavLink } from "./Navigation";
+
 interface DesktopNavProps {
   scrolled: boolean;
+  links: NavLink[];
 }
 
-const DesktopNav: React.FC<DesktopNavProps> = ({ scrolled }) => {
+const DesktopNav: React.FC<DesktopNavProps> = ({ scrolled, links }) => {
   const cartItems = useCartStore((state) => state.items);
   return (
   <nav
@@ -45,12 +48,9 @@ const DesktopNav: React.FC<DesktopNavProps> = ({ scrolled }) => {
         <Logo className={`${scrolled ? "scale-100" : "scale-150 ml-8"} text-white`} />
       </Link>
       <div className={`flex items-center space-x-6 text-white`}>
-        <Link href="/">Home</Link>
-        <Link href="/products">Products</Link>
-        <Link href="/about">About</Link>
-        <Link href="/contact">Contact</Link>
-        <Link href="/faq">FAQ</Link>
-        <Link href="/blog">Blog</Link>
+        {links.map((l) => (
+          <Link key={l.href} href={l.href}>{l.label}</Link>
+        ))}
         <Link href="/cart" className="relative" aria-label="View Cart">
           {
             cartItems.length > 0 && (

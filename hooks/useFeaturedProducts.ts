@@ -34,7 +34,7 @@ export default function useFeaturedProducts() {
           description: p.description || '',
           price: p.price_cents / 100,
           // @ts-ignore
-          image: p.product_images.find(img => img.is_featured)?.url || '/images/placeholder.png',
+          image: p.product_images.find(img => img.is_featured)?.url || '/images/placeholder.webp',
           featured: true,
           qtyInStock: 100,
           categories: ['Cycling'],
