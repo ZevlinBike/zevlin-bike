@@ -6,10 +6,10 @@ import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
 import { hasAdminRole } from "@/lib/auth/client";
+import { LayoutDashboard, Package, LogOut } from "lucide-react";
 
 function displayNameFromEmail(email: string) {
   const name = email.split("@")[0] ?? email;
-  // Title-case first segment, keep the rest as typed
   return name.charAt(0).toUpperCase() + name.slice(1);
 }
 
@@ -32,99 +32,91 @@ export default function UserSubNav({ user }: { user: User }) {
 
   const name = displayNameFromEmail(user.email ?? "User");
 
+  // Base item: stays compact, never wraps, prevents layout breakage.
+  const navItemClass = `
+    group inline-flex items-center justify-center gap-1.5
+    px-2.5 py-1
+    rounded-full
+    text-[11px] font-medium tracking-wide
+    whitespace-nowrap
+    transition-all duration-200
+    text-zinc-600 dark:text-zinc-400
+    hover:text-zinc-900 dark:hover:text-white
+    hover:bg-zinc-100 dark:hover:bg-white/10
+    focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50
+  `;
+
   return (
     <div
       className="
         sticky top-[var(--subnav-offset,0px)]
-        backdrop-blur-md
-        bg-white/50 dark:bg-black/50
-        z-40
-        overflow-hidden
+        z-40 w-full
+        backdrop-blur-xl rounded-b-lg
+        bg-white/70 dark:bg-black/70
+        border-b border-black/5 dark:border-white/5
       "
       role="navigation"
       aria-label="User quick navigation"
     >
-      {/* ultra-slim bar */}
-      <div
-        className="
-          container mx-auto
-          px-3 sm:px-4
-          flex items-center justify-between
-          leading-none
-        "
-      >
-        {/* Left: tiny welcome (ellipsis on overflow) */}
-        <div className="min-w-0 flex items-center gap-2 text-[11px] sm:text-xs dark:text-white/80">
-          <span className="inline-block size-1.5 rounded-full bg-emerald-400/80 shadow-[0_0_8px_rgba(16,185,129,0.7)]" />
-          <span className="truncate">
-            Hi, <span className="font-medium dark:text-white">{name}</span>
+      <div className="container mx-auto h-7 px-2 sm:px-4 flex items-center justify-between gap-2">
+        {/* Left: User Status */}
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="relative flex items-center justify-center shrink-0">
+            <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-20"></span>
+            <span className="relative inline-block size-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 shadow-[0_0_6px_rgba(16,185,129,0.6)]" />
+          </div>
+
+          {/* Hide "Hi," on ultra-small, keep the name */}
+          <span className="truncate text-[11px] sm:text-xs text-zinc-500 dark:text-zinc-400">
+            <span className="hidden xs:inline">Hi, </span>
+            <span className="font-medium text-zinc-800 dark:text-zinc-200">
+              {name}
+            </span>
           </span>
         </div>
 
-        {/* Right: compact actions */}
-        <div className="flex items-center gap-1.5">
+        {/* Right: Actions */}
+        <div className="flex items-center gap-1 shrink-0">
           {isAdmin && (
             <Link
               href="/admin"
-              className="
-                group
-                inline-flex items-center gap-1
-                text-[11px] sm:text-xs
-                dark:text-white/80 dark:hover:text-white
-                ring-1 ring-white/10 hover:ring-white/20
-                transition
-                px-2
-                focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40
-              "
-              title="Admin"
+              className={navItemClass}
+              title="Admin Dashboard"
+              aria-label="Admin Dashboard"
             >
-              admin
+              <LayoutDashboard className="size-3.5 opacity-70 group-hover:opacity-100 transition-opacity" />
+              {/* Collapse label on small screens */}
+              <span className="hidden sm:inline">Admin</span>
             </Link>
           )}
+
           <Link
             href="/orders"
-            className="
-              group
-              inline-flex items-center gap-1
-              text-[11px] sm:text-xs
-              dark:text-white/80 dark:hover:text-white
-              ring-1 ring-white/10 hover:ring-white/20
-              transition
-              px-2
-              focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40
-            "
+            className={navItemClass}
             title="View your orders"
+            aria-label="View your orders"
           >
-            my orders
+            <Package className="size-3.5 opacity-70 group-hover:opacity-100 transition-opacity" />
+            <span className="hidden sm:inline">Orders</span>
           </Link>
+
+          {/* Divider disappears on small to save space */}
+          <div className="mx-1 h-3 w-[1px] bg-zinc-200 dark:bg-white/10 hidden sm:block" />
 
           <button
             onClick={handleSignOut}
-            className="
-              group
-              inline-flex items-center gap-1
-              text-[11px] sm:text-xs
-              dark:text-white/80 dark:hover:text-white
-              ring-1 ring-white/10 hover:ring-white/20
-              transition
-              cursor-pointer
-              px-2
-              focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40
-            "
+            className={`${navItemClass} hover:text-red-600 dark:hover:text-red-400 dark:hover:bg-red-500/10`}
             title="Sign out"
             aria-label="Sign out"
           >
-            sign out
+            <LogOut className="size-3.5 opacity-70 group-hover:opacity-100 transition-opacity" />
+            <span className="hidden sm:inline">Sign out</span>
           </button>
         </div>
       </div>
 
-      {/* razor accent line for that “sports car clock” vibe */}
-      <div className="h-[2px] 
-      w-full bg-gradient-to-r 
-      dark:from-pink-300/40 dark:via-blue-400/60 dark:to-purple-400/30
-      from-green-400/50 to-blue-400/60 via-orange-400/40
-      " />
+      <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent opacity-50 dark:opacity-70" />
     </div>
   );
 }
+

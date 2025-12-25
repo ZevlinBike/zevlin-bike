@@ -29,17 +29,17 @@ import type { NavLink } from "./Navigation";
 interface DesktopNavProps {
   scrolled: boolean;
   links: NavLink[];
+  userMenuActive: boolean
 }
 
-const DesktopNav: React.FC<DesktopNavProps> = ({ scrolled, links }) => {
+const DesktopNav: React.FC<DesktopNavProps> = ({ scrolled, links, userMenuActive }) => {
   const cartItems = useCartStore((state) => state.items);
   return (
   <nav
-    className={`hidden w-full md:block z-[100] transition-all duration-500 ${
-      scrolled
-        ? "bg-black  border-black/20 "
-        : "bg-black border-transparent border "
-    }`}
+    className={`hidden w-full md:block z-[100] transition-all duration-500
+      ${ scrolled ? "bg-black  border-black/20 " : "bg-black border-transparent border " }
+      ${ userMenuActive ? "rounded-t-lg" : "rounded-lg" }
+    `}
   >
     <Container
       className={`flex justify-between items-center transition-all ${scrolled ? "h-12" : "h-20"}`}

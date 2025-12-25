@@ -14,9 +14,10 @@ interface MobileNavProps {
   open: boolean;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
   links: NavLink[];
+  userMenuActive: boolean;
 }
 
-const MobileNav: React.FC<MobileNavProps> = ({ scrolled, open, setOpen, links }) => {
+const MobileNav: React.FC<MobileNavProps> = ({ scrolled, open, setOpen, links, userMenuActive }) => {
   // Variants for the mobile menu panel
   const menuVariants: Variants = {
     closed: {
@@ -61,9 +62,10 @@ const MobileNav: React.FC<MobileNavProps> = ({ scrolled, open, setOpen, links })
 
       <nav
         // Removed dynamic background classes from <nav> for Framer Motion to control
-        className={`md:hidden relative z-50 backdrop-blur-md border transition-all duration-300 bg-black ${
-          scrolled ? "border-transparent" : "border-black/20"
-        }`}
+        className={`md:hidden relative z-50 backdrop-blur-md border transition-all duration-300 bg-black 
+          ${ scrolled ? "border-transparent" : "border-black/20" }
+          ${ userMenuActive ? "rounded-t-lg" : "rounded-lg" }
+        `}
       >
         <Container
           className={`flex justify-between items-center transition-all ${
@@ -109,12 +111,11 @@ const MobileNav: React.FC<MobileNavProps> = ({ scrolled, open, setOpen, links })
               animate="open"
               exit="closed" // This is key for animating out
               variants={menuVariants}
-              className="absolute left-0 top-full z-50 px-6 pb-4 w-full bg-gradient-to-b from-black to-transparent" // Add absolute positioning
+              className="absolute  z-[200] px-6 pb-4 w-full bg-gradient-to-b from-black to-transparent" // Add absolute positioning
             >
               {links.map((link) => {
                 return (
                   <motion.div key={link.href} variants={linkVariants}>
-                    {" "}
                     {/* Wrap Link in motion.div for individual animation */}
                     <Link
                       href={link.href}

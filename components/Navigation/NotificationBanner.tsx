@@ -65,22 +65,21 @@ export default function NotificationBanner({
         {closed && !scrolled && notices.length > 0 && (
           <motion.button
             key="reopen-fab"
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: -16 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 16 }}
+            exit={{ opacity: 0, y: -16 }}
             transition={{ duration: 0.2 }}
             onClick={() => setClosed(false)}
             className={`
-              fixed top-px left-1/2 -translate-x-1/2 z-[9999]
-              inline-flex items-center gap-2 px-3 py-2
-              bg-black/50 text-white shadow-lg
+              fixed top-0 left-1/2 -translate-x-1/2 z-[9999]
+              inline-flex items-center gap-2 px-3 px-1 py-0.5 rounded-b-lg 
+              text-white bg-black shadow-lg 
               hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50
               ${variantClass}
             `}
             aria-label="Show announcements"
           >
             <Megaphone className="h-4 w-4" />
-            <span className="text-xs font-semibold">Announcements</span>
           </motion.button>
         )}
       </AnimatePresence>
@@ -91,10 +90,10 @@ export default function NotificationBanner({
           <motion.div
             key={current.id}
             initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 40, opacity: 1 }}
+            animate={{ height: 25, opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
-            className={`relative z-10 flex h-10 items-center justify-center overflow-hidden text-white rounded-t-lg overflow-hidden shadow-md bg-gradient-to-r ${variantClass(
+            className={`fixed top-0 left-0 right-0 z-[999] flex items-center justify-center overflow-hidden text-white overflow-hidden shadow-md bg-gradient-to-r ${variantClass(
               current.variant
             )}`}
             onMouseEnter={() => setPaused(true)}

@@ -39,15 +39,15 @@ const Navigation = ({ user, notices } : { user:User | null, notices: Notificatio
 
   return (
     <>
+      <NotificationBanner scrolled={scrolled} notices={notices || []}/>
       <header
-        className={`fixed top-3 left-3 right-3 rounded-lg overflow-visible z-[100] duration-500 transition-all`}
+        className={`fixed ${scrolled ? "top-3" : "top-5.5"} left-3 right-3 rounded-lg overflow-visible z-[100] duration-500 transition-all`}
       >
-        <NotificationBanner scrolled={scrolled} notices={notices || []}/>
         <div
-          className={`${scrolled ? "p-0 rounded-t-lg" : "p-0 rounded-t-none"} rounded-lg transition-all duration-500 overflow-hidden`}
+          className={`${scrolled ? "p-0 rounded-t-lg" : "p-0 rounded-t-none"} rounded-lg transition-all duration-500 `}
         >
-          <DesktopNav scrolled={scrolled} links={LINKS} />
-          <MobileNav open={open} setOpen={setOpen} scrolled={scrolled} links={LINKS} />
+          <DesktopNav userMenuActive={user?true:false} scrolled={scrolled} links={LINKS} />
+          <MobileNav userMenuActive={user?true:false} open={open} setOpen={setOpen} scrolled={scrolled} links={LINKS} />
         {user && !open && <UserSubNav user={user} />}
         </div>
       </header>
