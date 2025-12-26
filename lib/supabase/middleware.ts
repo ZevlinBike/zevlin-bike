@@ -14,7 +14,21 @@ export async function updateSession(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet) {
+        setAll(
+          cookiesToSet: {
+            name: string;
+            value: string;
+            options?: {
+              expires?: Date;
+              maxAge?: number;
+              domain?: string;
+              path?: string;
+              secure?: boolean;
+              httpOnly?: boolean;
+              sameSite?: "lax" | "strict" | "none" | boolean;
+            };
+          }[],
+        ) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value),
           );
